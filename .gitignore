@@ -1,0 +1,46 @@
+﻿## Build
+bin/
+obj/
+[Bb]uild/
+[Ll]ogs/
+*.dll
+*.pdb
+*.cache
+*.log
+
+## User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Visual Studio
+.vs/
+.vscode/
+
+## Publish
+*.pubxml
+*.publishsettings
+
+## Secrets / Config
+appsettings.Development.json
+appsettings.*.json
+secrets.json
+
+## Packages
+packages/
+*.nupkg
+*.snupkg
+
+## System
+[Dd]ebug/
+[Rr]elease/
+[Tt]emp/
+*.db
+*.mdf
+*.ldf
+*.dbmdl
+
+## OS
+.DS_Store
+Thumbs.db
