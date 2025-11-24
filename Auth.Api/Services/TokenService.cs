@@ -8,7 +8,7 @@ namespace Auth.Api.Services
 {
     public interface ITokenService
     {
-        string CreateToken(User user, string role);
+        string CreateToken(UserModel user, string role);
     }
 
     public class TokenService : ITokenService
@@ -26,7 +26,7 @@ namespace Auth.Api.Services
             );
         }
 
-        public string CreateToken(User user, string role)
+        public string CreateToken(UserModel user, string role)
         {
             // Định nghĩa Claims (Payload)
             var claims = new List<Claim>

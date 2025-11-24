@@ -1,6 +1,6 @@
 ﻿namespace Auth.Api.Models
 {
-    public class User
+    public class UserModel
     {
         public long Id { get; set; }
         required public string Username { get; set; }

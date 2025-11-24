@@ -5,8 +5,8 @@ namespace Auth.Api.Data
 {
     public interface IUserRepository
     {
-        Task<User> GetByUsernameAsync(string username);
-        Task AddAsync(User user);
+        Task<UserModel> GetByUsernameAsync(string username);
+        Task AddAsync(UserModel user);
         // ... các phương thức khác
     }
 
@@ -19,12 +19,12 @@ namespace Auth.Api.Data
             _context = context;
         }
 
-        public async Task<User> GetByUsernameAsync(string username)
+        public async Task<UserModel> GetByUsernameAsync(string username)
         {
             return await _context.Users.SingleOrDefaultAsync(u => u.Username == username);
         }
 
-        public async Task AddAsync(User user)
+        public async Task AddAsync(UserModel user)
         {
             _context.Users.Add(user);
             await _context.SaveChangesAsync();

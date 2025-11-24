@@ -7,12 +7,12 @@ namespace Auth.Api.Data
     {
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
 
-        public DbSet<User> Users { get; set; }
+        public DbSet<UserModel> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // Đảm bảo username là duy nhất
-            modelBuilder.Entity<User>()
+            modelBuilder.Entity<UserModel>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
         }

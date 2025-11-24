@@ -40,7 +40,7 @@ namespace Auth.Api.Controllers
             var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
             // 3. Tạo Entity User mới
-            var newUser = new User
+            var newUser = new UserModel
             {
                 Username = request.Username,
                 Email = request.Email,

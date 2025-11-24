@@ -10,6 +10,7 @@
 		<PackageReference Include="BCrypt.Net-Core" Version="1.6.0" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.11" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
+		<PackageReference Include="MySqlConnector" Version="2.5.0" />
 		<ProjectReference Include="..\Shared.Contracts\Shared.Contracts.csproj" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.11">
 			<PrivateAssets>all</PrivateAssets>
@@ -21,6 +22,10 @@
 		</PackageReference>
 		<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Migrations\" />
 	</ItemGroup>
 
 </Project>
