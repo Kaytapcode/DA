@@ -15,7 +15,7 @@ namespace Auth.Api.Migrations
                 .Annotation("MySql:CharSet", "utf8mb4");
 
             migrationBuilder.CreateTable(
-                name: "Users",
+                name: "user",
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
@@ -37,7 +37,7 @@ namespace Auth.Api.Migrations
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Username",
-                table: "Users",
+                table: "user",
                 column: "Username",
                 unique: true);
         }
@@ -46,7 +46,7 @@ namespace Auth.Api.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Users");
+                name: "user");
         }
     }
 }

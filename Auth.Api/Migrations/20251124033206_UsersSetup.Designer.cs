@@ -53,7 +53,7 @@ namespace Auth.Api.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("user");
                 });
 #pragma warning restore 612, 618
         }

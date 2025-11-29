@@ -1,4 +1,4 @@
-@Gateway.Api_HostAddress = http://localhost:5002
+@Gateway.Api_HostAddress = http://localhost:5000
 
 GET {{Gateway.Api_HostAddress}}/Gateway/
 Accept: application/json

@@ -7,7 +7,6 @@ try
 {
 
     var builder = WebApplication.CreateBuilder(args);
-    Console.WriteLine("******************************************");
 
     // Đăng ký dịch vụ xác thực
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

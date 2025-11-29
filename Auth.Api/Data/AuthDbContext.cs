@@ -7,10 +7,13 @@ namespace Auth.Api.Data
     {
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options) { }
 
-        public DbSet<UserModel> Users { get; set; }
+        public DbSet<UserModel> user { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            //modelBuilder.Entity<UserModel>()
+            //    .ToTable("user");  // or any custom name
+
             // Đảm bảo username là duy nhất
             modelBuilder.Entity<UserModel>()
                 .HasIndex(u => u.Username)

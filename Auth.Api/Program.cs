@@ -12,10 +12,6 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    //var serverVersion = new MySqlServerVersion(new Version(8, 4, 7)); // Giả sử MySQL 8.0
-    ////options.UseMySql(connectionString, serverVersion);
-
-
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
@@ -61,7 +57,7 @@ try
 
     app.UseRouting();
 
-    app.UseHttpsRedirection();
+    //app.UseHttpsRedirection();
 
     app.UseAuthentication();
 
