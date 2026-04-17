@@ -1,0 +1,2 @@
+﻿export { GlobalContentCoursesPage } from './SysAdminFeConvertedPages'
+

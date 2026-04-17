@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Layer Styles */
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-body;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-headline;
+  }
+}
+
+/* Component Layer Styles */
+@layer components {
+  .glass-effect {
+    @apply bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl border border-outline-variant/15;
+  }
+
+  .dot-grid {
+    background-image: radial-gradient(#c2c6d8 1px, transparent 1px);
+    background-size: 24px 24px;
+    @apply opacity-10;
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    @apply select-none;
+  }
+}
+
+/* Utility Layer - Smooth scrollbar */
+@layer utilities {
+  /* Use for custom scrolling areas */
+  .scrollbar-thin::-webkit-scrollbar {
+    @apply w-2 h-2;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-outline-variant/50 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-outline-variant;
+  }
+}
