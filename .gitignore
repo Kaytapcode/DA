@@ -44,6 +44,7 @@ packages/
 ## OS
 .DS_Store
 Thumbs.db
+.claude/
 
 ## Documentation / Planning Files
 *.md
