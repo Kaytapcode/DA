@@ -15,7 +15,7 @@ try
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<AuthDbContext>(options =>
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+        options.UseNpgsql(connectionString)
     );
 
     // JWT Authentication with OnTokenValidated to map org_id/role into HttpContext.Items

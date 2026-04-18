@@ -49,3 +49,10 @@ Thumbs.db
 ## Documentation / Planning Files
 *.md
 !README.md
+
+
+## Setup Scripts (explicitly include)
+!setup-environment.ps1
+!setup-environment.bat
+!dev-tasks.ps1
+!dev-tasks.bat
