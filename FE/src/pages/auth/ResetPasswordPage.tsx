@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { Button } from '@components/ui/Button'
 import { useForm } from '@hooks/useForm'
@@ -109,3 +109,4 @@ export const ResetPasswordPage: React.FC = () => {
     </div>
   )
 }
+

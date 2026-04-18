@@ -73,5 +73,4 @@ export const SYSADMIN_NAV_ITEMS: NavItem[] = [
 export const APP_BRAND = {
   name: 'Lumina',
   tagline: 'Quantum Learning',
-  taglineVi: 'Học Tập Lượng Tử',
 }

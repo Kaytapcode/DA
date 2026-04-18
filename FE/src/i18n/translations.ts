@@ -1,4 +1,4 @@
-// Language translations for EN-VI
+﻿// Language translations for EN-VI
 // Usage: import { t } from '@/i18n/translations'
 //        t('key', language) or just t('key') for current lang
 
@@ -130,3 +130,4 @@ export const t = (key: string, language?: LanguageCode): string => {
 
 // Type-safe translation key
 export type TranslationKey = keyof typeof translations
+

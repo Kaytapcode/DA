@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # TINY-LMS - QUICK DEVELOPMENT TASKS (PowerShell Helper)
 # Purpose: Shortcuts for common development tasks
 # ============================================================================
@@ -223,3 +223,4 @@ Export-ModuleMember -Function @(
 
 Write-Host "✓ Ready! Type any command above to get started." -ForegroundColor Green
 Write-Host ""
+

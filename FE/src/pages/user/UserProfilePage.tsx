@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -331,3 +331,4 @@ export const UserProfilePage: React.FC = () => {
     </MainLayout>
   )
 }
+

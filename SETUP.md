@@ -1,10 +1,10 @@
-﻿# ðŸš€ TINY-LMS PROJECT - ENVIRONMENT SETUP GUIDE
+﻿# 🚀 TINY-LMS PROJECT - ENVIRONMENT SETUP GUIDE
 
 Complete guide to setting up the development environment for TINY-LMS (Backend + Frontend) on a new computer.
 
 ---
 
-## ðŸ“‹ Table of Contents
+## 📋 Table of Contents
 
 1. [Prerequisites](#prerequisites)
 2. [Quick Start (Automated)](#quick-start-automated)
@@ -16,7 +16,7 @@ Complete guide to setting up the development environment for TINY-LMS (Backend +
 
 ---
 
-## ðŸ“¦ Prerequisites
+## 📦 Prerequisites
 
 Before running setup, ensure you have these installed on your computer:
 
@@ -41,7 +41,7 @@ npm --version         # Should show v9.x.x or higher
 
 ---
 
-## ðŸš€ Quick Start (Automated)
+## 🚀 Quick Start (Automated)
 
 ### Option 1: PowerShell (Recommended for Windows)
 
@@ -78,19 +78,19 @@ setup-environment.bat
 
 ### What the Scripts Do Automatically
 
-âœ… Checks all prerequisites (.NET, Node.js, npm)  
-âœ… Verifies project folder structure  
-âœ… Restores .NET packages (Backend)  
-âœ… Builds the Backend solution  
-âœ… Installs npm dependencies (Frontend)  
-âœ… Builds Frontend (TypeScript compilation)  
-âœ… Provides next steps for database setup  
+✅ Checks all prerequisites (.NET, Node.js, npm)  
+✅ Verifies project folder structure  
+✅ Restores .NET packages (Backend)  
+✅ Builds the Backend solution  
+✅ Installs npm dependencies (Frontend)  
+✅ Builds Frontend (TypeScript compilation)  
+✅ Provides next steps for database setup  
 
 **Expected Duration:** 5-8 minutes (depending on internet speed)
 
 ---
 
-## ðŸ“ Manual Setup (Step-by-Step)
+## 📝 Manual Setup (Step-by-Step)
 
 If you prefer to set up manually or the scripts fail, follow these steps:
 
@@ -129,7 +129,7 @@ dotnet tool install --global dotnet-ef
 **Windows:**
 - Open **Services** (press `Win + R`, type `services.msc`)
 - Find **postgresql-x64-*** (or your PostgreSQL version)
-- Right-click â†’ **Start** (if not already running)
+- Right-click → **Start** (if not already running)
 
 **macOS:**
 ```bash
@@ -165,7 +165,7 @@ npm run build
 
 ---
 
-## âœ… Verify Installation
+## ✅ Verify Installation
 
 After setup completes, verify everything is installed correctly:
 
@@ -202,14 +202,14 @@ netstat -ano | findstr "5173\|7000\|7001"
 
 ---
 
-## ðŸƒ Running the Project
+## 🏃 Running the Project
 
 Once setup is complete, here's how to run the application:
 
 ### Terminal 1: Start PostgreSQL Server
 
 **Windows:**
-- Open Services â†’ Start postgresql-x64-*
+- Open Services → Start postgresql-x64-*
 - Or use PostgreSQL Command Line Client
 
 ### Terminal 2: Run Backend
@@ -236,7 +236,7 @@ npm run dev
 ```
 VITE v7.3.1 ready in 123 ms
 
-âžœ Local:   http://localhost:5173/
+➜ Local:   http://localhost:5173/
 ```
 
 ### Access the Application
@@ -249,51 +249,51 @@ http://localhost:5173
 
 ---
 
-## ðŸ”§ Project Structure
+## 🔧 Project Structure
 
 ```
 DA-BE/
-â”œâ”€â”€ BE/                          # Backend (.NET Core)
-â”‚   â”œâ”€â”€ Auth.Api/               # Authentication & Main API
-â”‚   â”‚   â”œâ”€â”€ Controllers/        # API endpoints
-â”‚   â”‚   â”œâ”€â”€ Models/             # Data models
-â”‚   â”‚   â”œâ”€â”€ Services/           # Business logic
-â”‚   â”‚   â”œâ”€â”€ Data/               # Database & repositories
-â”‚   â”‚   â”œâ”€â”€ Middleware/         # Custom middlewares
-â”‚   â”‚   â”œâ”€â”€ Migrations/         # EF Core migrations
-â”‚   â”‚   â”œâ”€â”€ appsettings.json    # Database configuration
-â”‚   â”‚   â””â”€â”€ Program.cs          # Application startup
-â”‚   â”œâ”€â”€ Gateway.Api/            # API Gateway (YARP reverse proxy)
-â”‚   â”œâ”€â”€ Shared.Contracts/       # DTOs & shared contracts
-â”‚   â””â”€â”€ BEDoAn.sln              # Visual Studio solution
-â”‚
-â”œâ”€â”€ FE/                          # Frontend (React + Vite)
-â”‚   â”œâ”€â”€ src/
-â”‚   â”‚   â”œâ”€â”€ pages/              # Page components
-â”‚   â”‚   â”œâ”€â”€ components/         # Reusable components
-â”‚   â”‚   â”œâ”€â”€ layouts/            # Layout components
-â”‚   â”‚   â”œâ”€â”€ hooks/              # Custom React hooks
-â”‚   â”‚   â”œâ”€â”€ utils/              # Utility functions
-â”‚   â”‚   â”œâ”€â”€ types/              # TypeScript types
-â”‚   â”‚   â”œâ”€â”€ constants/          # Constants
-â”‚   â”‚   â”œâ”€â”€ App.tsx             # Main App component
-â”‚   â”‚   â””â”€â”€ main.tsx            # Entry point
-â”‚   â”œâ”€â”€ package.json            # NPM dependencies
-â”‚   â”œâ”€â”€ vite.config.ts          # Vite configuration
-â”‚   â””â”€â”€ tsconfig.json           # TypeScript configuration
-â”‚
-â””â”€â”€ Documentation/              # Project documentation
-    â”œâ”€â”€ setup-environment.ps1   # This setup script (PowerShell)
-    â”œâ”€â”€ setup-environment.bat   # This setup script (Batch)
-    â”œâ”€â”€ SETUP.md               # This guide
-    â”œâ”€â”€ QUICK_START_TESTING.md # Quick start for testing
-    â”œâ”€â”€ claude.md              # Project specifications
-    â””â”€â”€ TESTING_README.md      # Testing procedures
+├── BE/                          # Backend (.NET Core)
+│   ├── Auth.Api/               # Authentication & Main API
+│   │   ├── Controllers/        # API endpoints
+│   │   ├── Models/             # Data models
+│   │   ├── Services/           # Business logic
+│   │   ├── Data/               # Database & repositories
+│   │   ├── Middleware/         # Custom middlewares
+│   │   ├── Migrations/         # EF Core migrations
+│   │   ├── appsettings.json    # Database configuration
+│   │   └── Program.cs          # Application startup
+│   ├── Gateway.Api/            # API Gateway (YARP reverse proxy)
+│   ├── Shared.Contracts/       # DTOs & shared contracts
+│   └── BEDoAn.sln              # Visual Studio solution
+│
+├── FE/                          # Frontend (React + Vite)
+│   ├── src/
+│   │   ├── pages/              # Page components
+│   │   ├── components/         # Reusable components
+│   │   ├── layouts/            # Layout components
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── utils/              # Utility functions
+│   │   ├── types/              # TypeScript types
+│   │   ├── constants/          # Constants
+│   │   ├── App.tsx             # Main App component
+│   │   └── main.tsx            # Entry point
+│   ├── package.json            # NPM dependencies
+│   ├── vite.config.ts          # Vite configuration
+│   └── tsconfig.json           # TypeScript configuration
+│
+└── Documentation/              # Project documentation
+    ├── setup-environment.ps1   # This setup script (PowerShell)
+    ├── setup-environment.bat   # This setup script (Batch)
+    ├── SETUP.md               # This guide
+    ├── QUICK_START_TESTING.md # Quick start for testing
+    ├── claude.md              # Project specifications
+    └── TESTING_README.md      # Testing procedures
 ```
 
 ---
 
-## ðŸ› Troubleshooting
+## 🐛 Troubleshooting
 
 ### Problem: ".NET SDK not found"
 
@@ -379,7 +379,7 @@ DA-BE/
 
 ---
 
-## ðŸ“ž Additional Help
+## 📞 Additional Help
 
 ### Documentation Files
 
@@ -415,7 +415,7 @@ DA-BE/
 
 ---
 
-## âœ¨ What's Next?
+## ✨ What's Next?
 
 After successful setup:
 
@@ -427,7 +427,7 @@ After successful setup:
 
 ---
 
-## ðŸ“ Notes
+## 📝 Notes
 
 - This setup guide is for development environment
 - For production deployment, additional configuration is required
@@ -440,4 +440,5 @@ After successful setup:
 **Last Updated:** April 2026  
 **Version:** 1.0  
 **Created:** Automated Setup Guide for TINY-LMS Project
+
 

@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react'
+﻿import React, { Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { OrgLayout } from '@layouts/OrgLayout'
@@ -300,3 +300,4 @@ export const AppRouter: React.FC = () => {
     </Router>
   )
 }
+

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Auth.Api.Data;
 using Auth.Api.Models;
@@ -115,3 +115,4 @@ namespace Auth.Api.Controllers
         }
     }
 }
+

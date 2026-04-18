@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Auth.Api.Services;
 using Shared.Contracts.Responses;
@@ -60,3 +60,4 @@ namespace Auth.Api.Controllers
     public record SetQuotaLimitRequest(Guid OrgId, int Limit);
     public record ResetQuotaRequest(Guid OrgId);
 }
+

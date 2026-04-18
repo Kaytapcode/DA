@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 
 namespace Gateway.Api.Middleware
 {
@@ -44,3 +44,4 @@ namespace Gateway.Api.Middleware
         }
     }
 }
+

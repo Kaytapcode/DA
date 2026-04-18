@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+﻿import React, { useMemo, useState } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -474,3 +474,4 @@ export const VideoLessonLightPage: React.FC = () => {
     </UserShell>
   )
 }
+

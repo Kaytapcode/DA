@@ -65,15 +65,15 @@ namespace Auth.Api.Controllers
 
             var user = await _userRepository.GetByIdAsync(request.UserId);
             if (user == null)
-                return NotFound(new ApiResponse(Success: false, Message: "Người dùng không tồn tại."));
+                return NotFound(new ApiResponse(Success: false, Message: "User does not exist."));
 
             var existing = await _memberRepository.GetByUserAndOrgAsync(request.UserId, orgId);
             if (existing != null)
-                return BadRequest(new ApiResponse(Success: false, Message: "Người dùng đã là thành viên của tổ chức."));
+                return BadRequest(new ApiResponse(Success: false, Message: "User is already a member of this organization."));
 
             var validRoles = new[] { "Student", "Teacher", "OrgAdmin", "Owner" };
             if (!validRoles.Contains(request.Role))
-                return BadRequest(new ApiResponse(Success: false, Message: $"Role không hợp lệ. Các role hợp lệ: {string.Join(", ", validRoles)}"));
+                return BadRequest(new ApiResponse(Success: false, Message: $"Invalid role. Valid roles: {string.Join(", ", validRoles)}"));
 
             var member = new MemberModel
             {
@@ -86,7 +86,7 @@ namespace Auth.Api.Controllers
             return Ok(new ApiResponse<MemberResponseDto>(
                 Success: true,
                 Data: new MemberResponseDto(created.UserId, created.OrgId, created.Role, created.JoinDate),
-                Message: "Thêm thành viên thành công."
+                Message: "Member added successfully."
             ));
         }
 
@@ -98,14 +98,14 @@ namespace Auth.Api.Controllers
 
             var member = await _memberRepository.GetByIdAsync(memberId);
             if (member == null || member.OrgId != orgId)
-                return NotFound(new ApiResponse(Success: false, Message: "Thành viên không tồn tại."));
+                return NotFound(new ApiResponse(Success: false, Message: "Member does not exist."));
 
             if (member.Role == "Owner")
-                return BadRequest(new ApiResponse(Success: false, Message: "Không thể thay đổi role của Owner."));
+                return BadRequest(new ApiResponse(Success: false, Message: "Owner role cannot be changed."));
 
             var validRoles = new[] { "Student", "Teacher", "OrgAdmin" };
             if (!validRoles.Contains(request.Role))
-                return BadRequest(new ApiResponse(Success: false, Message: $"Role không hợp lệ."));
+                return BadRequest(new ApiResponse(Success: false, Message: "Invalid role."));
 
             member.Role = request.Role;
             var updated = await _memberRepository.UpdateAsync(member);
@@ -113,7 +113,7 @@ namespace Auth.Api.Controllers
             return Ok(new ApiResponse<MemberResponseDto>(
                 Success: true,
                 Data: new MemberResponseDto(updated.UserId, updated.OrgId, updated.Role, updated.JoinDate),
-                Message: "Cập nhật role thành công."
+                Message: "Role updated successfully."
             ));
         }
 
@@ -125,13 +125,13 @@ namespace Auth.Api.Controllers
 
             var member = await _memberRepository.GetByIdAsync(memberId);
             if (member == null || member.OrgId != orgId)
-                return NotFound(new ApiResponse(Success: false, Message: "Thành viên không tồn tại."));
+                return NotFound(new ApiResponse(Success: false, Message: "Member does not exist."));
 
             if (member.Role == "Owner")
-                return BadRequest(new ApiResponse(Success: false, Message: "Không thể xoá Owner khỏi tổ chức."));
+                return BadRequest(new ApiResponse(Success: false, Message: "Cannot remove Owner from the organization."));
 
             await _memberRepository.DeleteAsync(memberId);
-            return Ok(new ApiResponse(Success: true, Message: "Đã xoá thành viên khỏi tổ chức."));
+            return Ok(new ApiResponse(Success: true, Message: "Member removed from the organization."));
         }
     }
 }

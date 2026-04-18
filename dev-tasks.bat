@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM ============================================================================
 REM TINY-LMS - QUICK DEVELOPMENT TASKS (Batch Helper)
 REM Purpose: Shortcuts for common development tasks
@@ -156,3 +156,4 @@ REM Unknown command
 echo Unknown command: %1
 echo.
 call :EOF
+

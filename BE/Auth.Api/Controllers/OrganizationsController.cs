@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Shared.Contracts.Requests;
 using Shared.Contracts.Responses;
@@ -298,3 +298,4 @@ namespace Auth.Api.Controllers
         }
     }
 }
+

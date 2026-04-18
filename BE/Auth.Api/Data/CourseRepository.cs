@@ -1,4 +1,4 @@
-using Auth.Api.Models;
+﻿using Auth.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Auth.Api.Data
@@ -87,3 +87,4 @@ namespace Auth.Api.Data
                 .ToListAsync();
     }
 }
+

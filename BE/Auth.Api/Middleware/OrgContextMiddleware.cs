@@ -1,4 +1,4 @@
-using Auth.Api.Data;
+﻿using Auth.Api.Data;
 
 namespace Auth.Api.Middleware
 {
@@ -47,3 +47,4 @@ namespace Auth.Api.Middleware
         }
     }
 }
+

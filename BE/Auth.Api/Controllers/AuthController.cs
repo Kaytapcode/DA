@@ -26,10 +26,10 @@ namespace Auth.Api.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             if (await _userRepository.UserExistsByUsernameAsync(request.Username))
-                return BadRequest(new ApiResponse(Success: false, Message: "Tên đăng nhập đã tồn tại."));
+                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
 
             if (await _userRepository.UserExistsByEmailAsync(request.Email))
-                return BadRequest(new ApiResponse(Success: false, Message: "Email đã được sử dụng."));
+                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
 
             var newUser = new UserModel
             {
@@ -40,7 +40,7 @@ namespace Auth.Api.Controllers
             };
 
             await _userRepository.AddAsync(newUser);
-            return Ok(new ApiResponse(Success: true, Message: "Đăng ký thành công."));
+            return Ok(new ApiResponse(Success: true, Message: "Registration successful."));
         }
 
         [HttpPost("login")]
@@ -51,7 +51,7 @@ namespace Auth.Api.Controllers
                        ?? await _userRepository.GetByEmailAsync(request.Username);
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-                return Unauthorized(new ApiResponse(Success: false, Message: "Thông tin đăng nhập không hợp lệ."));
+                return Unauthorized(new ApiResponse(Success: false, Message: "Invalid login credentials."));
 
             // Resolve org context from X-Org-Id header if provided
             Guid? orgId = null;
@@ -67,11 +67,11 @@ namespace Auth.Api.Controllers
                 Success: true,
                 Data: new LoginResponseDto(
                     Token: token,
-                    Message: "Đăng nhập thành công.",
+                    Message: "Login successful.",
                     User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.IsSystemAdmin),
                     OrgId: orgId?.ToString()
                 ),
-                Message: "Đăng nhập thành công."
+                Message: "Login successful."
             ));
         }
 

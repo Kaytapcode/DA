@@ -1,4 +1,4 @@
-using Auth.Api.Data;
+﻿using Auth.Api.Data;
 using Auth.Api.Middleware;
 using Auth.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -110,11 +110,12 @@ catch (Exception ex)
 {
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine("******************************************");
-    Console.WriteLine("LOI KHONG THE KHOI DONG APP:");
+    Console.WriteLine("APPLICATION STARTUP FAILED:");
     Console.WriteLine(ex.Message);
     Console.WriteLine(ex.StackTrace);
     Console.WriteLine("******************************************");
     Console.ResetColor();
-    Console.WriteLine("Nhan phim bat ky de thoat...");
+    Console.WriteLine("Press any key to exit...");
     Console.ReadLine();
 }
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+﻿import React, { useState, useEffect } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { SysAdminNavbar } from '@components/layout/sysadmin/SysAdminNavbar'
 import { SysAdminSidebar } from '@components/layout/sysadmin/SysAdminSidebar'
@@ -389,3 +389,4 @@ export const UserDetailsSystemadminPage: React.FC = () => {
     </SysShell>
   )
 }
+

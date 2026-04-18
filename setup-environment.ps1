@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # TINY-LMS PROJECT SETUP SCRIPT (PowerShell)
 # Purpose: Setup complete development environment for BE and FE
 # ============================================================================
@@ -339,3 +339,4 @@ Write-Host ""
 Write-Success "Setup script completed successfully! Happy coding! 🚀"
 
 # End of script
+

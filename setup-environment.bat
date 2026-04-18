@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 REM ============================================================================
 REM TINY-LMS PROJECT SETUP SCRIPT (Batch)
 REM Purpose: Setup complete development environment for BE and FE
@@ -311,3 +311,4 @@ echo Setup script completed successfully! Happy coding! 🚀
 echo.
 
 pause
+

@@ -1,33 +1,33 @@
-﻿# ðŸš€ TINY-LMS PROJECT - SETUP SCRIPTS DOCUMENTATION
+﻿# 🚀 TINY-LMS PROJECT - SETUP SCRIPTS DOCUMENTATION
 
 Complete documentation for all environment setup scripts created for the TINY-LMS project.
 
 ---
 
-## ðŸ“‹ Overview
+## 📋 Overview
 
 This document explains all available setup scripts and guides for configuring your development environment on a new computer.
 
 ### What's Included?
 
-âœ… **Automated Setup Scripts** - One-command environment setup  
-âœ… **Development Task Helpers** - Quick shortcuts for common tasks  
-âœ… **Comprehensive Setup Guide** - Manual setup instructions  
-âœ… **Documentation** - All necessary reference materials  
+✅ **Automated Setup Scripts** - One-command environment setup  
+✅ **Development Task Helpers** - Quick shortcuts for common tasks  
+✅ **Comprehensive Setup Guide** - Manual setup instructions  
+✅ **Documentation** - All necessary reference materials  
 
 ---
 
-## ðŸ“ Files Created
+## 📁 Files Created
 
 ### 1. **setup-environment.ps1** (PowerShell - RECOMMENDED)
 **File Location:** `d:\Github\DA-BE\setup-environment.ps1`
 
 **What it does:**
-- âœ“ Checks all prerequisites (.NET 9, Node.js 18+, npm, Git)
-- âœ“ Verifies project folder structure
-- âœ“ Restores and builds .NET Backend
-- âœ“ Installs and builds Frontend
-- âœ“ Provides next steps instructions
+- ✓ Checks all prerequisites (.NET 9, Node.js 18+, npm, Git)
+- ✓ Verifies project folder structure
+- ✓ Restores and builds .NET Backend
+- ✓ Installs and builds Frontend
+- ✓ Provides next steps instructions
 
 **How to use:**
 ```powershell
@@ -55,11 +55,11 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 **File Location:** `d:\Github\DA-BE\setup-environment.bat`
 
 **What it does:**
-- âœ“ Checks prerequisites (simpler version)
-- âœ“ Verifies project structure
-- âœ“ Restores and builds .NET Backend
-- âœ“ Installs and builds Frontend
-- âœ“ Provides instructions
+- ✓ Checks prerequisites (simpler version)
+- ✓ Verifies project structure
+- ✓ Restores and builds .NET Backend
+- ✓ Installs and builds Frontend
+- ✓ Provides instructions
 
 **How to use:**
 ```cmd
@@ -197,36 +197,36 @@ dev-tasks.bat status
 
 ---
 
-## ðŸš€ Quick Start Decision Tree
+## 🚀 Quick Start Decision Tree
 
 Choose the right setup method for you:
 
 ```
 New Computer Setup?
-â”‚
-â”œâ”€â–º Want Automated? (YES)
-â”‚   â”‚
-â”‚   â”œâ”€â–º Windows PowerShell? â”€â”€â–º Use setup-environment.ps1 â­ BEST
-â”‚   â”‚
-â”‚   â””â”€â–º Windows CMD? â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â–º Use setup-environment.bat
-â”‚
-â””â”€â–º Want Manual? (NO)
-    â”‚
-    â””â”€â–º Read: SETUP.md (Manual Setup section)
+│
+├─► Want Automated? (YES)
+│   │
+│   ├─► Windows PowerShell? ──► Use setup-environment.ps1 ⭐ BEST
+│   │
+│   └─► Windows CMD? ──────────► Use setup-environment.bat
+│
+└─► Want Manual? (NO)
+    │
+    └─► Read: SETUP.md (Manual Setup section)
 ```
 
 ---
 
-## âš¡ Recommended Setup Workflow
+## ⚡ Recommended Setup Workflow
 
 ### Fresh Computer Setup
 
 **Step 1: Install Prerequisites** (10 minutes)
 ```
-âœ“ .NET 9 SDK: https://dotnet.microsoft.com/download
-âœ“ Node.js 18+: https://nodejs.org
-âœ“ PostgreSQL 8.0+: https://www.postgresql.org/download/
-âœ“ (Optional) Git: https://git-scm.com
+✓ .NET 9 SDK: https://dotnet.microsoft.com/download
+✓ Node.js 18+: https://nodejs.org
+✓ PostgreSQL 8.0+: https://www.postgresql.org/download/
+✓ (Optional) Git: https://git-scm.com
 ```
 
 **Step 2: Run Automated Setup** (5-8 minutes)
@@ -266,21 +266,21 @@ Backend:  http://localhost:7000
 
 ---
 
-## ðŸ“Š Script Comparison
+## 📊 Script Comparison
 
 | Feature | setup-environment.ps1 | setup-environment.bat | dev-tasks.ps1 | dev-tasks.bat |
 |---------|:---------------------:|:---------------------:|:-------------:|:-------------:|
-| Full setup automation | âœ“ | âœ“ | âœ— | âœ— |
-| Colored output | âœ“ | âœ— | âœ“ | âœ— |
-| Error handling | âœ“ | âœ“ | âœ“ | âœ“ |
-| Daily development | âœ— | âœ— | âœ“ | âœ“ |
-| One-command tasks | âœ— | âœ— | âœ“ | âœ“ |
-| Easy learning curve | âœ— | âœ“ | ~ | ~ |
-| Windows Compatible | âœ“ | âœ“ | âœ“ | âœ“ |
+| Full setup automation | ✓ | ✓ | ✗ | ✗ |
+| Colored output | ✓ | ✗ | ✓ | ✗ |
+| Error handling | ✓ | ✓ | ✓ | ✓ |
+| Daily development | ✗ | ✗ | ✓ | ✓ |
+| One-command tasks | ✗ | ✗ | ✓ | ✓ |
+| Easy learning curve | ✗ | ✓ | ~ | ~ |
+| Windows Compatible | ✓ | ✓ | ✓ | ✓ |
 
 ---
 
-## ðŸ”§ Common Scenarios
+## 🔧 Common Scenarios
 
 ### Scenario 1: Fresh Computer - First Time Setup
 
@@ -364,7 +364,7 @@ fe-clean
 
 ---
 
-## ðŸ“ž Troubleshooting
+## 📞 Troubleshooting
 
 ### Problem: Script won't run
 
@@ -405,7 +405,7 @@ See **[SETUP.md](SETUP.md)** for more troubleshooting.
 
 ---
 
-## ðŸ“š Documentation Map
+## 📚 Documentation Map
 
 | Document | Purpose |
 |----------|---------|
@@ -417,7 +417,7 @@ See **[SETUP.md](SETUP.md)** for more troubleshooting.
 
 ---
 
-## ðŸ’¡ Pro Tips
+## 💡 Pro Tips
 
 1. **Save dev-tasks to your PowerShell profile** for always-available commands:
    ```powershell
@@ -450,25 +450,25 @@ See **[SETUP.md](SETUP.md)** for more troubleshooting.
 
 ---
 
-## ðŸŽ¯ What Gets Installed?
+## 🎯 What Gets Installed?
 
 ### Backend
-- âœ“ Entity Framework Core 9.0
-- âœ“ Npgsql.EntityFrameworkCore.PostgreSQL 9.0
-- âœ“ Microsoft.AspNetCore.Authentication.JwtBearer 9.0
-- âœ“ All other NuGet packages (see Auth.Api.csproj)
+- ✓ Entity Framework Core 9.0
+- ✓ Npgsql.EntityFrameworkCore.PostgreSQL 9.0
+- ✓ Microsoft.AspNetCore.Authentication.JwtBearer 9.0
+- ✓ All other NuGet packages (see Auth.Api.csproj)
 
 ### Frontend
-- âœ“ React 18.2
-- âœ“ Vite 7.3
-- âœ“ TypeScript 5.2
-- âœ“ Tailwind CSS 3.4
-- âœ“ React Router 6.20
-- âœ“ All other npm packages (see package.json)
+- ✓ React 18.2
+- ✓ Vite 7.3
+- ✓ TypeScript 5.2
+- ✓ Tailwind CSS 3.4
+- ✓ React Router 6.20
+- ✓ All other npm packages (see package.json)
 
 ---
 
-## âœ… Verification Checklist
+## ✅ Verification Checklist
 
 After setup completes, verify:
 
@@ -483,7 +483,7 @@ After setup completes, verify:
 
 ---
 
-## ðŸš€ Next Steps
+## 🚀 Next Steps
 
 1. **Run the setup**: Execute appropriate setup script
 2. **Read the docs**: Review QUICK_START_TESTING.md
@@ -493,7 +493,7 @@ After setup completes, verify:
 
 ---
 
-## ðŸ“ Version Information
+## 📝 Version Information
 
 - **Setup Scripts Version:** 1.0
 - **Project:** TINY-LMS
@@ -502,7 +502,7 @@ After setup completes, verify:
 
 ---
 
-## ðŸ¤ Need Help?
+## 🤝 Need Help?
 
 1. Check [SETUP.md](SETUP.md) - Comprehensive manual guide
 2. Review [QUICK_START_TESTING.md](QUICK_START_TESTING.md) - Quick reference
@@ -511,5 +511,6 @@ After setup completes, verify:
 
 ---
 
-**Happy coding! ðŸŽ‰**
+**Happy coding! 🎉**
+
 
