@@ -49,6 +49,9 @@ Thumbs.db
 ## Documentation / Planning Files
 *.md
 !README.md
+!SETUP.md
+!SETUP_SCRIPTS_README.md
+!SETUP_PACKAGE_SUMMARY.md
 
 
 ## Setup Scripts (explicitly include)
