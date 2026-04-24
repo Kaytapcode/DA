@@ -35,7 +35,7 @@ namespace Auth.Api.Controllers
         {
             try
             {
-                var isAdmin = User.FindFirst("role")?.Value == "SysAdmin";
+                var isAdmin = User.IsInRole("SysAdmin");
                 var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
                 List<OrganizationModel> organizations;
@@ -214,7 +214,7 @@ namespace Auth.Api.Controllers
                     return BadRequest(new ApiResponse(false, "Invalid user ID"));
 
                 // Check authorization
-                if (organization.OwnerId != userGuid && User.FindFirst("role")?.Value != "SysAdmin")
+                if (organization.OwnerId != userGuid && !User.IsInRole("SysAdmin"))
                     return Forbid();
 
                 // Check slug uniqueness if slug is being changed
@@ -277,7 +277,7 @@ namespace Auth.Api.Controllers
                     return BadRequest(new ApiResponse(false, "Invalid user ID"));
 
                 // Check authorization
-                if (organization.OwnerId != userGuid && User.FindFirst("role")?.Value != "SysAdmin")
+                if (organization.OwnerId != userGuid && !User.IsInRole("SysAdmin"))
                     return Forbid();
 
                 await _organizationRepository.DeleteAsync(id);

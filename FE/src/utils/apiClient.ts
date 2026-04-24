@@ -58,11 +58,12 @@ class ApiClient {
       (response) => response.data,
       (error: AxiosError<ApiResponse>) => {
         if (error.response?.status === 401) {
-          // Token expired or invalid
           localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_id');
+          localStorage.removeItem('auth_user');
           localStorage.removeItem('org_id');
-          window.location.href = '/auth/login';
+          localStorage.removeItem('org_slug');
+          localStorage.removeItem('current_org');
+          window.location.href = '/login';
         }
 
         // Return error response data if available

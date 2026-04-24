@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useOrgContext } from '@/contexts/OrgContext';
 import { ValidationRules } from '@/utils/validation';
 
 interface LoginFormData {
@@ -18,6 +19,7 @@ interface FormErrors {
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuth();
+  const { resolveBySlug } = useOrgContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -57,10 +59,8 @@ export const LoginPage: React.FC = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    // Validate org slug
-    if (!formData.orgSlug) {
-      newErrors.orgSlug = 'Organization slug is required';
-    } else if (!/^[a-z0-9-]*$/.test(formData.orgSlug)) {
+    // Org slug is optional (SysAdmin logs in without one)
+    if (formData.orgSlug && !/^[a-z0-9-]+$/.test(formData.orgSlug)) {
       newErrors.orgSlug = 'Slug can only contain lowercase letters, numbers, and hyphens';
     }
 
@@ -77,14 +77,28 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      // Convert email to username for auth (based on API contract)
-      // In production, you might want to allow both email and username
-      const username = formData.email.split('@')[0]; // Use email prefix as username
-      
-      await login(username, formData.password, formData.orgSlug);
+      // Resolve org slug → orgId before login so BE can embed orgId in JWT
+      let resolvedOrgId: string | undefined;
+      if (formData.orgSlug) {
+        const org = await resolveBySlug(formData.orgSlug);
+        if (!org) {
+          setSubmitError('Organization not found. Check the slug and try again.');
+          return;
+        }
+        resolvedOrgId = org.id;
+      }
 
-      // If login succeeds (no error thrown), redirect to dashboard
-      navigate(`/org/${formData.orgSlug}/dashboard`, { replace: true });
+      // BE accepts email or username in the Username field
+      const loggedInUser = await login(formData.email, formData.password, resolvedOrgId);
+
+      // Navigate based on org context and role
+      if (formData.orgSlug) {
+        navigate(`/org/${formData.orgSlug}/dashboard`, { replace: true });
+      } else if (loggedInUser.isSystemAdmin) {
+        navigate('/sysadmin/dashboard', { replace: true });
+      } else {
+        navigate('/user/home', { replace: true });
+      }
     } catch (err) {
       setSubmitError(
         typeof err === 'string'

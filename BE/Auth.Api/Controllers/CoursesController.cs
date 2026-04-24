@@ -36,41 +36,27 @@ namespace Auth.Api.Controllers
             [FromQuery] int pageIndex = 0,
             [FromQuery] int pageSize = 10)
         {
-            try
+            List<CourseModel> courses;
+            int totalCount;
+
+            if (_orgCtx.IsSysAdmin())
             {
-                var orgId = HttpContext.Items["org_id"]?.ToString();
-                if (string.IsNullOrEmpty(orgId) || !Guid.TryParse(orgId, out var orgGuid))
-                    return BadRequest(new ApiResponse(false, "Invalid organization context"));
-
-                var (courses, totalCount) = await _courseRepository.GetByOrgIdAsync(
-                    orgGuid, pageIndex, pageSize);
-
-                var responseData = courses.ConvertAll(course => new CourseListResponseDto(
-                    course.Id,
-                    course.Title,
-                    course.Description,
-                    course.CourseCode,
-                    course.CreatedAt,
-                    course.CourseModules?.Count ?? 0
-                ));
-
-                return Ok(new PaginatedResponse<CourseListResponseDto>(
-                    true,
-                    responseData,
-                    pageIndex,
-                    pageSize,
-                    totalCount,
-                    "Courses retrieved successfully"
-                ));
+                var all = await _courseRepository.GetAllAsync(pageIndex, pageSize);
+                courses = all;
+                totalCount = all.Count; // approximation — GetAllAsync doesn't return total
             }
-            catch (Exception ex)
+            else
             {
-                return StatusCode(500, new ApiResponse(
-                    false,
-                    "An error occurred while retrieving courses",
-                    new List<string> { ex.Message }
-                ));
+                var orgId = _orgCtx.GetCurrentOrgId();
+                if (!orgId.HasValue) return BadRequest(new ApiResponse(false, "No org context."));
+                (courses, totalCount) = await _courseRepository.GetByOrgIdAsync(orgId.Value, pageIndex, pageSize);
             }
+
+            var responseData = courses.ConvertAll(c => new CourseListResponseDto(
+                c.Id, c.Title, c.Description, c.CourseCode, c.CreatedAt, c.CourseModules?.Count ?? 0));
+
+            return Ok(new PaginatedResponse<CourseListResponseDto>(
+                true, responseData, pageIndex, pageSize, totalCount, "Courses retrieved successfully"));
         }
 
         /// <summary>
@@ -80,159 +66,80 @@ namespace Auth.Api.Controllers
         [ProducesResponseType(typeof(ApiResponse<CourseResponseDto>), 200)]
         public async Task<IActionResult> GetCourse(Guid id)
         {
-            try
-            {
-                var orgId = HttpContext.Items["org_id"]?.ToString();
-                if (string.IsNullOrEmpty(orgId) || !Guid.TryParse(orgId, out var orgGuid))
-                    return BadRequest(new ApiResponse(false, "Invalid organization context"));
+            var course = await _courseRepository.GetByIdAsync(id);
+            if (course == null) return NotFound(new ApiResponse(false, "Course not found"));
 
-                var course = await _courseRepository.GetByIdAsync(id);
-                if (course == null || course.OrgId != orgGuid)
-                    return NotFound(new ApiResponse(false, "Course not found"));
+            if (!_orgCtx.IsSysAdmin() && course.OrgId != _orgCtx.GetCurrentOrgId())
+                return NotFound(new ApiResponse(false, "Course not found"));
 
-                var responseData = new CourseResponseDto(
-                    course.Id,
-                    course.OrgId,
-                    course.Title,
-                    course.Description,
-                    course.CourseCode,
-                    course.CreatedBy,
-                    course.CreatedAt
-                );
-
-                return Ok(new ApiResponse<CourseResponseDto>(
-                    true,
-                    responseData,
-                    "Course retrieved successfully"
-                ));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse(
-                    false,
-                    "An error occurred while retrieving the course",
-                    new List<string> { ex.Message }
-                ));
-            }
+            return Ok(new ApiResponse<CourseResponseDto>(true,
+                new CourseResponseDto(course.Id, course.OrgId, course.Title,
+                    course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt),
+                "Course retrieved successfully"));
         }
 
         /// <summary>
         /// Create a new course
         /// </summary>
         [HttpPost]
+        [Authorize(Policy = "RequireTeacher")]
         [ProducesResponseType(typeof(ApiResponse<CourseResponseDto>), 201)]
         public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequestDto request)
         {
-            try
+            if (!ModelState.IsValid) return BadRequest(new ApiResponse(false, "Invalid request data"));
+
+            var orgId = _orgCtx.GetCurrentOrgId();
+            if (!orgId.HasValue) return BadRequest(new ApiResponse(false, "No org context."));
+
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue) return BadRequest(new ApiResponse(false, "Invalid user context."));
+
+            var course = new CourseModel
             {
-                if (!ModelState.IsValid)
-                    return BadRequest(new ApiResponse(false, "Invalid request data"));
+                Id = Guid.NewGuid(),
+                OrgId = orgId.Value,
+                CreatedBy = userId.Value,
+                Title = request.Title,
+                Description = request.Description,
+                CourseCode = request.CourseCode,
+                Status = "DRAFT",
+                CreatedAt = DateTime.UtcNow
+            };
 
-                var orgId = HttpContext.Items["org_id"]?.ToString();
-                if (string.IsNullOrEmpty(orgId) || !Guid.TryParse(orgId, out var orgGuid))
-                    return BadRequest(new ApiResponse(false, "Invalid organization context"));
-
-                var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-                if (!Guid.TryParse(userId, out var userGuid))
-                    return BadRequest(new ApiResponse(false, "Invalid user ID"));
-
-                // Verify organization exists
-                var org = await _organizationRepository.GetByIdAsync(orgGuid);
-                if (org == null)
-                    return NotFound(new ApiResponse(false, "Organization not found"));
-
-                var course = new CourseModel
-                {
-                    Id = Guid.NewGuid(),
-                    OrgId = orgGuid,
-                    CreatedBy = userGuid,
-                    Title = request.Title,
-                    Description = request.Description,
-                    CourseCode = request.CourseCode,
-                    Status = "ACTIVE",
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                await _courseRepository.CreateAsync(course);
-
-                var responseData = new CourseResponseDto(
-                    course.Id,
-                    course.OrgId,
-                    course.Title,
-                    course.Description,
-                    course.CourseCode,
-                    course.CreatedBy,
-                    course.CreatedAt
-                );
-
-                return CreatedAtAction(nameof(GetCourse), new { id = course.Id },
-                    new ApiResponse<CourseResponseDto>(
-                        true,
-                        responseData,
-                        "Course created successfully"
-                    ));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse(
-                    false,
-                    "An error occurred while creating the course",
-                    new List<string> { ex.Message }
-                ));
-            }
+            await _courseRepository.CreateAsync(course);
+            return CreatedAtAction(nameof(GetCourse), new { id = course.Id },
+                new ApiResponse<CourseResponseDto>(true,
+                    new CourseResponseDto(course.Id, course.OrgId, course.Title,
+                        course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt),
+                    "Course created successfully"));
         }
 
         /// <summary>
         /// Update a course
         /// </summary>
         [HttpPut("{id}")]
+        [Authorize(Policy = "RequireTeacher")]
         [ProducesResponseType(typeof(ApiResponse<CourseResponseDto>), 200)]
         public async Task<IActionResult> UpdateCourse(Guid id, [FromBody] UpdateCourseRequestDto request)
         {
-            try
-            {
-                if (!ModelState.IsValid)
-                    return BadRequest(new ApiResponse(false, "Invalid request data"));
+            if (!ModelState.IsValid) return BadRequest(new ApiResponse(false, "Invalid request data"));
 
-                var orgId = HttpContext.Items["org_id"]?.ToString();
-                if (string.IsNullOrEmpty(orgId) || !Guid.TryParse(orgId, out var orgGuid))
-                    return BadRequest(new ApiResponse(false, "Invalid organization context"));
+            var course = await _courseRepository.GetByIdAsync(id);
+            if (course == null) return NotFound(new ApiResponse(false, "Course not found"));
 
-                var course = await _courseRepository.GetByIdAsync(id);
-                if (course == null || course.OrgId != orgGuid)
-                    return NotFound(new ApiResponse(false, "Course not found"));
+            if (!_orgCtx.IsSysAdmin() && course.OrgId != _orgCtx.GetCurrentOrgId())
+                return NotFound(new ApiResponse(false, "Course not found"));
 
-                course.Title = request.Title;
-                course.Description = request.Description;
-                course.CourseCode = request.CourseCode;
-                course.UpdatedAt = DateTime.UtcNow;
+            course.Title = request.Title;
+            course.Description = request.Description;
+            course.CourseCode = request.CourseCode;
+            course.UpdatedAt = DateTime.UtcNow;
 
-                await _courseRepository.UpdateAsync(course);
-
-                var responseData = new CourseResponseDto(
-                    course.Id,
-                    course.OrgId,
-                    course.Title,
-                    course.Description,
-                    course.CourseCode,
-                    course.CreatedBy,
-                    course.CreatedAt
-                );
-
-                return Ok(new ApiResponse<CourseResponseDto>(
-                    true,
-                    responseData,
-                    "Course updated successfully"
-                ));
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse(
-                    false,
-                    "An error occurred while updating the course",
-                    new List<string> { ex.Message }
-                ));
-            }
+            await _courseRepository.UpdateAsync(course);
+            return Ok(new ApiResponse<CourseResponseDto>(true,
+                new CourseResponseDto(course.Id, course.OrgId, course.Title,
+                    course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt),
+                "Course updated successfully"));
         }
 
         /// <summary>
