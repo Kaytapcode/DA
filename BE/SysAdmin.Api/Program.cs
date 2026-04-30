@@ -1,5 +1,8 @@
-using Gateway.Api.Middleware;
+using SysAdmin.Api.Data;
+using SysAdmin.Api.Mappings;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
@@ -12,14 +15,21 @@ try
     Log.Logger = new LoggerConfiguration()
         .MinimumLevel.Information()
         .WriteTo.Console()
-        .WriteTo.File("logs/gateway-api-.txt", rollingInterval: RollingInterval.Day)
+        .WriteTo.File("logs/sysadmin-api-.txt", rollingInterval: RollingInterval.Day)
         .Enrich.FromLogContext()
-        .Enrich.WithProperty("Application", "Gateway.Api")
+        .Enrich.WithProperty("Application", "SysAdmin.Api")
         .CreateLogger();
 
     builder.Host.UseSerilog(Log.Logger);
 
-    // JWT Authentication - validates tokens before proxying
+    builder.Services.AddHttpContextAccessor();
+
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddDbContext<SysAdminDbContext>(options =>
+        options.UseNpgsql(connectionString)
+    );
+
+    // JWT Authentication
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
         {
@@ -35,53 +45,80 @@ try
                     Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]
                         ?? throw new InvalidOperationException("JWT Key not found")))
             };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
+                {
+                    var orgId = context.Principal?.FindFirst("org_id")?.Value;
+                    var role = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+                    if (orgId != null)
+                        context.HttpContext.Items["org_id"] = orgId;
+                    if (role != null)
+                        context.HttpContext.Items["role"] = role;
+
+                    return Task.CompletedTask;
+                }
+            };
         });
 
-    // Authorization policies (T2.6)
+    // Authorization policies
     builder.Services.AddAuthorization(options =>
     {
         options.AddPolicy("RequireSysAdmin", policy => policy.RequireRole("SysAdmin"));
         options.AddPolicy("RequireOrgAdmin", policy => policy.RequireRole("SysAdmin", "OrgAdmin"));
-        options.AddPolicy("Anonymous", policy => policy.RequireAssertion(_ => true));
+        options.AddPolicy("RequireTeacher", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher"));
+        options.AddPolicy("RequireStudent", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher", "Student"));
     });
 
-    // CORS - allow the FE dev server (T1.20)
+    // DI registrations
+    builder.Services.AddScoped<IBannerRepository, BannerRepository>();
+
+    // AutoMapper registration
+    builder.Services.AddAutoMapper(typeof(MappingProfile));
+
+    // FluentValidation registration
+    builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
+
+    builder.Services.AddControllers();
+
+    // CORS
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
             policy.WithOrigins(
                 "http://localhost:5173",
-                "http://localhost:3000"
+                "http://localhost:3000",
+                "http://localhost:5000"
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
     });
 
-    builder.Services.AddReverseProxy()
-        .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
-
     var app = builder.Build();
 
     // Use Serilog request logging
     app.UseSerilogRequestLogging();
 
-    app.UseCors("AllowFrontend");
-    app.UseAuthentication();
-    app.UseMiddleware<OrgContextMiddleware>();
-    app.UseAuthorization();
+    if (app.Environment.IsDevelopment())
+        app.MapOpenApi();
 
-    app.MapReverseProxy();
+    app.UseCors("AllowFrontend");
+    app.UseRouting();
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
+
     app.Run();
 }
 catch (Exception ex)
 {
     Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine("******************************************");
-    Console.WriteLine("GATEWAY STARTUP FAILED:");
+    Console.WriteLine("APPLICATION STARTUP FAILED:");
     Console.WriteLine(ex.Message);
     Console.WriteLine(ex.StackTrace);
-    Console.WriteLine("******************************************");
     Console.ResetColor();
     Console.WriteLine("Press any key to exit...");
     Console.ReadLine();
