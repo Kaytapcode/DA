@@ -38,13 +38,5 @@ namespace Identity.Api.Models
 
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
-
-        // Navigation properties
-        public ICollection<OrganizationModel> OwnedOrganizations { get; set; } = new List<OrganizationModel>();
-        public ICollection<MemberModel> Memberships { get; set; } = new List<MemberModel>();
-        public ICollection<CourseModel> CreatedCourses { get; set; } = new List<CourseModel>();
-        public ICollection<CourseParticipantModel> CourseParticipations { get; set; } = new List<CourseParticipantModel>();
-        public ICollection<UserActivityModel> Activities { get; set; } = new List<UserActivityModel>();
-        public ICollection<AttemptModel> Attempts { get; set; } = new List<AttemptModel>();
     }
 }

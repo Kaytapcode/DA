@@ -3,7 +3,7 @@ using Shared.Contracts.Requests;
 
 namespace Content.Api.Validators
 {
-    public class CourseRequestValidator : AbstractValidator<CourseRequestDto>
+    public class CourseRequestValidator : AbstractValidator<CreateCourseRequestDto>
     {
         public CourseRequestValidator()
         {
@@ -16,12 +16,12 @@ namespace Content.Api.Validators
         }
     }
 
-    public class ModuleContentRequestValidator : AbstractValidator<ModuleContentRequestDto>
+    public class ModuleRequestValidator : AbstractValidator<CreateModuleRequestDto>
     {
-        public ModuleContentRequestValidator()
+        public ModuleRequestValidator()
         {
             RuleFor(x => x.Title)
-                .NotEmpty().WithMessage("Module/Content title is required")
+                .NotEmpty().WithMessage("Module title is required")
                 .Length(3, 255).WithMessage("Title must be between 3 and 255 characters");
 
             RuleFor(x => x.Description)

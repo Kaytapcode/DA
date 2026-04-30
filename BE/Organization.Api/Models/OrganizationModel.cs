@@ -34,12 +34,7 @@ namespace Organization.Api.Models
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
-        // Foreign key to User
-        [ForeignKey(nameof(OwnerId))]
-        public UserModel? Owner { get; set; }
-
         // Navigation properties
         public ICollection<MemberModel> Members { get; set; } = new List<MemberModel>();
-        public ICollection<CourseModel> Courses { get; set; } = new List<CourseModel>();
     }
 }

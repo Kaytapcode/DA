@@ -23,8 +23,5 @@ namespace AI.Api.Models
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        [ForeignKey(nameof(OrgId))]
-        public OrganizationModel? Organization { get; set; }
     }
 }

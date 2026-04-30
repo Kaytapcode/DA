@@ -11,18 +11,18 @@ namespace Organization.Api.Mappings
         {
             // Organization mappings
             CreateMap<OrganizationModel, OrganizationResponseDto>()
-                .ForMember(dest => dest.OrgId, opt => opt.MapFrom(src => src.Id));
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
 
-            CreateMap<OrganizationRequestDto, OrganizationModel>()
+            CreateMap<CreateOrganizationRequestDto, OrganizationModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.OrgId, opt => opt.Ignore());
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());
 
             // Member mappings
             CreateMap<MemberModel, MemberResponseDto>()
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
                 .ForMember(dest => dest.OrgId, opt => opt.MapFrom(src => src.OrgId));
 
-            CreateMap<MemberRequestDto, MemberModel>()
+            CreateMap<CreateMemberRequestDto, MemberModel>()
                 .ForMember(dest => dest.JoinDate, opt => opt.MapFrom(_ => DateTime.UtcNow));
         }
     }

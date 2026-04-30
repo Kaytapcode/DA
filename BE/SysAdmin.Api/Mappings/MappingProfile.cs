@@ -10,10 +10,10 @@ namespace SysAdmin.Api.Mappings
         public MappingProfile()
         {
             // Banner mappings
-            CreateMap<BannerAndActivityModel, BannerResponseDto>()
-                .ForMember(dest => dest.BannerId, opt => opt.MapFrom(src => src.Id));
+            CreateMap<BannerModel, BannerResponseDto>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
 
-            CreateMap<BannerRequestDto, BannerAndActivityModel>()
+            CreateMap<CreateBannerRequestDto, BannerModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore());
         }
     }

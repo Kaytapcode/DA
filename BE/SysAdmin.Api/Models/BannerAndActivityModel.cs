@@ -1,23 +1,18 @@
+/*
+// DEPRECATED: Models have been split into separate files
+// - BannerModel is now in BannerModel.cs (SysAdmin.Api/Models/BannerModel.cs)
+// - Other activity models belong to their respective services
+//   (CourseModel, UserModel, etc. in their own services)
+
+// This file is retained for reference but is disabled
+
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SysAdmin.Api.Models
 {
-    [Table("banners")]
-    public class BannerModel
-    {
-        [Key]
-        [Column("id")]
-        public Guid Id { get; set; }
-
-        [Required]
-        [Column("image_url")]
-        public string ImageUrl { get; set; } = string.Empty;
-
-        [Column("title")]
-        [StringLength(500)]
-        public string? Title { get; set; }
+    // OLD CODE - USE BannerModel.cs INSTEAD
 
         [Column("description")]
         [StringLength(2000)]
@@ -171,3 +166,4 @@ namespace SysAdmin.Api.Models
         public OrganizationModel? Organization { get; set; }
     }
 }
+*/

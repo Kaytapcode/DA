@@ -1,3 +1,8 @@
+/*
+// DEPRECATED: This file should not exist in a microservices architecture
+// UserRepository belongs in Identity.Api only
+// Organization.Api should call Identity.Api via HTTP/REST to get user data
+
 using Identity.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -99,3 +104,4 @@ namespace Identity.Api.Data
         }
     }
 }
+*/

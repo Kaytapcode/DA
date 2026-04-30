@@ -30,10 +30,6 @@ namespace Organization.Api.Models
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Foreign keys
-        [ForeignKey(nameof(UserId))]
-        public UserModel? User { get; set; }
-
         [ForeignKey(nameof(OrgId))]
         public OrganizationModel? Organization { get; set; }
     }

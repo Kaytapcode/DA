@@ -3,7 +3,7 @@ using Shared.Contracts.Requests;
 
 namespace Organization.Api.Validators
 {
-    public class OrganizationRequestValidator : AbstractValidator<OrganizationRequestDto>
+    public class OrganizationRequestValidator : AbstractValidator<CreateOrganizationRequestDto>
     {
         public OrganizationRequestValidator()
         {
@@ -16,7 +16,7 @@ namespace Organization.Api.Validators
         }
     }
 
-    public class MemberRequestValidator : AbstractValidator<MemberRequestDto>
+    public class MemberRequestValidator : AbstractValidator<CreateMemberRequestDto>
     {
         public MemberRequestValidator()
         {

@@ -9,11 +9,7 @@ namespace Identity.Api.Mappings
     {
         public MappingProfile()
         {
-            // User mappings
-            CreateMap<UserModel, UserResponseDto>()
-                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
-                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
-                .ReverseMap();
+            // TODO: User mappings - no UserResponseDto exists, user data returned via AuthResponseDto or through Organization.Api
 
             CreateMap<RegisterRequestDto, UserModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

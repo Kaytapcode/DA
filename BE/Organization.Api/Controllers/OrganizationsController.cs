@@ -16,14 +16,13 @@ namespace Organization.Api.Controllers
     public class OrganizationsController : ControllerBase
     {
         private readonly IOrganizationRepository _organizationRepository;
-        private readonly IUserRepository _userRepository;
+        // private readonly IUserRepository _userRepository;  // TODO: Replace with HttpClient call through Gateway
 
         public OrganizationsController(
-            IOrganizationRepository organizationRepository,
-            IUserRepository userRepository)
+            IOrganizationRepository organizationRepository)
         {
             _organizationRepository = organizationRepository;
-            _userRepository = userRepository;
+            // _userRepository = userRepository;
         }
 
         /// <summary>

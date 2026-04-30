@@ -26,12 +26,11 @@ namespace Organization.Api.Data
 
         public async Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId)
             => await _context.Members
-                .Include(m => m.User)
                 .Where(m => m.OrgId == orgId)
                 .ToListAsync();
 
         public async Task<MemberModel?> GetByIdAsync(Guid id)
-            => await _context.Members.Include(m => m.User).FirstOrDefaultAsync(m => m.Id == id);
+            => await _context.Members.FirstOrDefaultAsync(m => m.Id == id);
 
         public async Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId)
             => await _context.Members.FirstOrDefaultAsync(m => m.UserId == userId && m.OrgId == orgId);

@@ -13,13 +13,13 @@ namespace Identity.Api.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly ITokenService _tokenService;
-        private readonly IMemberRepository _memberRepository;
+        // private readonly IMemberRepository _memberRepository;  // TODO: Replace with HttpClient call through Gateway
 
-        public AuthController(IUserRepository userRepository, ITokenService tokenService, IMemberRepository memberRepository)
+        public AuthController(IUserRepository userRepository, ITokenService tokenService)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;
-            _memberRepository = memberRepository;
+            // _memberRepository = memberRepository;
         }
 
         [HttpPost("register")]
@@ -55,12 +55,13 @@ namespace Identity.Api.Controllers
 
             // Resolve org context from X-Org-Id header if provided
             Guid? orgId = null;
-            if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
-                && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
-            {
-                if (await _memberRepository.IsUserMemberAsync(user.Id, parsedOrgId))
-                    orgId = parsedOrgId;
-            }
+            // TODO: Verify organization membership via HttpClient call to Organization.Api
+            // if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
+            //     && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
+            // {
+            //     if (await httpClient.GetAsync(...))
+            //         orgId = parsedOrgId;
+            // }
 
             var token = _tokenService.CreateToken(user, orgId);
             return Ok(new ApiResponse<LoginResponseDto>(

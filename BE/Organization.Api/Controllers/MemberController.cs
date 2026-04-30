@@ -14,12 +14,12 @@ namespace Organization.Api.Controllers
     public class MemberController : ControllerBase
     {
         private readonly IMemberRepository _memberRepository;
-        private readonly IUserRepository _userRepository;
+        // private readonly IUserRepository _userRepository;  // TODO: Replace with HttpClient call through Gateway
 
-        public MemberController(IMemberRepository memberRepository, IUserRepository userRepository)
+        public MemberController(IMemberRepository memberRepository)
         {
             _memberRepository = memberRepository;
-            _userRepository = userRepository;
+            // _userRepository = userRepository;
         }
 
         private Guid? GetCurrentUserId()
@@ -46,8 +46,8 @@ namespace Organization.Api.Controllers
             var members = await _memberRepository.GetByOrgIdAsync(orgId);
             var result = members.Select(m => new MemberListResponseDto(
                 UserId: m.UserId,
-                Username: m.User?.Username ?? string.Empty,
-                Email: m.User?.Email ?? string.Empty,
+                Username: string.Empty,  // TODO: Fetch from Identity.Api via HttpClient
+                Email: string.Empty,     // TODO: Fetch from Identity.Api via HttpClient
                 Role: m.Role,
                 JoinDate: m.JoinDate
             ));
@@ -63,9 +63,9 @@ namespace Organization.Api.Controllers
         {
             if (!await CanManageOrg(orgId)) return Forbid();
 
-            var user = await _userRepository.GetByIdAsync(request.UserId);
-            if (user == null)
-                return NotFound(new ApiResponse(Success: false, Message: "User does not exist."));
+            // TODO: Verify user exists via HttpClient call to Identity.Api
+            // var user = await httpClient.GetAsync($".../{request.UserId}");
+            // if (user == null) return NotFound(...);
 
             var existing = await _memberRepository.GetByUserAndOrgAsync(request.UserId, orgId);
             if (existing != null)

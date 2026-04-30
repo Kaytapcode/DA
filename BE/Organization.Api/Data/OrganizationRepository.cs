@@ -1,4 +1,4 @@
-using Identity.Api.Models;
+using Organization.Api.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Organization.Api.Data
@@ -17,9 +17,9 @@ namespace Organization.Api.Data
 
     public class OrganizationRepository : IOrganizationRepository
     {
-        private readonly AuthDbContext _context;
+        private readonly OrganizationDbContext _context;
 
-        public OrganizationRepository(AuthDbContext context)
+        public OrganizationRepository(OrganizationDbContext context)
         {
             _context = context;
         }

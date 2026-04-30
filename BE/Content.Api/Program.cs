@@ -82,8 +82,7 @@ try
     builder.Services.AddScoped<ICourseRepository, CourseRepository>();
     builder.Services.AddScoped<IModuleRepository, ModuleRepository>();
     builder.Services.AddScoped<IContentRepository, ContentRepository>();
-    builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
-    builder.Services.AddScoped<IUserRepository, UserRepository>();
+    // Removed: IOrganizationRepository, IUserRepository - use HttpClient through Gateway for inter-service queries
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
 
     // AutoMapper registration

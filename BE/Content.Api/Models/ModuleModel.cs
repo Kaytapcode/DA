@@ -36,13 +36,6 @@ namespace Content.Api.Models
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
-        // Foreign keys
-        [ForeignKey(nameof(OrgId))]
-        public OrganizationModel? Organization { get; set; }
-
-        [ForeignKey(nameof(CreatedBy))]
-        public UserModel? Creator { get; set; }
-
         // Self-referencing for nested modules
         [ForeignKey(nameof(ParentId))]
         public ModuleModel? ParentModule { get; set; }

@@ -11,23 +11,22 @@ namespace Content.Api.Mappings
         {
             // Course mappings
             CreateMap<CourseModel, CourseResponseDto>()
-                .ForMember(dest => dest.CourseId, opt => opt.MapFrom(src => src.Id));
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
 
-            CreateMap<CourseRequestDto, CourseModel>()
+            CreateMap<CreateCourseRequestDto, CourseModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
             // Module mappings
-            CreateMap<ModuleModel, ModuleContentResponseDto>()
-                .ForMember(dest => dest.ModuleId, opt => opt.MapFrom(src => src.Id));
-
-            CreateMap<ModuleContentRequestDto, ModuleModel>()
+            CreateMap<ModuleModel, CourseResponseDto>();
+                
+            CreateMap<CreateModuleRequestDto, ModuleModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(_ => DateTime.UtcNow));
 
             // Content mappings
-            CreateMap<ContentModel, ModuleContentResponseDto>();
-            CreateMap<ModuleContentRequestDto, ContentModel>();
+            CreateMap<ContentModel, CourseResponseDto>();
+            CreateMap<CreateContentRequestDto, ContentModel>();
         }
     }
 }

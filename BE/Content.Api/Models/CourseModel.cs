@@ -42,15 +42,7 @@ namespace Content.Api.Models
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
 
-        // Foreign keys
-        [ForeignKey(nameof(OrgId))]
-        public OrganizationModel? Organization { get; set; }
-
-        [ForeignKey(nameof(CreatedBy))]
-        public UserModel? Creator { get; set; }
-
         // Navigation properties
         public ICollection<CourseModuleModel> CourseModules { get; set; } = new List<CourseModuleModel>();
-        public ICollection<CourseParticipantModel> Participants { get; set; } = new List<CourseParticipantModel>();
     }
 }
