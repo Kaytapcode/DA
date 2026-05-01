@@ -40,9 +40,10 @@ try
     // Authorization policies (T2.6)
     builder.Services.AddAuthorization(options =>
     {
+        options.AddPolicy("default", policy => policy.RequireAuthenticatedUser());
         options.AddPolicy("RequireSysAdmin", policy => policy.RequireRole("SysAdmin"));
         options.AddPolicy("RequireOrgAdmin", policy => policy.RequireRole("SysAdmin", "OrgAdmin"));
-        options.AddPolicy("Anonymous", policy => policy.RequireAssertion(_ => true));
+        // "Anonymous" in YARP route config is a YARP built-in keyword → [AllowAnonymous], not a named policy
     });
 
     // CORS - allow the FE dev server (T1.20)
@@ -63,6 +64,20 @@ try
 
     var app = builder.Build();
 
+    // Validate routes configuration
+    try
+    {
+        var reverseProxyConfig = builder.Configuration.GetSection("ReverseProxy");
+        Log.Logger.Information("ReverseProxy Routes configured: {@Routes}", 
+            reverseProxyConfig.GetSection("Routes").GetChildren().Select(x => x.Key));
+        Log.Logger.Information("ReverseProxy Clusters configured: {@Clusters}", 
+            reverseProxyConfig.GetSection("Clusters").GetChildren().Select(x => x.Key));
+    }
+    catch (Exception ex)
+    {
+        Log.Logger.Error(ex, "Error loading reverse proxy configuration");
+    }
+
     // Use Serilog request logging
     app.UseSerilogRequestLogging();
 
@@ -71,7 +86,7 @@ try
     app.UseMiddleware<OrgContextMiddleware>();
     app.UseAuthorization();
 
-    app.MapReverseProxy();
+    app.MapReverseProxy().RequireCors("AllowFrontend");
     app.Run();
 }
 catch (Exception ex)

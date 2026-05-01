@@ -76,7 +76,7 @@ try
     builder.Services.AddScoped<IBannerRepository, BannerRepository>();
 
     // AutoMapper registration
-    builder.Services.AddAutoMapper(typeof(MappingProfile));
+    builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
     // FluentValidation registration
     builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
