@@ -1,30 +1,25 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
-import { useOrgContext } from '@/contexts/OrgContext';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { ValidationRules } from '@/utils/validation';
 
 interface LoginFormData {
   email: string;
   password: string;
-  orgSlug: string;
 }
 
 interface FormErrors {
   email?: string;
   password?: string;
-  orgSlug?: string;
 }
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuth();
-  const { resolveBySlug } = useOrgContext();
+  const { login, isLoading } = useAuthContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
-    orgSlug: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -59,11 +54,6 @@ export const LoginPage: React.FC = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    // Org slug is optional (SysAdmin logs in without one)
-    if (formData.orgSlug && !/^[a-z0-9-]+$/.test(formData.orgSlug)) {
-      newErrors.orgSlug = 'Slug can only contain lowercase letters, numbers, and hyphens';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -77,28 +67,10 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      // Resolve org slug → orgId before login so BE can embed orgId in JWT
-      let resolvedOrgId: string | undefined;
-      if (formData.orgSlug) {
-        const org = await resolveBySlug(formData.orgSlug);
-        if (!org) {
-          setSubmitError('Organization not found. Check the slug and try again.');
-          return;
-        }
-        resolvedOrgId = org.id;
-      }
+      await login(formData.email, formData.password, undefined);
 
-      // BE accepts email or username in the Username field
-      const loggedInUser = await login(formData.email, formData.password, resolvedOrgId);
-
-      // Navigate based on org context and role
-      if (formData.orgSlug) {
-        navigate(`/org/${formData.orgSlug}/dashboard`, { replace: true });
-      } else if (loggedInUser.isSystemAdmin) {
-        navigate('/sysadmin/dashboard', { replace: true });
-      } else {
-        navigate('/user/home', { replace: true });
-      }
+      // Navigate to user home
+      navigate('/user/home', { replace: true });
     } catch (err) {
       setSubmitError(
         typeof err === 'string'
@@ -109,118 +81,201 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-800">Sign In</h2>
-            <p className="text-gray-600 text-sm mt-2">Welcome back to Tiny LMS</p>
+    <div className="min-h-screen bg-white">
+      {/* Main Container */}
+      <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+        {/* Left Section - Branding */}
+        <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#001a4d] via-[#0d2b7a] to-[#051535] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+          {/* Decorative Blobs */}
+          <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-[#0066ff]/20 blur-3xl" />
+          <div className="absolute -bottom-20 right-0 h-96 w-96 rounded-full bg-[#0099ff]/10 blur-3xl" />
+          <div className="absolute left-1/3 top-1/2 h-80 w-80 rounded-full bg-[#00ccff]/5 blur-3xl" />
+
+          {/* Badge */}
+          <div className="relative">
+            <div className="inline-block rounded-full border border-[#0099ff]/40 bg-white/5 px-4 py-2 backdrop-blur-sm">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[#99ccff]">+ THE ETHEREAL LABORATORY</p>
+            </div>
           </div>
 
-          {submitError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-red-700 text-sm font-medium">{submitError}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            {/* Organization Slug */}
-            <div>
-              <label htmlFor="orgSlug" className="block text-sm font-medium text-gray-700 mb-2">
-                Organization
-              </label>
-              <input
-                id="orgSlug"
-                name="orgSlug"
-                type="text"
-                placeholder="e.g., vnu-university"
-                value={formData.orgSlug}
-                onChange={(e) => handleFieldChange('orgSlug', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#1890ff] focus:border-transparent transition ${
-                  errors.orgSlug ? 'border-red-400' : 'border-gray-300'
-                }`}
-              />
-              {errors.orgSlug && (
-                <p className="text-red-500 text-xs mt-1">{errors.orgSlug}</p>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                value={formData.email}
-                onChange={(e) => handleFieldChange('email', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#1890ff] focus:border-transparent transition ${
-                  errors.email ? 'border-red-400' : 'border-gray-300'
-                }`}
-              />
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <Link
-                  to="/forgot-password"
-                  className="text-xs text-[#1890ff] hover:underline"
-                >
-                  Forgot?
-                </Link>
-              </div>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => handleFieldChange('password', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#1890ff] focus:border-transparent transition ${
-                  errors.password ? 'border-red-400' : 'border-gray-300'
-                }`}
-              />
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1">{errors.password}</p>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`w-full py-2 px-4 rounded-md font-semibold text-white transition ${
-                isLoading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-[#1890ff] hover:bg-blue-600'
-              }`}
-            >
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </button>
-          </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center">
-            <p className="text-gray-600 text-sm">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-[#1890ff] font-semibold hover:underline">
-                Create one
-              </Link>
+          {/* Heading and Description */}
+          <div className="relative mt-8">
+            <h1 className="text-5xl font-black leading-tight text-white">
+              Illuminate Your<br />Intellectual Path.
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-[#b3d9ff]">
+              Access our proprietary curriculum and laboratory research environment through the Luminal Interface.
             </p>
           </div>
-        </div>
+
+          {/* Stats */}
+          <div className="relative space-y-4">
+            <div className="flex items-baseline gap-4">
+              <div>
+                <div className="text-4xl font-black text-white">14k+</div>
+                <div className="text-xs font-semibold uppercase tracking-widest text-[#99ccff] mt-1">Research Papers</div>
+              </div>
+            </div>
+            <div className="flex items-baseline gap-4">
+              <div>
+                <div className="text-4xl font-black text-white">98.4%</div>
+                <div className="text-xs font-semibold uppercase tracking-widest text-[#99ccff] mt-1">Success Rate</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Right Section - Login Form */}
+        <section className="flex flex-col justify-between p-8 sm:p-12">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="text-2xl font-black text-[#001a4d]">Luminal.</div>
+            <Link to="#" className="text-sm font-medium text-[#6b7280] hover:text-[#001a4d]">
+              Help Center
+            </Link>
+          </div>
+
+          {/* Form Container */}
+          <div className="flex flex-col justify-center">
+            <div>
+              <h2 className="text-4xl font-black text-[#1f2937]">Welcome back.</h2>
+              <p className="mt-2 text-sm text-[#6b7280]">
+                Please enter your credentials to access your laboratory workspace.
+              </p>
+            </div>
+
+            {/* Error Alert */}
+            {submitError && (
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+                <p className="text-sm font-medium text-red-700">{submitError}</p>
+              </div>
+            )}
+
+            {/* Login Form */}
+            <form onSubmit={handleLogin} className="mt-8 space-y-4">
+              {/* Email Field */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="name@institution.edu"
+                    value={formData.email}
+                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
+                      errors.email
+                        ? 'border-red-400'
+                        : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'
+                    }`}
+                  />
+                  <div className="absolute right-4 top-3 text-[#d1d5db]">
+                    <span className="material-symbols-outlined text-lg">alternate_email</span>
+                  </div>
+                </div>
+                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280]">
+                    Password
+                  </label>
+                  <Link to="/forgot-password" className="text-xs font-semibold text-[#0066ff] hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••••••"
+                    value={formData.password}
+                    onChange={(e) => handleFieldChange('password', e.target.value)}
+                    className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
+                      errors.password
+                        ? 'border-red-400'
+                        : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'
+                    }`}
+                  />
+                  <div className="absolute right-4 top-3 text-[#d1d5db]">
+                    <span className="material-symbols-outlined text-lg">lock</span>
+                  </div>
+                </div>
+                {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+              </div>
+
+              {/* Sign In Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`mt-6 w-full rounded-full px-6 py-3 text-base font-bold text-white transition ${
+                  isLoading
+                    ? 'cursor-not-allowed bg-gray-400'
+                    : 'bg-[#0066ff] shadow-lg hover:bg-[#0052cc]'
+                }`}
+              >
+                {isLoading ? 'Signing In...' : 'Sign In'}
+                {!isLoading && <span className="ml-2">→</span>}
+              </button>
+            </form>
+
+            {/* OAuth / Alternative Login */}
+            <div className="mt-8">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#e5e7eb]"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-3 text-[#9ca3af] uppercase tracking-widest font-semibold text-xs">Or Access With</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-lg">tag</span>
+                  SSO
+                </button>
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-lg">fingerprint</span>
+                  Passkey
+                </button>
+              </div>
+            </div>
+
+            {/* Create Account Link */}
+            <div className="mt-8 text-center">
+              <p className="text-sm text-[#6b7280]">
+                New to the Laboratory?{' '}
+                <Link to="/register" className="font-semibold text-[#0066ff] hover:underline">
+                  Create
+                </Link>
+              </p>
+            </div>
+          </div>
+
+          {/* Footer - System Status */}
+          <div className="flex items-center gap-2 mt-8">
+            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+            <span className="text-xs font-medium text-[#6b7280]">SYSTEM STATUS</span>
+            <span className="text-xs text-[#9ca3af]">All neural networks fully operational at 99.9% uptime.</span>
+          </div>
+        </section>
       </div>
     </div>
   );

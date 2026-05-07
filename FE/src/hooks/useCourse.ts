@@ -84,8 +84,8 @@ export const useCourse = (): UseCourseReturn => {
         );
 
         if (response.success && response.data) {
-          setCourses(response.data);
-          setTotalCount(response.totalCount || 0);
+          setCourses(response.data.data);
+          setTotalCount(response.data.totalCount);
         } else {
           throw new Error(response.message || 'Failed to fetch courses');
         }
@@ -104,7 +104,7 @@ export const useCourse = (): UseCourseReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.get<ApiResponse<Course>>(
+        const response = await apiClient.get<Course>(
           `/courses/${id}`
         );
 
@@ -128,7 +128,7 @@ export const useCourse = (): UseCourseReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.post<ApiResponse<Course>>(
+        const response = await apiClient.post<Course>(
           '/courses',
           data
         );
@@ -157,7 +157,7 @@ export const useCourse = (): UseCourseReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.put<ApiResponse<Course>>(
+        const response = await apiClient.put<Course>(
           `/courses/${data.id}`,
           {
             title: data.title,

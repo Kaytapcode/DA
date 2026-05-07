@@ -86,7 +86,15 @@ try
     app.UseMiddleware<OrgContextMiddleware>();
     app.UseAuthorization();
 
-    app.MapReverseProxy().RequireCors("AllowFrontend");
+    try
+    {
+        app.MapReverseProxy().RequireCors("AllowFrontend");
+    }
+    catch (Exception ex)
+    {
+        Log.Logger.Error(ex, "Reverse proxy mapping failed during startup");
+        throw;
+    }
     app.Run();
 }
 catch (Exception ex)

@@ -35,6 +35,7 @@ import {
   SystemadminOrganizationDirectoryLight1Page,
   UnifiedSettingsOrganizationsPage,
 } from '@pages/orgadmin'
+import GuestHomePage from '@pages/public/GuestHomePage'
 import {
   SysAdminDashboardPage,
   GlobalContentCoursesPage,
@@ -61,8 +62,7 @@ export const AppRouter: React.FC = () => {
     <Router>
       <Suspense fallback={loadingPage}>
         <Routes>
-          {/* ── Public Routes ─────────────────────────────────── */}
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<GuestHomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -295,7 +295,9 @@ export const AppRouter: React.FC = () => {
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
+
         </Routes>
+
       </Suspense>
     </Router>
   )

@@ -73,7 +73,7 @@ export const useOrganization = (): UseOrganizationReturn => {
         );
 
         if (response.success && response.data) {
-          setOrganizations(response.data);
+          setOrganizations(response.data.data);
         } else {
           throw new Error(response.message || 'Failed to fetch organizations');
         }
@@ -92,7 +92,7 @@ export const useOrganization = (): UseOrganizationReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.get<ApiResponse<Organization>>(
+        const response = await apiClient.get<Organization>(
           `/organizations/${id}`
         );
 
@@ -116,7 +116,7 @@ export const useOrganization = (): UseOrganizationReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.post<ApiResponse<Organization>>(
+        const response = await apiClient.post<Organization>(
           '/organizations',
           data
         );
@@ -143,7 +143,7 @@ export const useOrganization = (): UseOrganizationReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.put<ApiResponse<Organization>>(
+        const response = await apiClient.put<Organization>(
           `/organizations/${data.id}`,
           {
             name: data.name,
