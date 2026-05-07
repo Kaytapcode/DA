@@ -40,7 +40,7 @@ try
     // Authorization policies (T2.6)
     builder.Services.AddAuthorization(options =>
     {
-        options.AddPolicy("default", policy => policy.RequireAuthenticatedUser());
+        options.AddPolicy("authenticated", policy => policy.RequireAuthenticatedUser());
         options.AddPolicy("RequireSysAdmin", policy => policy.RequireRole("SysAdmin"));
         options.AddPolicy("RequireOrgAdmin", policy => policy.RequireRole("SysAdmin", "OrgAdmin"));
         // "Anonymous" in YARP route config is a YARP built-in keyword → [AllowAnonymous], not a named policy
@@ -86,7 +86,22 @@ try
     app.UseMiddleware<OrgContextMiddleware>();
     app.UseAuthorization();
 
-    app.MapReverseProxy().RequireCors("AllowFrontend");
+    try
+    {
+        app.MapReverseProxy().RequireCors("AllowFrontend");
+    }
+    catch (Exception ex)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.WriteLine("YARP Configuration Error:");
+        Console.WriteLine($"Message: {ex.Message}");
+        if (ex.InnerException != null)
+            Console.WriteLine($"Inner: {ex.InnerException.Message}");
+        Console.WriteLine($"Stack: {ex.StackTrace}");
+        Console.ResetColor();
+        throw;
+    }
+
     app.Run();
 }
 catch (Exception ex)
@@ -94,8 +109,9 @@ catch (Exception ex)
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine("******************************************");
     Console.WriteLine("GATEWAY STARTUP FAILED:");
-    Console.WriteLine(ex.Message);
-    Console.WriteLine(ex.StackTrace);
+    Console.WriteLine($"Message: {ex.Message}");
+    Console.WriteLine($"Inner Exception: {ex.InnerException?.Message}");
+    Console.WriteLine($"Stack: {ex.StackTrace}");
     Console.WriteLine("******************************************");
     Console.ResetColor();
     Console.WriteLine("Press any key to exit...");
