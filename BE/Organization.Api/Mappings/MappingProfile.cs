@@ -13,6 +13,10 @@ namespace Organization.Api.Mappings
             CreateMap<OrganizationModel, OrganizationResponseDto>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
 
+            CreateMap<OrganizationModel, OrganizationListResponseDto>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
+                .ForMember(dest => dest.MemberCount, opt => opt.MapFrom(src => src.Members != null ? src.Members.Count : 0));
+
             CreateMap<CreateOrganizationRequestDto, OrganizationModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore());

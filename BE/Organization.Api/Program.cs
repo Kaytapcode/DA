@@ -2,7 +2,9 @@ using Organization.Api.Data;
 using Organization.Api.Mappings;
 using Organization.Api.Services;
 using Organization.Api.Validators;
+using Organization.Api.Middleware;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -84,7 +86,8 @@ try
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
-    // FluentValidation registration
+    // FluentValidation registration — auto-validates on every controller action
+    builder.Services.AddFluentValidationAutoValidation();
     builder.Services.AddValidatorsFromAssemblyContaining<OrganizationRequestValidator>();
 
     builder.Services.AddControllers();
@@ -112,6 +115,7 @@ try
         app.MapOpenApi();
 
     app.UseCors("AllowFrontend");
+    app.UseMiddleware<GlobalExceptionMiddleware>();
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();

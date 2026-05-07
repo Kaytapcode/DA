@@ -4,6 +4,7 @@ using Identity.Api.Middleware;
 using Identity.Api.Services;
 using Identity.Api.Validators;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -86,7 +87,8 @@ try
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
-    // FluentValidation registration
+    // FluentValidation registration — auto-validates on every controller action
+    builder.Services.AddFluentValidationAutoValidation();
     builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
 
     builder.Services.AddControllers();

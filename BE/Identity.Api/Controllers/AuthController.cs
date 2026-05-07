@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Identity.Api.Models;
 using Identity.Api.Data;
 using Identity.Api.Services;
@@ -25,22 +26,32 @@ namespace Identity.Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
+            // Fast-path UX checks (not the security boundary — DB unique constraint is)
             if (await _userRepository.UserExistsByUsernameAsync(request.Username))
                 return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
-
             if (await _userRepository.UserExistsByEmailAsync(request.Email))
                 return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
 
-            var newUser = new UserModel
+            try
             {
-                Username = request.Username,
-                Email = request.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                Role = "Student"
-            };
-
-            await _userRepository.AddAsync(newUser);
-            return Ok(new ApiResponse(Success: true, Message: "Registration successful."));
+                var newUser = new UserModel
+                {
+                    Username = request.Username,
+                    Email = request.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    Role = "Student"
+                };
+                await _userRepository.AddAsync(newUser);
+                return Ok(new ApiResponse(Success: true, Message: "Registration successful."));
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
+            {
+                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("email") == true)
+            {
+                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
+            }
         }
 
         [HttpPost("login")]
@@ -87,17 +98,9 @@ namespace Identity.Api.Controllers
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null) return NotFound();
 
-            return Ok(new ApiResponse<object>(
+            return Ok(new ApiResponse<UserInfoDto>(
                 Success: true,
-                Data: new
-                {
-                    user.Id,
-                    user.Username,
-                    user.Email,
-                    user.Role,
-                    user.IsSystemAdmin,
-                    user.CreatedAt
-                },
+                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.IsSystemAdmin),
                 Message: null
             ));
         }

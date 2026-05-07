@@ -18,7 +18,7 @@ public class SearchCoursesQueryHandler : IRequestHandler<SearchCoursesQuery, IEn
 
     public async Task<IEnumerable<CourseListResponseDto>> Handle(SearchCoursesQuery query, CancellationToken ct)
     {
-        var results = await _repo.SearchAsync(query.OrgId, query.SearchTerm, query.PageIndex, query.PageSize);
+        var results = await _repo.SearchAsync(query.OrgId, query.SearchTerm, query.PageIndex, query.PageSize, ct);
         return results.Select(c => new CourseListResponseDto(c.Id, c.Title, c.Description, c.CourseCode, c.CreatedAt));
     }
 }

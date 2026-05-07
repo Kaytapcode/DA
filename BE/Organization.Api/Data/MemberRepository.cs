@@ -5,14 +5,14 @@ namespace Organization.Api.Data
 {
     public interface IMemberRepository
     {
-        Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId);
-        Task<MemberModel?> GetByIdAsync(Guid id);
-        Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId);
-        Task<MemberModel> CreateAsync(MemberModel member);
-        Task<MemberModel> UpdateAsync(MemberModel member);
-        Task DeleteAsync(Guid id);
-        Task<bool> IsUserOrgAdminAsync(Guid userId, Guid orgId);
-        Task<bool> IsUserMemberAsync(Guid userId, Guid orgId);
+        Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId, CancellationToken ct = default);
+        Task<MemberModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
+        Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId, CancellationToken ct = default);
+        Task<MemberModel> CreateAsync(MemberModel member, CancellationToken ct = default);
+        Task<MemberModel> UpdateAsync(MemberModel member, CancellationToken ct = default);
+        Task DeleteAsync(Guid id, CancellationToken ct = default);
+        Task<bool> IsUserOrgAdminAsync(Guid userId, Guid orgId, CancellationToken ct = default);
+        Task<bool> IsUserMemberAsync(Guid userId, Guid orgId, CancellationToken ct = default);
     }
 
     public class MemberRepository : IMemberRepository
@@ -24,48 +24,48 @@ namespace Organization.Api.Data
             _context = context;
         }
 
-        public async Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId)
+        public async Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId, CancellationToken ct = default)
             => await _context.Members
                 .Where(m => m.OrgId == orgId)
-                .ToListAsync();
+                .ToListAsync(ct);
 
-        public async Task<MemberModel?> GetByIdAsync(Guid id)
-            => await _context.Members.FirstOrDefaultAsync(m => m.Id == id);
+        public async Task<MemberModel?> GetByIdAsync(Guid id, CancellationToken ct = default)
+            => await _context.Members.FirstOrDefaultAsync(m => m.Id == id, ct);
 
-        public async Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId)
-            => await _context.Members.FirstOrDefaultAsync(m => m.UserId == userId && m.OrgId == orgId);
+        public async Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId, CancellationToken ct = default)
+            => await _context.Members.FirstOrDefaultAsync(m => m.UserId == userId && m.OrgId == orgId, ct);
 
-        public async Task<MemberModel> CreateAsync(MemberModel member)
+        public async Task<MemberModel> CreateAsync(MemberModel member, CancellationToken ct = default)
         {
             member.Id = Guid.NewGuid();
             member.JoinDate = DateTime.UtcNow;
             member.CreatedAt = DateTime.UtcNow;
             _context.Members.Add(member);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
             return member;
         }
 
-        public async Task<MemberModel> UpdateAsync(MemberModel member)
+        public async Task<MemberModel> UpdateAsync(MemberModel member, CancellationToken ct = default)
         {
             _context.Members.Update(member);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
             return member;
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task DeleteAsync(Guid id, CancellationToken ct = default)
         {
-            var member = await _context.Members.FindAsync(id)
+            var member = await _context.Members.FindAsync(new object[] { id }, ct)
                 ?? throw new KeyNotFoundException($"Member {id} not found.");
             _context.Members.Remove(member);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
         }
 
-        public async Task<bool> IsUserOrgAdminAsync(Guid userId, Guid orgId)
+        public async Task<bool> IsUserOrgAdminAsync(Guid userId, Guid orgId, CancellationToken ct = default)
             => await _context.Members.AnyAsync(m =>
                 m.UserId == userId && m.OrgId == orgId &&
-                (m.Role == "OrgAdmin" || m.Role == "Owner"));
+                (m.Role == "OrgAdmin" || m.Role == "Owner"), ct);
 
-        public async Task<bool> IsUserMemberAsync(Guid userId, Guid orgId)
-            => await _context.Members.AnyAsync(m => m.UserId == userId && m.OrgId == orgId);
+        public async Task<bool> IsUserMemberAsync(Guid userId, Guid orgId, CancellationToken ct = default)
+            => await _context.Members.AnyAsync(m => m.UserId == userId && m.OrgId == orgId, ct);
     }
 }

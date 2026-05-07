@@ -29,7 +29,7 @@ public class CreateCourseCommandHandler : IRequestHandler<CreateCourseCommand, C
             CourseCode = cmd.CourseCode
         };
 
-        var created = await _repo.CreateAsync(course);
+        var created = await _repo.CreateAsync(course, ct);
         return new CourseResponseDto(created.Id, created.OrgId, created.Title,
             created.Description, created.CourseCode, created.CreatedBy, created.CreatedAt);
     }

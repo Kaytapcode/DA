@@ -9,13 +9,13 @@ namespace SysAdmin.Api.Data
 {
     public interface IBannerRepository
     {
-        Task<BannerModel?> GetByIdAsync(Guid id);
-        Task<List<BannerModel>> GetSystemBannersAsync();
-        Task<List<BannerModel>> GetOrgBannersAsync(Guid orgId);
-        Task<List<BannerModel>> GetAllAsync();
-        Task<BannerModel> CreateAsync(BannerModel banner);
-        Task<BannerModel> UpdateAsync(BannerModel banner);
-        Task DeleteAsync(Guid id);
+        Task<BannerModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
+        Task<List<BannerModel>> GetSystemBannersAsync(CancellationToken ct = default);
+        Task<List<BannerModel>> GetOrgBannersAsync(Guid orgId, CancellationToken ct = default);
+        Task<List<BannerModel>> GetAllAsync(CancellationToken ct = default);
+        Task<BannerModel> CreateAsync(BannerModel banner, CancellationToken ct = default);
+        Task<BannerModel> UpdateAsync(BannerModel banner, CancellationToken ct = default);
+        Task DeleteAsync(Guid id, CancellationToken ct = default);
     }
 
     public class BannerRepository : IBannerRepository
@@ -27,57 +27,57 @@ namespace SysAdmin.Api.Data
             _context = context;
         }
 
-        public async Task<BannerModel?> GetByIdAsync(Guid id)
+        public async Task<BannerModel?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
-            return await _context.Banners.FirstOrDefaultAsync(b => b.Id == id);
+            return await _context.Banners.FirstOrDefaultAsync(b => b.Id == id, ct);
         }
 
-        public async Task<List<BannerModel>> GetSystemBannersAsync()
+        public async Task<List<BannerModel>> GetSystemBannersAsync(CancellationToken ct = default)
         {
             // Return active system-wide banners (OrgId = NULL) ordered by DisplayOrder
             return await _context.Banners
                 .Where(b => b.IsActive && b.OrgId == null)
                 .OrderBy(b => b.DisplayOrder)
-                .ToListAsync();
+                .ToListAsync(ct);
         }
 
-        public async Task<List<BannerModel>> GetOrgBannersAsync(Guid orgId)
+        public async Task<List<BannerModel>> GetOrgBannersAsync(Guid orgId, CancellationToken ct = default)
         {
             // Return active banners for this org + active system-wide banners, ordered by DisplayOrder
             return await _context.Banners
                 .Where(b => b.IsActive && (b.OrgId == orgId || b.OrgId == null))
                 .OrderBy(b => b.DisplayOrder)
-                .ToListAsync();
+                .ToListAsync(ct);
         }
 
-        public async Task<List<BannerModel>> GetAllAsync()
+        public async Task<List<BannerModel>> GetAllAsync(CancellationToken ct = default)
         {
-            return await _context.Banners.OrderBy(b => b.DisplayOrder).ToListAsync();
+            return await _context.Banners.OrderBy(b => b.DisplayOrder).ToListAsync(ct);
         }
 
-        public async Task<BannerModel> CreateAsync(BannerModel banner)
+        public async Task<BannerModel> CreateAsync(BannerModel banner, CancellationToken ct = default)
         {
             banner.CreatedAt = DateTime.UtcNow;
             _context.Banners.Add(banner);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
             return banner;
         }
 
-        public async Task<BannerModel> UpdateAsync(BannerModel banner)
+        public async Task<BannerModel> UpdateAsync(BannerModel banner, CancellationToken ct = default)
         {
             banner.UpdatedAt = DateTime.UtcNow;
             _context.Banners.Update(banner);
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(ct);
             return banner;
         }
 
-        public async Task DeleteAsync(Guid id)
+        public async Task DeleteAsync(Guid id, CancellationToken ct = default)
         {
-            var banner = await _context.Banners.FirstOrDefaultAsync(b => b.Id == id);
+            var banner = await _context.Banners.FirstOrDefaultAsync(b => b.Id == id, ct);
             if (banner != null)
             {
                 _context.Banners.Remove(banner);
-                await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync(ct);
             }
         }
     }

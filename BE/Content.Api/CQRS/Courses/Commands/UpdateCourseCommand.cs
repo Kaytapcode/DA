@@ -20,7 +20,7 @@ public class UpdateCourseCommandHandler : IRequestHandler<UpdateCourseCommand, C
 
     public async Task<CourseResponseDto?> Handle(UpdateCourseCommand cmd, CancellationToken ct)
     {
-        var course = await _repo.GetByIdAsync(cmd.CourseId);
+        var course = await _repo.GetByIdAsync(cmd.CourseId, ct);
         if (course == null) return null;
         if (!cmd.IsSysAdmin && course.OrgId != cmd.OrgId) return null;
 
@@ -28,7 +28,7 @@ public class UpdateCourseCommandHandler : IRequestHandler<UpdateCourseCommand, C
         course.Description = cmd.Description;
         course.CourseCode = cmd.CourseCode;
 
-        var updated = await _repo.UpdateAsync(course);
+        var updated = await _repo.UpdateAsync(course, ct);
         return new CourseResponseDto(updated.Id, updated.OrgId, updated.Title,
             updated.Description, updated.CourseCode, updated.CreatedBy, updated.CreatedAt);
     }

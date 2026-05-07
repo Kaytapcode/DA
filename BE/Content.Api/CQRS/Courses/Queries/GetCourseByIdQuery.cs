@@ -17,7 +17,7 @@ public class GetCourseByIdQueryHandler : IRequestHandler<GetCourseByIdQuery, Cou
 
     public async Task<CourseResponseDto?> Handle(GetCourseByIdQuery query, CancellationToken ct)
     {
-        var course = await _repo.GetByIdAsync(query.CourseId);
+        var course = await _repo.GetByIdAsync(query.CourseId, ct);
         if (course == null) return null;
         if (!query.IsSysAdmin && course.OrgId != query.OrgId) return null;
 

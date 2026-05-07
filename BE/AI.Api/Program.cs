@@ -1,8 +1,10 @@
 using AI.Api.Data;
+using AI.Api.Filters;
 using AI.Api.Jobs;
 using AI.Api.Mappings;
 using AI.Api.Services;
 using FluentValidation;
+using FluentValidation.AspNetCore;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -92,6 +94,8 @@ try
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
+    builder.Services.AddFluentValidationAutoValidation();
+
     builder.Services.AddControllers();
 
     // CORS
@@ -123,7 +127,10 @@ try
     app.MapControllers();
 
     // Hangfire dashboard (admin-only in production; open in dev)
-    app.UseHangfireDashboard("/hangfire");
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = [new HangfireSysAdminFilter()]
+    });
 
     // Register recurring job: sweep all expired quotas once per day
     RecurringJob.AddOrUpdate<QuotaResetJob>(

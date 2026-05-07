@@ -16,11 +16,11 @@ public class DeleteCourseCommandHandler : IRequestHandler<DeleteCourseCommand, b
 
     public async Task<bool> Handle(DeleteCourseCommand cmd, CancellationToken ct)
     {
-        var course = await _repo.GetByIdAsync(cmd.CourseId);
+        var course = await _repo.GetByIdAsync(cmd.CourseId, ct);
         if (course == null) return false;
         if (!cmd.IsSysAdmin && course.OrgId != cmd.OrgId) return false;
 
-        await _repo.DeleteAsync(cmd.CourseId);
+        await _repo.DeleteAsync(cmd.CourseId, ct);
         return true;
     }
 }
