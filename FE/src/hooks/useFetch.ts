@@ -94,7 +94,6 @@ export const useFetch = <T = any>(
 
   useEffect(() => {
     if (options.immediate && !options.manual && initialUrl) {
-      setUrl(initialUrl);
       setLastUrl(initialUrl);
       fetch(initialUrl, 'GET');
     }

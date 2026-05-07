@@ -1,6 +1,6 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { ValidationRules, checkPasswordStrength } from '@/utils/validation';
 
 interface RegisterFormData {
@@ -25,7 +25,7 @@ interface PasswordStrengthInfo {
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { register, isLoading } = useAuth();
+  const { register, isLoading } = useAuthContext();
 
   const [formData, setFormData] = useState<RegisterFormData>({
     username: '',

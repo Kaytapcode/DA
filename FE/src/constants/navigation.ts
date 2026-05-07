@@ -14,9 +14,9 @@ export interface NavItem {
 // Primary: Learning experience | Secondary: Library & support
 export const USER_NAV_ITEMS: NavItem[] = [
   // Primary Learning Tasks
-  { id: 'dashboard', labelKey: 'common.dashboard', icon: 'dashboard', path: '/user/dashboard' },
   { id: 'home', labelKey: 'common.home', icon: 'home', path: '/user/home' },
   { id: 'courses', labelKey: 'common.courses', icon: 'school', path: '/user/courses' },
+  { id: 'dashboard', labelKey: 'common.dashboard', icon: 'dashboard', path: '/user/dashboard' },
   { id: 'learning', labelKey: 'user.learning', icon: 'history', path: '/user/learning' },
   
   // Learning Tools (Divider)
@@ -25,8 +25,8 @@ export const USER_NAV_ITEMS: NavItem[] = [
   { id: 'lesson', labelKey: 'user.lesson', icon: 'video_library', path: '/user/lesson' },
   
   // Resources
-  { id: 'library', labelKey: 'user.library', icon: 'library_books', path: '/user/library' },
   { id: 'documents', labelKey: 'user.documents', icon: 'description', path: '/user/documents' },
+  { id: 'library', labelKey: 'user.library', icon: 'library_books', path: '/user/library' },
   { id: 'messages', labelKey: 'common.notifications', icon: 'mail', path: '/user/messages' },
   { id: 'profile', labelKey: 'common.profile', icon: 'person', path: '/user/profile' },
 ]
