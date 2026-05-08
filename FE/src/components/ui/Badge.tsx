@@ -1,46 +1,53 @@
 import React from 'react'
-import { MaterialIcon } from './MaterialIcon'
+import Chip from '@mui/material/Chip'
 
 interface BadgeProps {
   children: React.ReactNode
   variant?: 'primary' | 'secondary' | 'tertiary' | 'error' | 'success' | 'warning'
   size?: 'sm' | 'md' | 'lg'
-  icon?: string
+  icon?: React.ReactElement
   className?: string
 }
 
-/**
- * Reusable Badge Component
- */
-export const Badge: React.FC<BadgeProps> = ({ 
-  children, 
-  variant = 'primary', 
+const COLOR_MAP: Record<BadgeProps['variant'] & string, string> = {
+  primary: '#e8eeff',
+  secondary: '#f2f3f4',
+  tertiary: '#fff3f0',
+  error: '#ffeaea',
+  success: '#e6f9f0',
+  warning: '#fff8e1',
+}
+
+const TEXT_MAP: Record<BadgeProps['variant'] & string, string> = {
+  primary: '#0050cb',
+  secondary: '#5c5f60',
+  tertiary: '#a33200',
+  error: '#ba1a1a',
+  success: '#1a7a4a',
+  warning: '#b45309',
+}
+
+export const Badge: React.FC<BadgeProps> = ({
+  children,
+  variant = 'primary',
   size = 'md',
   icon,
-  className = ""
+  className,
 }) => {
-  const variants = {
-    primary: 'bg-primary/10 text-primary',
-    secondary: 'bg-secondary/10 text-secondary',
-    tertiary: 'bg-tertiary/10 text-tertiary',
-    error: 'bg-error/10 text-error',
-    success: 'bg-green-100 text-green-600',
-    warning: 'bg-warning/10 text-warning',
-  }
-
-  const sizes = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-3 py-1.5 text-sm',
-    lg: 'px-4 py-2 text-base',
-  }
-
   return (
-    <span className={`
-      inline-flex items-center gap-1 rounded-full font-medium
-      ${variants[variant]} ${sizes[size]} ${className}
-    `}>
-      {icon && <MaterialIcon icon={icon} className="text-xs" />}
-      {children}
-    </span>
+    <Chip
+      label={children}
+      icon={icon}
+      size={size === 'lg' ? 'medium' : 'small'}
+      className={className}
+      sx={{
+        backgroundColor: COLOR_MAP[variant],
+        color: TEXT_MAP[variant],
+        fontWeight: 600,
+        fontSize: size === 'lg' ? '0.875rem' : size === 'sm' ? '0.7rem' : '0.75rem',
+        height: size === 'lg' ? 32 : size === 'sm' ? 20 : 24,
+        '& .MuiChip-icon': { color: TEXT_MAP[variant] },
+      }}
+    />
   )
 }

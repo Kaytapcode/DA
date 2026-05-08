@@ -157,9 +157,11 @@ export const RegisterPage: React.FC = () => {
       navigate('/login', { replace: true });
     } catch (err) {
       setSubmitError(
-        typeof err === 'string'
-          ? err
-          : (err as any)?.message || 'Failed to register. Please try again.'
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Failed to register. Please try again.'
       );
     }
   };

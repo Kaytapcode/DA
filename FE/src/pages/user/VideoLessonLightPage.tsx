@@ -1,2 +1,2 @@
-﻿export { VideoLessonLightPage } from './UserFeConvertedPages'
+﻿export { VideoLessonPage } from './UserFeConvertedPages'
 

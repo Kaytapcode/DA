@@ -1,2 +1,2 @@
-﻿export { LearningHistoryLightPage } from './UserFeConvertedPages'
+﻿export { LearningHistoryPage } from './UserFeConvertedPages'
 

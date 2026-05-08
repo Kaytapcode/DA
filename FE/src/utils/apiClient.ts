@@ -2,14 +2,14 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   message?: string;
   errors?: string[];
 }
 
-interface PaginatedResponse<T = any> {
+interface PaginatedResponse<T = unknown> {
   success: boolean;
   data: T[];
   pageIndex: number;
@@ -31,7 +31,6 @@ class ApiClient {
       },
     });
 
-    // Request interceptor - Add auth token to headers
     this.axiosInstance.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('auth_token');
@@ -39,7 +38,6 @@ class ApiClient {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Add org context headers from localStorage if available
         const orgId = localStorage.getItem('org_id');
         if (orgId) config.headers['X-Org-Id'] = orgId;
 
@@ -48,16 +46,14 @@ class ApiClient {
 
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
-    // Response interceptor - Handle errors and expired tokens
     this.axiosInstance.interceptors.response.use(
       (response) => response.data,
       (error: AxiosError<ApiResponse>) => {
-        if (error.response?.status === 401) {
+        const isAuthEndpoint = (error.config?.url ?? '').includes('/auth/');
+        if (error.response?.status === 401 && !isAuthEndpoint) {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('auth_user');
           localStorage.removeItem('org_id');
@@ -65,31 +61,29 @@ class ApiClient {
           localStorage.removeItem('current_org');
           window.location.href = '/login';
         }
-
-        // Return error response data if available
         return Promise.reject(error.response?.data || error);
       }
     );
   }
 
-  get<T = any>(url: string, config = {}) {
-    return this.axiosInstance.get<any, ApiResponse<T>>(url, config);
+  get<T = unknown>(url: string, config = {}) {
+    return this.axiosInstance.get<unknown, ApiResponse<T>>(url, config);
   }
 
-  post<T = any>(url: string, data?: any, config = {}) {
-    return this.axiosInstance.post<any, ApiResponse<T>>(url, data, config);
+  post<T = unknown>(url: string, data?: unknown, config = {}) {
+    return this.axiosInstance.post<unknown, ApiResponse<T>>(url, data, config);
   }
 
-  put<T = any>(url: string, data?: any, config = {}) {
-    return this.axiosInstance.put<any, ApiResponse<T>>(url, data, config);
+  put<T = unknown>(url: string, data?: unknown, config = {}) {
+    return this.axiosInstance.put<unknown, ApiResponse<T>>(url, data, config);
   }
 
-  patch<T = any>(url: string, data?: any, config = {}) {
-    return this.axiosInstance.patch<any, ApiResponse<T>>(url, data, config);
+  patch<T = unknown>(url: string, data?: unknown, config = {}) {
+    return this.axiosInstance.patch<unknown, ApiResponse<T>>(url, data, config);
   }
 
-  delete<T = any>(url: string, config = {}) {
-    return this.axiosInstance.delete<any, ApiResponse<T>>(url, config);
+  delete<T = unknown>(url: string, config = {}) {
+    return this.axiosInstance.delete<unknown, ApiResponse<T>>(url, config);
   }
 
   getStream(url: string, config = {}) {

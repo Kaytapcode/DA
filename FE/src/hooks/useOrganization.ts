@@ -54,9 +54,9 @@ export const useOrganization = (): UseOrganizationReturn => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleError = useCallback((err: any) => {
+  const handleError = useCallback((err: unknown) => {
     const message =
-      err?.message ||
+      (err instanceof Error ? err.message : null) ||
       (typeof err === 'string' ? err : 'An error occurred');
     setError(message);
     console.error('Organization error:', message);
@@ -72,8 +72,8 @@ export const useOrganization = (): UseOrganizationReturn => {
           `/organizations?pageIndex=${pageIndex}&pageSize=${pageSize}`
         );
 
-        if (response.success && response.data) {
-          setOrganizations(response.data.data);
+        if (response.success) {
+          setOrganizations(response.data?.data ?? []);
         } else {
           throw new Error(response.message || 'Failed to fetch organizations');
         }
@@ -96,8 +96,8 @@ export const useOrganization = (): UseOrganizationReturn => {
           `/organizations/${id}`
         );
 
-        if (response.success && response.data) {
-          setCurrentOrganization(response.data);
+        if (response.success) {
+          setCurrentOrganization(response.data ?? null);
         } else {
           throw new Error(response.message || 'Failed to fetch organization');
         }
@@ -122,7 +122,7 @@ export const useOrganization = (): UseOrganizationReturn => {
         );
 
         if (response.success && response.data) {
-          setCurrentOrganization(response.data);
+          setCurrentOrganization(response.data ?? null);
           return response.data;
         } else {
           throw new Error(response.message || 'Failed to create organization');

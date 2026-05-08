@@ -1,2 +1,2 @@
-﻿export { InteractiveFlashcardsLightPage } from './UserFeConvertedPages'
+﻿export { InteractiveFlashcardsPage } from './UserFeConvertedPages'
 

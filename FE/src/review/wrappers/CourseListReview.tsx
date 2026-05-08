@@ -1,36 +1,26 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
 import { Card } from '@components/ui/Card'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { MainLayout } from '@layouts/MainLayout'
-import { useCourse, CourseList } from '@/hooks/useCourse'
-import { useAuthContext } from '@/contexts/AuthContext'
+import { CourseList } from '@/hooks/useCourse'
+import { MOCK_COURSES } from '@/review/reviewData'
 
-/**
- * User Course List Page
- */
-export const CourseListPage: React.FC = () => {
-  const { courses, isLoading, error, fetchCourses } = useCourse()
-  const { user, orgId } = useAuthContext()
-  const canLoadCourses = Boolean(orgId || user?.isSystemAdmin)
+const gradients = [
+  'from-[#4f6cf7] via-[#dfe7ff] to-[#f7f9ff]',
+  'from-[#f6b27a] via-[#fff1e6] to-[#fff9f5]',
+  'from-[#7bc6ff] via-[#eaf6ff] to-[#f8fbff]',
+  'from-[#9aa5ff] via-[#eef1ff] to-[#f7f8ff]',
+  'from-[#6ee7b7] via-[#dcfce7] to-[#f0fdf4]',
+]
+
+const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : 'Not set')
+
+export const CourseListReview: React.FC = () => {
+  const courses: CourseList[] = MOCK_COURSES
   const featuredCourse = courses[0]
-  const gradients = [
-    'from-[#4f6cf7] via-[#dfe7ff] to-[#f7f9ff]',
-    'from-[#f6b27a] via-[#fff1e6] to-[#fff9f5]',
-    'from-[#7bc6ff] via-[#eaf6ff] to-[#f8fbff]',
-    'from-[#9aa5ff] via-[#eef1ff] to-[#f7f8ff]',
-    'from-[#6ee7b7] via-[#dcfce7] to-[#f0fdf4]',
-  ]
-
-  const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : 'Not set')
-
-  useEffect(() => {
-    if (canLoadCourses) {
-      fetchCourses()
-    }
-  }, [canLoadCourses, fetchCourses])
 
   return (
     <MainLayout
@@ -39,7 +29,6 @@ export const CourseListPage: React.FC = () => {
     >
       <div className="p-8">
         <div className="max-w-6xl mx-auto space-y-8">
-          {/* Header */}
           <div>
             <p className="text-xs font-black uppercase tracking-[0.22em] text-[#7380a0]">Courses</p>
             <h2 className="mt-2 text-4xl font-black text-on-surface font-headline">Your Learning Path</h2>
@@ -48,28 +37,8 @@ export const CourseListPage: React.FC = () => {
             </p>
           </div>
 
-          {!canLoadCourses && (
-            <Card className="border border-[#e3e8f3] p-6">
-              <p className="text-sm text-on-surface-variant">
-                Select an organization to view courses.
-              </p>
-            </Card>
-          )}
-
-          {canLoadCourses && isLoading && (
-            <Card className="border border-[#e3e8f3] p-6">
-              <p className="text-sm text-on-surface-variant">Loading courses...</p>
-            </Card>
-          )}
-
-          {canLoadCourses && error && (
-            <Card className="border border-[#f4c7c7] bg-red-50 p-6">
-              <p className="text-sm text-red-700">{error}</p>
-            </Card>
-          )}
-
           {/* Featured Card */}
-          {canLoadCourses && !isLoading && featuredCourse && (
+          {featuredCourse && (
             <Card className="overflow-hidden border border-[#e3e8f3] p-0 shadow-[0_20px_50px_rgba(58,78,153,0.12)]">
               <div className="grid gap-0 lg:grid-cols-[1.5fr_0.9fr]">
                 <div className="space-y-5 bg-gradient-to-br from-[#f8fbff] via-white to-[#eef3ff] p-8">
@@ -79,10 +48,9 @@ export const CourseListPage: React.FC = () => {
                       {featuredCourse.title}
                     </h3>
                     <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                      {featuredCourse.description || 'No description available.'}
+                      {featuredCourse.description}
                     </p>
                   </div>
-
                   <div className="flex flex-wrap gap-3">
                     <Link
                       to={`/user/course/${featuredCourse.id}`}
@@ -115,19 +83,14 @@ export const CourseListPage: React.FC = () => {
 
           {/* Courses Grid */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {canLoadCourses && !isLoading && courses.length === 0 && !error && (
-              <Card className="border border-[#e3e8f3] p-6">
-                <p className="text-sm text-on-surface-variant">No courses available yet.</p>
-              </Card>
-            )}
-            {courses.map((course: CourseList, index) => (
+            {courses.map((course, index) => (
               <Card key={course.id} className="overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-xl">
                 <div className={`mb-4 h-40 rounded-xl bg-gradient-to-br ${gradients[index % gradients.length]} flex items-center justify-center`}>
                   <div className="rounded-3xl bg-white/75 p-4 shadow-sm backdrop-blur-sm">
                     <MaterialIcon icon="school" className="text-4xl text-[#4f6cf7]" />
                   </div>
                 </div>
-                
+
                 <h3 className="mb-1 text-lg font-bold text-on-surface">{course.title}</h3>
                 <p className="mb-4 text-sm text-on-surface-variant">
                   {course.description || 'No description available.'}
@@ -139,7 +102,6 @@ export const CourseListPage: React.FC = () => {
                   <div><span className="font-semibold text-on-surface">Created:</span> {formatDate(course.createdAt)}</div>
                 </div>
 
-                {/* Footer */}
                 <div className="flex items-center justify-between border-t border-outline-variant pt-4">
                   <span className="text-xs text-on-surface-variant">Course</span>
                   <Link

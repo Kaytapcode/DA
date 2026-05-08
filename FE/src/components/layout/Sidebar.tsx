@@ -1,6 +1,7 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { NavItem } from '@/constants/navigation'
+import { t } from '@/i18n/translations'
 
 interface SidebarProps {
   items?: NavItem[]
@@ -9,12 +10,14 @@ interface SidebarProps {
   sectionDividers?: number[]
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ 
+export const Sidebar: React.FC<SidebarProps> = ({
   items = [],
   title = 'App',
   subtitle = 'Navigation',
   sectionDividers = []
 }) => {
+  const location = useLocation()
+  const isReview = location.pathname.endsWith('_review')
   const linkClasses = "p-3 block rounded transition font-medium hover:bg-gray-700";
   const activeLinkClasses = "bg-gray-900";
 
@@ -28,8 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {items.map((item, index) => (
           <React.Fragment key={item.id || item.path}>
             <li>
-              <NavLink to={item.path} className={({ isActive }) => `${linkClasses} ${isActive ? activeLinkClasses : ''}`}>
-                {item.labelKey || item.path}
+              <NavLink to={isReview ? `${item.path}_review` : item.path} className={({ isActive }) => `${linkClasses} ${isActive ? activeLinkClasses : ''}`}>
+                {t(item.labelKey)}
               </NavLink>
               {item.badge && <span className="ml-2 bg-red-500 text-xs px-2 py-1 rounded">{item.badge}</span>}
             </li>

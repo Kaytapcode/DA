@@ -63,9 +63,9 @@ export const useCourse = (): UseCourseReturn => {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
 
-  const handleError = useCallback((err: any) => {
+  const handleError = useCallback((err: unknown) => {
     const message =
-      err?.message ||
+      (err instanceof Error ? err.message : null) ||
       (typeof err === 'string' ? err : 'An error occurred');
     setError(message);
     console.error('Course error:', message);
@@ -83,9 +83,9 @@ export const useCourse = (): UseCourseReturn => {
           `/courses?pageIndex=${newPageIndex}&pageSize=${newPageSize}`
         );
 
-        if (response.success && response.data) {
-          setCourses(response.data.data);
-          setTotalCount(response.data.totalCount);
+        if (response.success) {
+          setCourses(response.data?.data ?? []);
+          setTotalCount(response.data?.totalCount ?? 0);
         } else {
           throw new Error(response.message || 'Failed to fetch courses');
         }
@@ -108,8 +108,8 @@ export const useCourse = (): UseCourseReturn => {
           `/courses/${id}`
         );
 
-        if (response.success && response.data) {
-          setCurrentCourse(response.data);
+        if (response.success) {
+          setCurrentCourse(response.data ?? null);
         } else {
           throw new Error(response.message || 'Failed to fetch course');
         }

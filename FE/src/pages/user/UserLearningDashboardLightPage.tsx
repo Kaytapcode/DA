@@ -1,2 +1,2 @@
-﻿export { UserLearningDashboardLightPage } from './UserFeConvertedPages'
+﻿export { UserLearningDashboardPage } from './UserFeConvertedPages'
 

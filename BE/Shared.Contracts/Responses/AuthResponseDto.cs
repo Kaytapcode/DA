@@ -23,6 +23,10 @@ namespace Shared.Contracts.Responses
         string Username,
         string Email,
         string Role,
-        bool IsSystemAdmin
+        bool IsSystemAdmin,
+        string? FullName = null,
+        string? Bio = null,
+        string? Institution = null,
+        string? Degree = null
     );
 }

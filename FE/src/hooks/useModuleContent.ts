@@ -34,6 +34,9 @@ interface UseModuleContentReturn {
   setContentStatus: (courseId: string, moduleId: string, contentId: string, status: 'DRAFT' | 'PUBLISHED') => Promise<void>;
 }
 
+const extractMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : typeof err === 'string' ? err : 'An error occurred';
+
 export const useModuleContent = (): UseModuleContentReturn => {
   const [modules, setModules] = useState<ModuleItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,8 +48,8 @@ export const useModuleContent = (): UseModuleContentReturn => {
     try {
       const res = await apiClient.get<ModuleItem[]>(`/courses/${courseId}/modules`);
       if (res.success && res.data) setModules(res.data);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load modules');
+    } catch (err: unknown) {
+      setError(extractMessage(err) || 'Failed to load modules');
     } finally {
       setIsLoading(false);
     }
@@ -82,8 +85,8 @@ export const useModuleContent = (): UseModuleContentReturn => {
     try {
       await apiClient.delete(`/courses/${courseId}/modules/${moduleId}`);
       setModules(prev => prev.filter(m => m.id !== moduleId));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to delete module');
+    } catch (err: unknown) {
+      setError(extractMessage(err) || 'Failed to delete module');
     }
   }, []);
 
@@ -98,8 +101,8 @@ export const useModuleContent = (): UseModuleContentReturn => {
         arr.splice(newIndex, 0, item);
         return arr.map((m, i) => ({ ...m, orderIndex: i }));
       });
-    } catch (err: any) {
-      setError(err?.message || 'Failed to reorder module');
+    } catch (err: unknown) {
+      setError(extractMessage(err) || 'Failed to reorder module');
     }
   }, []);
 
@@ -131,8 +134,8 @@ export const useModuleContent = (): UseModuleContentReturn => {
         ? { ...m, contents: (m.contents ?? []).filter(c => c.id !== contentId) }
         : m
       ));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to delete content');
+    } catch (err: unknown) {
+      setError(extractMessage(err) || 'Failed to delete content');
     }
   }, []);
 
@@ -151,8 +154,8 @@ export const useModuleContent = (): UseModuleContentReturn => {
         arr.splice(newIndex, 0, item);
         return { ...m, contents: arr.map((c, i) => ({ ...c, orderIndex: i })) };
       }));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to reorder content');
+    } catch (err: unknown) {
+      setError(extractMessage(err) || 'Failed to reorder content');
     }
   }, []);
 
@@ -168,8 +171,8 @@ export const useModuleContent = (): UseModuleContentReturn => {
         ? { ...m, contents: (m.contents ?? []).map(c => c.id === contentId ? { ...c, status } : c) }
         : m
       ));
-    } catch (err: any) {
-      setError(err?.message || 'Failed to update status');
+    } catch (err: unknown) {
+      setError(extractMessage(err) || 'Failed to update status');
     }
   }, []);
 

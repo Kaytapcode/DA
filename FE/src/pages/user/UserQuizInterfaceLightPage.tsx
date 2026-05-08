@@ -1,2 +1,2 @@
-﻿export { UserQuizInterfaceLightPage } from './UserFeConvertedPages'
+﻿export { UserQuizInterfacePage } from './UserFeConvertedPages'
 

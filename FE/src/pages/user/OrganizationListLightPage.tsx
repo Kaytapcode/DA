@@ -1,2 +1,2 @@
-﻿export { OrganizationListLightPage } from './UserFeConvertedPages'
+﻿export { OrganizationListPage } from './UserFeConvertedPages'
 

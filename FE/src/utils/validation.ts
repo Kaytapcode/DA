@@ -5,9 +5,9 @@ export const ValidationRules = {
     message: 'Please enter a valid email address',
   },
   password: {
-    minLength: 6,
-    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-    message: 'Password must contain at least 6 characters, including uppercase, lowercase, and numbers',
+    minLength: 8,
+    pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*])/,
+    message: 'Password must be at least 8 characters and contain uppercase, lowercase, digit, and special character (!@#$%^&*)',
   },
   username: {
     minLength: 3,
@@ -16,15 +16,15 @@ export const ValidationRules = {
     message: 'Username can only contain alphanumeric characters, underscores, and hyphens',
   },
   slug: {
-    pattern: /^[a-z0-9\-]+$/,
+    pattern: /^[a-z0-9-]+$/,
     message: 'Slug can only contain lowercase letters, numbers, and hyphens',
   },
   url: {
-    pattern: /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/,
+    pattern: /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/,
     message: 'Please enter a valid URL',
   },
   phone: {
-    pattern: /^[\d\s\-\+\(\)]+$/,
+    pattern: /^[\d\s\-+()]+$/,
     message: 'Please enter a valid phone number',
   },
   zipCode: {
@@ -43,101 +43,74 @@ export interface FormValidationResult {
   errors: ValidationError[];
 }
 
+type ValidationRuleSet = {
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  pattern?: RegExp;
+  custom?: (val: string) => string | null;
+}
+
 export const validateField = (
   fieldName: string,
-  value: any,
-  rules?: { required?: boolean; minLength?: number; maxLength?: number; pattern?: RegExp; custom?: (val: any) => string | null }
+  value: string,
+  rules?: ValidationRuleSet
 ): ValidationError | null => {
-  // Check if field is required and empty
   if (rules?.required && !value) {
-    return {
-      field: fieldName,
-      message: `${fieldName} is required`,
-    };
+    return { field: fieldName, message: `${fieldName} is required` };
   }
 
-  // Skip validation if value is empty and not required
   if (!value) return null;
 
-  // Check minimum length
   if (rules?.minLength && value.length < rules.minLength) {
-    return {
-      field: fieldName,
-      message: `${fieldName} must be at least ${rules.minLength} characters`,
-    };
+    return { field: fieldName, message: `${fieldName} must be at least ${rules.minLength} characters` };
   }
 
-  // Check maximum length
   if (rules?.maxLength && value.length > rules.maxLength) {
-    return {
-      field: fieldName,
-      message: `${fieldName} cannot exceed ${rules.maxLength} characters`,
-    };
+    return { field: fieldName, message: `${fieldName} cannot exceed ${rules.maxLength} characters` };
   }
 
-  // Check pattern
   if (rules?.pattern && !rules.pattern.test(value)) {
-    return {
-      field: fieldName,
-      message: `${fieldName} format is invalid`,
-    };
+    return { field: fieldName, message: `${fieldName} format is invalid` };
   }
 
-  // Custom validation
   if (rules?.custom) {
     const customError = rules.custom(value);
-    if (customError) {
-      return {
-        field: fieldName,
-        message: customError,
-      };
-    }
+    if (customError) return { field: fieldName, message: customError };
   }
 
   return null;
 };
 
 export const validateForm = (
-  formData: Record<string, any>,
-  validationSchema: Record<string, any>
+  formData: Record<string, string>,
+  validationSchema: Record<string, ValidationRuleSet>
 ): FormValidationResult => {
   const errors: ValidationError[] = [];
 
   for (const [fieldName, rules] of Object.entries(validationSchema)) {
     const error = validateField(fieldName, formData[fieldName], rules);
-    if (error) {
-      errors.push(error);
-    }
+    if (error) errors.push(error);
   }
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
+  return { isValid: errors.length === 0, errors };
 };
 
-// Password strength checker
 export const checkPasswordStrength = (password: string): {
-  score: number; // 0-4
+  score: number;
   message: string;
   strength: 'weak' | 'fair' | 'good' | 'strong' | 'very-strong';
 } => {
   let score = 0;
 
   if (password.length >= 8) score++;
-  if (password.match(/[a-z]+/)) score++;
-  if (password.match(/[A-Z]+/)) score++;
-  if (password.match(/[0-9]+/)) score++;
-  if (password.match(/[$@#&!]+/)) score++;
+  if (/[a-z]+/.test(password)) score++;
+  if (/[A-Z]+/.test(password)) score++;
+  if (/[0-9]+/.test(password)) score++;
+  if (/[$@#&!]+/.test(password)) score++;
 
   const strengthMap = ['weak', 'fair', 'good', 'strong', 'very-strong'] as const;
-  const messageMap = [
-    'Too weak',
-    'Weak',
-    'Fair',
-    'Good',
-    'Strong',
-  ];
+  const messageMap = ['Too weak', 'Weak', 'Fair', 'Good', 'Strong'];
 
   return {
     score: Math.min(score, 4),
@@ -146,12 +119,8 @@ export const checkPasswordStrength = (password: string): {
   };
 };
 
-// Email verification
-export const isValidEmail = (email: string): boolean => {
-  return ValidationRules.email.pattern.test(email);
-};
+export const isValidEmail = (email: string): boolean => ValidationRules.email.pattern.test(email);
 
-// Username validation
 export const isValidUsername = (username: string): boolean => {
   if (username.length < ValidationRules.username.minLength || username.length > ValidationRules.username.maxLength) {
     return false;

@@ -28,13 +28,13 @@ export default function GuestHomePage() {
       requestDemo: 'Yêu Cầu Demo',
       login: 'Đăng Nhập',
       joinNow: 'Tham Gia Ngay',
-      copyright: '© 2026 LUMINAL INTERFACE. BUILT FOR THE ETHEREAL LABORATORY',
+      copyright: '© 2026 LUMINAL INTERFACE.',
     },
     en: {
       tagline: 'NEXT-GEN COGNITIVE ENGINE',
       headline: 'The Future of Learning is',
       headlineHighlight: 'Quantum',
-      description: 'Step into the Ethereal Laboratory. Experience an LMS that adapts in real-time, leveraging neural processing to curate your intellectual evolution.',
+      description: 'Step into the Lumina. Experience an learning platform that adapts in real-time, leveraging neural processing to curate your intellectual evolution.',
       startJourney: 'Start Journey',
       viewCurriculum: 'View Curriculum',
       designedFor: 'Designed for Precision',
@@ -44,16 +44,16 @@ export default function GuestHomePage() {
       realtimeAnalytics: 'Real-time Analytics',
       realtimeDesc: 'Millisecond-level tracking of engagement. See your synaptic strength visualized in our hyperfluid dashboard.',
       collaborativeLab: 'Collaborative Lab',
-      collaborativeDesc: 'A virtual environment where researchers and students converge in high-density synchronous laboratory sessions.',
+      collaborativeDesc: 'A virtual environment where researchers and students converge in high-density synchronous learning sessions.',
       echoes: 'Echoes from the',
-      echoesHighlight: 'Ethereal Laboratory',
+      echoesHighlight: 'Lumina',
       ready: 'Ready to begin?',
-      readyDesc: 'Secure your entry into the next paradigm of human learning. The Ethereal Laboratory is waiting.',
+      readyDesc: 'Secure your entry into the next paradigm of human learning. The Lumina is waiting.',
       initiateOnboarding: 'Initiate Onboarding',
       requestDemo: 'Request Demo',
       login: 'Login',
       joinNow: 'Join Now',
-      copyright: '© 2024 LUMINAL INTERFACE. BUILT FOR THE ETHEREAL LABORATORY',
+      copyright: '© 2024 LUMINA INTERFACE.',
     },
   };
 
@@ -69,10 +69,10 @@ export default function GuestHomePage() {
               Luminal
             </div>
             <div className="hidden md:flex gap-6 text-sm text-gray-300">
-              <button className="hover:text-white transition-colors">Curriculum</button>
+              {/* <button className="hover:text-white transition-colors">Curriculum</button>
               <button className="hover:text-white transition-colors">Laboratory</button>
-              <button className="hover:text-white transition-colors">Research</button>
-              <button className="hover:text-white transition-colors">About</button>
+              <button className="hover:text-white transition-colors">Research</button> */}
+              {/* <button className="hover:text-white transition-colors">About us</button> */}
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export default function GuestHomePage() {
               {t.login}
             </button>
             <button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/register')}
               className="px-6 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               {t.joinNow}
@@ -119,13 +119,10 @@ export default function GuestHomePage() {
 
             <div className="flex gap-4 pt-4">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/register')}
                 className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-105"
               >
                 {t.startJourney}
-              </button>
-              <button className="px-8 py-3 border border-gray-400 text-gray-300 hover:text-white font-medium rounded-lg transition-colors">
-                {t.viewCurriculum}
               </button>
             </div>
           </div>
@@ -326,17 +323,12 @@ export default function GuestHomePage() {
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
               <button
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/register')}
                 className="px-8 py-3 bg-white text-blue-600 font-bold rounded-lg hover:bg-blue-50 transition-colors"
               >
-                {t.initiateOnboarding}
+                {t.joinNow}
               </button>
-              <button
-                onClick={() => navigate('/login')}
-                className="px-8 py-3 border-2 border-white text-white font-bold rounded-lg hover:bg-white/10 transition-colors"
-              >
-                {t.requestDemo}
-              </button>
+              
             </div>
           </div>
         </div>

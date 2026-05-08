@@ -11,29 +11,31 @@ interface UseFetchState<T> {
   data: T | null;
   isLoading: boolean;
   error: string | null;
+  // true only when a request succeeded and returned no data (null/undefined/empty array)
   isEmpty: boolean;
 }
 
 interface UseFetchReturn<T> extends UseFetchState<T> {
-  fetch: (url: string, method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', payload?: any) => Promise<T | null>;
+  fetch: (url: string, method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', payload?: unknown) => Promise<T | null>;
   refetch: () => Promise<T | null>;
   reset: () => void;
 }
 
-export const useFetch = <T = any>(
+export const useFetch = <T = unknown>(
   initialUrl?: string,
   options: UseFetchOptions = { immediate: true, manual: false }
 ): UseFetchReturn<T> => {
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [lastUrl, setLastUrl] = useState(initialUrl || '');
 
   const fetch = useCallback(
     async (
       fetchUrl: string,
       method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET',
-      payload?: any
+      payload?: unknown
     ): Promise<T | null> => {
       setIsLoading(true);
       setError(null);
@@ -60,9 +62,11 @@ export const useFetch = <T = any>(
             break;
         }
 
-        if (response.success && response.data) {
-          setData(response.data);
-          return response.data;
+        if (response.success) {
+          const result = response.data ?? null;
+          setData(result as T | null);
+          setHasLoaded(true);
+          return result as T | null;
         } else {
           throw new Error(response.message || 'Request failed');
         }
@@ -88,6 +92,7 @@ export const useFetch = <T = any>(
 
   const reset = useCallback(() => {
     setData(null);
+    setHasLoaded(false);
     setIsLoading(false);
     setError(null);
   }, []);
@@ -99,14 +104,20 @@ export const useFetch = <T = any>(
     }
   }, [initialUrl, options.immediate, options.manual, fetch]);
 
+  const isEmpty = hasLoaded && (
+    data === null ||
+    data === undefined ||
+    (Array.isArray(data) && data.length === 0)
+  );
+
   return {
     data,
     isLoading,
     error,
-    isEmpty: !data,
-    fetch: async (fetchUrl, method = 'GET', payload) => {
+    isEmpty,
+    fetch: async (fetchUrl, method = 'GET', fetchPayload) => {
       setLastUrl(fetchUrl);
-      return fetch(fetchUrl, method, payload);
+      return fetch(fetchUrl, method, fetchPayload);
     },
     refetch,
     reset,

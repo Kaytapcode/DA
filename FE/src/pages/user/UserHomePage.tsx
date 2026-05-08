@@ -1,8 +1,8 @@
 import React from 'react'
-import { UserHomePageLightPage } from './UserHomePageLightPage'
+import { UserHomePagePage } from './UserHomePageLightPage'
 
 export const UserHomePage: React.FC = () => {
-	return <UserHomePageLightPage />
+	return <UserHomePagePage />
 }
 
 export default UserHomePage

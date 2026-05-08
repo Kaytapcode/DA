@@ -8,9 +8,9 @@ import { UserShell, useUserLanguage } from './UserShell'
 
 const useLang = useUserLanguage
 
-export { UserHomePageLightPage } from './UserHomePageLightPage'
+export { UserHomePagePage } from './UserHomePageLightPage'
 
-export const UserLearningDashboardLightPage: React.FC = () => {
+export const UserLearningDashboardPage: React.FC = () => {
   const isVi = useLang()
 
   return (
@@ -63,7 +63,7 @@ export const UserLearningDashboardLightPage: React.FC = () => {
   )
 }
 
-export const DocumentViewerLightPage: React.FC = () => {
+export const DocumentViewerPage: React.FC = () => {
   const isVi = useLang()
   const docs = ['Quantum Notes.pdf', 'Wave Packet Guide.pdf', 'Operator Cheatsheet.pdf']
 
@@ -100,7 +100,7 @@ export const DocumentViewerLightPage: React.FC = () => {
   )
 }
 
-export const InteractiveFlashcardsLightPage: React.FC = () => {
+export const InteractiveFlashcardsPage: React.FC = () => {
   const isVi = useLang()
   const [showAnswer, setShowAnswer] = useState(false)
 
@@ -134,7 +134,7 @@ export const InteractiveFlashcardsLightPage: React.FC = () => {
   )
 }
 
-export const LearningHistoryLightPage: React.FC = () => {
+export const LearningHistoryPage: React.FC = () => {
   const isVi = useLang()
   const rows = [
     { action: 'Completed module: Async JS', time: '2026-04-02 20:15', score: '92%' },
@@ -180,28 +180,34 @@ export const LuminaQuantumPage: React.FC = () => {
 
   return (
     <UserShell
-      titleEn="Lumina Quantum"
-      titleVi="Lumina Quantum"
-      subtitleEn="Futuristic learning experience"
-      subtitleVi="Trai nghiem hoc tap tuong lai"
+      titleEn="Advanced Learning"
+      titleVi="Hoc tap nang cao"
+      subtitleEn="Explore advanced learning tools and features"
+      subtitleVi="Kham pha cac cong cu hoc tap nang cao"
     >
-      <Card className="border border-primary/20 bg-gradient-to-br from-primary/10 via-white to-tertiary/10 p-10">
-        <h3 className="mb-4 text-4xl font-black font-headline text-on-surface">{isVi ? 'Mo khoa che do Quantum' : 'Unlock Quantum Mode'}</h3>
+      <Card className="p-10">
+        <h3 className="mb-4 text-2xl font-bold font-headline text-on-surface">
+          {isVi ? 'Cong cu hoc tap nang cao' : 'Advanced Learning Tools'}
+        </h3>
         <p className="mb-6 max-w-2xl text-on-surface-variant">
-          {isVi ? 'Che do hoc tap nang cao voi lo trinh ca nhan hoa va tro ly AI theo ngu canh.' : 'Advanced learning mode with adaptive pathing and context-aware AI tutoring.'}
+          {isVi
+            ? 'Tiep can cac tinh nang hoc tap nang cao bao gom ghi chu thong minh, bai kiem tra thich nghi va phan tich tien do.'
+            : 'Access advanced learning features including smart notes, adaptive quizzes, and progress analytics.'}
         </p>
-        <div className="flex gap-3">
-          <Button>{isVi ? 'Bat dau ngay' : 'Start Now'}</Button>
-          <Button variant="secondary">{isVi ? 'Xem demo' : 'View Demo'}</Button>
-        </div>
       </Card>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {['Neural Notes', 'Adaptive Quiz', 'Realtime Coach'].map((feature) => (
-          <Card key={feature} className="p-6">
-            <MaterialIcon icon="auto_awesome" className="mb-3 text-primary" />
-            <h4 className="mb-2 font-bold text-on-surface">{feature}</h4>
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Tinh nang thong minh cho hoc tap toc do cao.' : 'Smart capability for high-velocity learning.'}</p>
+        {[
+          { icon: 'notes', titleEn: 'Smart Notes', titleVi: 'Ghi chu thong minh' },
+          { icon: 'quiz', titleEn: 'Adaptive Quiz', titleVi: 'Bai kiem tra thich nghi' },
+          { icon: 'analytics', titleEn: 'Progress Analytics', titleVi: 'Phan tich tien do' },
+        ].map((feature) => (
+          <Card key={feature.titleEn} className="p-6">
+            <MaterialIcon icon={feature.icon} className="mb-3 text-primary" />
+            <h4 className="mb-2 font-bold text-on-surface">{isVi ? feature.titleVi : feature.titleEn}</h4>
+            <p className="text-sm text-on-surface-variant">
+              {isVi ? 'Tinh nang ho tro qua trinh hoc tap hieu qua.' : 'Tools to support your effective learning journey.'}
+            </p>
           </Card>
         ))}
       </div>
@@ -209,7 +215,7 @@ export const LuminaQuantumPage: React.FC = () => {
   )
 }
 
-export const OrganizationListLightPage: React.FC = () => {
+export const OrganizationListPage: React.FC = () => {
   const isVi = useLang()
   const orgs = ['Lumina Research Hub', 'AI Innovators Guild', 'Quantum Labs Network']
 
@@ -236,7 +242,7 @@ export const OrganizationListLightPage: React.FC = () => {
   )
 }
 
-export const SpecificCoursePageLightPage: React.FC = () => {
+export const SpecificCoursePagePage: React.FC = () => {
   const { courseId } = useParams()
 
   const course = {
@@ -391,9 +397,9 @@ export const SpecificCoursePageLightPage: React.FC = () => {
   )
 }
 
-export { UserContentLibraryLightPage } from './UserContentLibraryLightPage'
+export { UserContentLibraryPage } from './UserContentLibraryLightPage'
 
-export const UserQuizInterfaceLightPage: React.FC = () => {
+export const UserQuizInterfacePage: React.FC = () => {
   const isVi = useLang()
   const [selected, setSelected] = useState('')
   const options = ['A. Stateless protocol for hypertext', 'B. Local database schema', 'C. CSS rendering pipeline', 'D. Browser memory model']
@@ -423,7 +429,7 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
   )
 }
 
-export const VideoLessonLightPage: React.FC = () => {
+export const VideoLessonPage: React.FC = () => {
   const isVi = useLang()
   const lessons = ['Intro', 'State Management', 'Routing', 'Performance', 'Deployment']
 

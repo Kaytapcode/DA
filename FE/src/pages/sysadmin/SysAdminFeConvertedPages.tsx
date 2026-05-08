@@ -98,10 +98,10 @@ export const GlobalUserManagementPage: React.FC = () => {
         pageSize: String(PAGE_SIZE),
         ...(search ? { query: search } : {}),
       })
-      const res = await apiClient.get<UserItem[]>(`/users?${params}`)
+      const res = await apiClient.get<{ data: UserItem[]; totalCount: number }>(`/users?${params}`)
       if (res.success && res.data) {
-        setUsers(res.data)
-        setTotalCount((res as any).totalCount ?? res.data.length)
+        setUsers(res.data.data ?? [])
+        setTotalCount(res.data.totalCount ?? 0)
       }
     } catch {
       // silently fail — show empty state
@@ -330,7 +330,7 @@ export const PlatformSettingsLogsPage: React.FC = () => {
   )
 }
 
-export const SystemadminOrganizationDirectoryLight2Page: React.FC = () => {
+export const SystemadminOrganizationDirectoryPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Organization Directory (Light 2)"

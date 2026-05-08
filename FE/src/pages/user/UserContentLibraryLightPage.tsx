@@ -173,7 +173,7 @@ const materials: MaterialItem[] = [
 	},
 ]
 
-export const UserContentLibraryLightPage: React.FC = () => {
+export const UserContentLibraryPage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const [activeFilter, setActiveFilter] = useState<FilterKey>('ALL')
 

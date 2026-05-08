@@ -23,7 +23,6 @@ export const translations = {
   'common.register': { en: 'Register', vi: 'Đăng Ký' },
   'common.search': { en: 'Search', vi: 'Tìm Kiếm' },
   'common.notifications': { en: 'Notifications', vi: 'Thông Báo' },
-  'common.upgrade': { en: 'Upgrade to Pro', vi: 'Nâng Cấp Pro' },
   'common.history': { en: 'History', vi: 'Lịch Sử' },
   'common.members': { en: 'Members', vi: 'Thành Viên' },
   'common.help': { en: 'Help Center', vi: 'Trung Tâm Trợ Giúp' },

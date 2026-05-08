@@ -20,12 +20,12 @@ namespace Gateway.Api.Middleware
             // 1. Extract org_id from JWT claim (set during login with org context)
             var orgIdFromClaim = context.User?.FindFirst("org_id")?.Value;
 
-            // 2. Only SysAdmin may switch org context via X-Org-Id header.
-            //    Regular users are pinned to the org_id embedded in their JWT.
+            // 2. Any authenticated user may provide org context via X-Org-Id header.
+            //    Membership enforcement happens at the downstream service level.
+            //    SysAdmin can also override; regular users trust the header they send.
             var orgIdFromHeader = context.Request.Headers["X-Org-Id"].FirstOrDefault();
-            var isSysAdmin = context.User?.IsInRole("SysAdmin") == true;
 
-            var resolvedOrgId = (isSysAdmin && !string.IsNullOrEmpty(orgIdFromHeader))
+            var resolvedOrgId = !string.IsNullOrEmpty(orgIdFromHeader)
                 ? orgIdFromHeader
                 : orgIdFromClaim;
 

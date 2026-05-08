@@ -1,40 +1,48 @@
-import React from 'react';
+import React from 'react'
+import MuiTable from '@mui/material/Table'
+import TableBody from '@mui/material/TableBody'
+import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
+import TableHead from '@mui/material/TableHead'
+import TableRow from '@mui/material/TableRow'
+import Paper from '@mui/material/Paper'
 
 interface Column {
-  key: string;
-  header: string;
+  key: string
+  header: string
 }
 
 interface TableProps {
-  columns: Column[];
-  data: Record<string, any>[];
+  columns: Column[]
+  data: Record<string, unknown>[]
 }
 
 export const Table: React.FC<TableProps> = ({ columns, data }) => {
   return (
-    <div className="overflow-x-auto bg-white rounded shadow">
-      <table className="min-w-full border-collapse border border-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
+    <TableContainer component={Paper} variant="outlined">
+      <MuiTable size="small">
+        <TableHead>
+          <TableRow>
             {columns.map((col) => (
-              <th key={col.key} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                {col.header}
-              </th>
+              <TableCell key={col.key}>{col.header}</TableCell>
             ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {data.map((row, index) => (
-            <tr key={row.id ?? index} className="hover:bg-gray-50">
-              {columns.map((col) => (
-                <td key={`${row.id ?? index}-${col.key}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                  {row[col.key]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {data.map((row, index) => {
+            const rowKey = typeof row.id === 'string' || typeof row.id === 'number' ? row.id : index;
+            return (
+              <TableRow key={rowKey} hover>
+                {columns.map((col) => (
+                  <TableCell key={`${rowKey}-${col.key}`}>
+                    {row[col.key] == null ? '' : String(row[col.key])}
+                  </TableCell>
+                ))}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </MuiTable>
+    </TableContainer>
+  )
+}

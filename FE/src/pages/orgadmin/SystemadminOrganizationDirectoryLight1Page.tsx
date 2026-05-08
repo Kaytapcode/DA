@@ -1,2 +1,2 @@
-﻿export { SystemadminOrganizationDirectoryLight1Page } from './OrgAdminFeConvertedPages'
+﻿export { OrgadminOrganizationDirectoryPage } from './OrgAdminFeConvertedPages'
 

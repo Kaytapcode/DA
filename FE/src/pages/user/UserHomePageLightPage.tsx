@@ -6,7 +6,7 @@ import { UserShell, useUserLanguage } from './UserShell'
 
 const useLang = useUserLanguage
 
-export const UserHomePageLightPage: React.FC = () => {
+export const UserHomePagePage: React.FC = () => {
 	const isVi = useLang()
 
 	const quickActions = [

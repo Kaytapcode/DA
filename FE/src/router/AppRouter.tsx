@@ -14,17 +14,17 @@ import {
   CourseListPage,
   UserDashboardPage,
   UserProfilePage,
-  UserHomePageLightPage,
-  UserLearningDashboardLightPage,
-  DocumentViewerLightPage,
-  InteractiveFlashcardsLightPage,
-  LearningHistoryLightPage,
+  UserHomePagePage,
+  UserLearningDashboardPage,
+  DocumentViewerPage,
+  InteractiveFlashcardsPage,
+  LearningHistoryPage,
   LuminaQuantumPage,
-  OrganizationListLightPage,
-  SpecificCoursePageLightPage,
-  UserContentLibraryLightPage,
-  UserQuizInterfaceLightPage,
-  VideoLessonLightPage,
+  OrganizationListPage,
+  SpecificCoursePagePage,
+  UserContentLibraryPage,
+  UserQuizInterfacePage,
+  VideoLessonPage,
 } from '@pages/user'
 import {
   OrgAdminDashboardPage,
@@ -32,7 +32,7 @@ import {
   CourseManagementPage,
   CourseEditorCurriculumTabPage,
   CourseEditorMemberRolesTabPage,
-  SystemadminOrganizationDirectoryLight1Page,
+  OrgadminOrganizationDirectoryPage,
   UnifiedSettingsOrganizationsPage,
 } from '@pages/orgadmin'
 import GuestHomePage from '@pages/public/GuestHomePage'
@@ -43,10 +43,16 @@ import {
   OrganizationDirectoryPage,
   OrgDetailsSystemadminPage,
   PlatformSettingsLogsPage,
-  SystemadminOrganizationDirectoryLight2Page,
+  SystemadminOrganizationDirectoryPage,
   UserDetailsSystemadminPage,
 } from '@pages/sysadmin'
 import { NotificationPage } from '@pages/notification'
+import { ReviewIndex } from '@/review/ReviewIndex'
+import { CourseListReview } from '@/review/wrappers/CourseListReview'
+import { UserProfileReview } from '@/review/wrappers/UserProfileReview'
+import { GlobalUserManagementReview } from '@/review/wrappers/GlobalUserManagementReview'
+import { OrganizationDirectoryReview } from '@/review/wrappers/OrganizationDirectoryReview'
+import { CourseEditorReview } from '@/review/wrappers/CourseEditorReview'
 
 const loadingPage = (
   <div className="flex items-center justify-center h-screen bg-gray-50">
@@ -72,12 +78,12 @@ export const AppRouter: React.FC = () => {
           {/* ── User Routes (any authenticated user) ──────────── */}
           <Route path="/user/home" element={
             <ProtectedRoute roles={['Student', 'Teacher', 'OrgAdmin', 'SysAdmin']}>
-              <UserHomePageLightPage />
+              <UserHomePagePage />
             </ProtectedRoute>
           } />
           <Route path="/user/dashboard" element={
             <ProtectedRoute>
-              <UserLearningDashboardLightPage />
+              <UserLearningDashboardPage />
             </ProtectedRoute>
           } />
           <Route path="/user/dashboard-legacy" element={
@@ -93,22 +99,22 @@ export const AppRouter: React.FC = () => {
             <ProtectedRoute><UserProfilePage /></ProtectedRoute>
           } />
           <Route path="/user/learning" element={
-            <ProtectedRoute><LearningHistoryLightPage /></ProtectedRoute>
+            <ProtectedRoute><LearningHistoryPage /></ProtectedRoute>
           } />
           <Route path="/user/library" element={
-            <ProtectedRoute><UserContentLibraryLightPage /></ProtectedRoute>
+            <ProtectedRoute><UserContentLibraryPage /></ProtectedRoute>
           } />
           <Route path="/user/quiz" element={
-            <ProtectedRoute><UserQuizInterfaceLightPage /></ProtectedRoute>
+            <ProtectedRoute><UserQuizInterfacePage /></ProtectedRoute>
           } />
           <Route path="/user/lesson" element={
-            <ProtectedRoute><VideoLessonLightPage /></ProtectedRoute>
+            <ProtectedRoute><VideoLessonPage /></ProtectedRoute>
           } />
           <Route path="/user/flashcards" element={
-            <ProtectedRoute><InteractiveFlashcardsLightPage /></ProtectedRoute>
+            <ProtectedRoute><InteractiveFlashcardsPage /></ProtectedRoute>
           } />
           <Route path="/user/documents" element={
-            <ProtectedRoute><DocumentViewerLightPage /></ProtectedRoute>
+            <ProtectedRoute><DocumentViewerPage /></ProtectedRoute>
           } />
           <Route path="/user/messages" element={
             <ProtectedRoute><NotificationPage /></ProtectedRoute>
@@ -117,10 +123,10 @@ export const AppRouter: React.FC = () => {
             <ProtectedRoute><LuminaQuantumPage /></ProtectedRoute>
           } />
           <Route path="/user/organizations" element={
-            <ProtectedRoute><OrganizationListLightPage /></ProtectedRoute>
+            <ProtectedRoute><OrganizationListPage /></ProtectedRoute>
           } />
           <Route path="/user/course/:courseId" element={
-            <ProtectedRoute><SpecificCoursePageLightPage /></ProtectedRoute>
+            <ProtectedRoute><SpecificCoursePagePage /></ProtectedRoute>
           } />
 
           {/* ── OrgAdmin Routes (OrgAdmin, Teacher, SysAdmin) ─── */}
@@ -166,7 +172,7 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/admin/system-organization-directory-light-1" element={
             <ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}>
-              <SystemadminOrganizationDirectoryLight1Page />
+              <OrgadminOrganizationDirectoryPage />
             </ProtectedRoute>
           } />
 
@@ -213,7 +219,7 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/sysadmin/orgs-light-2" element={
             <ProtectedRoute roles={['SysAdmin']}>
-              <SystemadminOrganizationDirectoryLight2Page />
+              <SystemadminOrganizationDirectoryPage />
             </ProtectedRoute>
           } />
           <Route path="/sysadmin/user-details" element={
@@ -236,24 +242,24 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/auth/guest_homepage_light_mode" element={<HomePage />} />
           <Route path="/fe/auth/user_login_light_mode" element={<LoginPage />} />
           <Route path="/fe/user/course_list_light" element={<CourseListPage />} />
-          <Route path="/fe/user/document_viewer_light" element={<DocumentViewerLightPage />} />
-          <Route path="/fe/user/interactive_flashcards_light" element={<InteractiveFlashcardsLightPage />} />
-          <Route path="/fe/user/learning_history_light" element={<LearningHistoryLightPage />} />
+          <Route path="/fe/user/document_viewer_light" element={<DocumentViewerPage />} />
+          <Route path="/fe/user/interactive_flashcards_light" element={<InteractiveFlashcardsPage />} />
+          <Route path="/fe/user/learning_history_light" element={<LearningHistoryPage />} />
           <Route path="/fe/user/lumina_quantum" element={<LuminaQuantumPage />} />
-          <Route path="/fe/user/organization_list_light" element={<OrganizationListLightPage />} />
-          <Route path="/fe/user/specific_course_page_light" element={<SpecificCoursePageLightPage />} />
-          <Route path="/fe/user/user_content_library_light" element={<UserContentLibraryLightPage />} />
-          <Route path="/fe/user/user_home_page_light" element={<UserHomePageLightPage />} />
-          <Route path="/fe/user/user_learning_dashboard_light" element={<UserLearningDashboardLightPage />} />
+          <Route path="/fe/user/organization_list_light" element={<OrganizationListPage />} />
+          <Route path="/fe/user/specific_course_page_light" element={<SpecificCoursePagePage />} />
+          <Route path="/fe/user/user_content_library_light" element={<UserContentLibraryPage />} />
+          <Route path="/fe/user/user_home_page_light" element={<UserHomePagePage />} />
+          <Route path="/fe/user/user_learning_dashboard_light" element={<UserLearningDashboardPage />} />
           <Route path="/fe/user/user_profile_settings_light" element={<UserProfilePage />} />
-          <Route path="/fe/user/user_quiz_interface_light" element={<UserQuizInterfaceLightPage />} />
-          <Route path="/fe/user/video_lesson_light" element={<VideoLessonLightPage />} />
+          <Route path="/fe/user/user_quiz_interface_light" element={<UserQuizInterfacePage />} />
+          <Route path="/fe/user/video_lesson_light" element={<VideoLessonPage />} />
           <Route path="/fe/orgadmin/course_editor_curriculum_tab" element={<CourseEditorCurriculumTabPage />} />
           <Route path="/fe/orgadmin/course_editor_member_roles_tab" element={<CourseEditorMemberRolesTabPage />} />
           <Route path="/fe/orgadmin/course_management" element={<CourseManagementPage />} />
           <Route path="/fe/orgadmin/member_management" element={<MemberManagementPage />} />
           <Route path="/fe/orgadmin/orgadmin_dashboard_reports" element={<OrgAdminDashboardPage />} />
-          <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<SystemadminOrganizationDirectoryLight1Page />} />
+          <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<OrgadminOrganizationDirectoryPage />} />
           <Route path="/fe/orgadmin/unified_settings_organizations" element={<UnifiedSettingsOrganizationsPage />} />
           <Route path="/fe/sysadmin/global_content_courses" element={<GlobalContentCoursesPage />} />
           <Route path="/fe/sysadmin/global_user_management" element={<GlobalUserManagementPage />} />
@@ -261,7 +267,7 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/sysadmin/org_details_systemadmin" element={<OrgDetailsSystemadminPage />} />
           <Route path="/fe/sysadmin/platform_settings_logs" element={<PlatformSettingsLogsPage />} />
           <Route path="/fe/sysadmin/systemadmin_dashboard_overview" element={<SysAdminDashboardPage />} />
-          <Route path="/fe/sysadmin/systemadmin_organization_directory_light_2" element={<SystemadminOrganizationDirectoryLight2Page />} />
+          <Route path="/fe/sysadmin/systemadmin_organization_directory_light_2" element={<SystemadminOrganizationDirectoryPage />} />
           <Route path="/fe/sysadmin/user_details_systemadmin" element={<UserDetailsSystemadminPage />} />
           <Route path="/fe/notification/system_notifications_success_error_states" element={<NotificationPage />} />
 
@@ -272,10 +278,10 @@ export const AppRouter: React.FC = () => {
             </ProtectedRoute>
           }>
             <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<UserHomePageLightPage />} />
+            <Route path="dashboard" element={<UserHomePagePage />} />
             <Route path="courses" element={<CourseListPage />} />
-            <Route path="course/:courseId" element={<SpecificCoursePageLightPage />} />
-            <Route path="quiz" element={<UserQuizInterfaceLightPage />} />
+            <Route path="course/:courseId" element={<SpecificCoursePagePage />} />
+            <Route path="quiz" element={<UserQuizInterfacePage />} />
             <Route path="admin/courses" element={
               <ProtectedRoute roles={['OrgAdmin', 'Teacher', 'SysAdmin']}>
                 <CourseManagementPage />
@@ -292,6 +298,59 @@ export const AppRouter: React.FC = () => {
               </ProtectedRoute>
             } />
           </Route>
+
+          {/* ── Review Routes (no auth, demo data) ───────────── */}
+          <Route path="/review" element={<ReviewIndex />} />
+
+          {/* Auth */}
+          <Route path="/login_review" element={<LoginPage />} />
+          <Route path="/register_review" element={<RegisterPage />} />
+          <Route path="/forgot-password_review" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password_review" element={<ResetPasswordPage />} />
+          <Route path="/2fa_review" element={<TwoFactorPage />} />
+          <Route path="/home_review" element={<GuestHomePage />} />
+
+          {/* User */}
+          <Route path="/user/home_review" element={<UserHomePagePage />} />
+          <Route path="/user/dashboard_review" element={<UserLearningDashboardPage />} />
+          <Route path="/user/courses_review" element={<CourseListReview />} />
+          <Route path="/user/profile_review" element={<UserProfileReview />} />
+          <Route path="/user/learning_review" element={<LearningHistoryPage />} />
+          <Route path="/user/library_review" element={<UserContentLibraryPage />} />
+          <Route path="/user/quiz_review" element={<UserQuizInterfacePage />} />
+          <Route path="/user/lesson_review" element={<VideoLessonPage />} />
+          <Route path="/user/flashcards_review" element={<InteractiveFlashcardsPage />} />
+          <Route path="/user/documents_review" element={<DocumentViewerPage />} />
+          <Route path="/user/messages_review" element={<NotificationPage />} />
+          <Route path="/user/lumina-quantum_review" element={<LuminaQuantumPage />} />
+          <Route path="/user/organizations_review" element={<OrganizationListPage />} />
+          <Route path="/user/course_review" element={<SpecificCoursePagePage />} />
+
+          {/* OrgAdmin */}
+          <Route path="/admin/dashboard_review" element={<OrgAdminDashboardPage />} />
+          <Route path="/admin/courses_review" element={<CourseManagementPage />} />
+          <Route path="/admin/members_review" element={<MemberManagementPage />} />
+          <Route path="/admin/reports_review" element={<OrgAdminDashboardPage />} />
+          <Route path="/admin/editor_review" element={<CourseEditorReview />} />
+          <Route path="/admin/editor/curriculum_review" element={<CourseEditorReview />} />
+          <Route path="/admin/editor/member-roles_review" element={<CourseEditorMemberRolesTabPage />} />
+          <Route path="/admin/system-org-directory_review" element={<OrgadminOrganizationDirectoryPage />} />
+          <Route path="/admin/settings_review" element={<UnifiedSettingsOrganizationsPage />} />
+
+          {/* SysAdmin */}
+          <Route path="/sysadmin/overview_review" element={<SysAdminDashboardPage />} />
+          <Route path="/sysadmin/dashboard_review" element={<SysAdminDashboardPage />} />
+          <Route path="/sysadmin/users_review" element={<GlobalUserManagementReview />} />
+          <Route path="/sysadmin/orgs_review" element={<OrganizationDirectoryReview />} />
+          <Route path="/sysadmin/courses_review" element={<GlobalContentCoursesPage />} />
+          <Route path="/sysadmin/logs_review" element={<PlatformSettingsLogsPage />} />
+          <Route path="/sysadmin/settings_review" element={<PlatformSettingsLogsPage />} />
+          <Route path="/sysadmin/org-details_review" element={<OrgDetailsSystemadminPage />} />
+          <Route path="/sysadmin/orgs-light-2_review" element={<SystemadminOrganizationDirectoryPage />} />
+          <Route path="/sysadmin/user-details_review" element={<UserDetailsSystemadminPage />} />
+
+          {/* Other */}
+          <Route path="/notifications_review" element={<NotificationPage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

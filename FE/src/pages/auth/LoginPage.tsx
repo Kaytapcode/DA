@@ -1,6 +1,8 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useOrgContext } from '@/contexts/OrgContext';
+import { apiClient } from '@/utils/apiClient';
 import { ValidationRules } from '@/utils/validation';
 
 interface LoginFormData {
@@ -16,6 +18,7 @@ interface FormErrors {
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuthContext();
+  const { setOrg } = useOrgContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -67,15 +70,39 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      await login(formData.email, formData.password, undefined);
+      const loggedInUser = await login(formData.email, formData.password, undefined);
 
-      // Navigate to user home
-      navigate('/user/home', { replace: true });
+      // After login, auto-resolve org membership so X-Org-Id is sent on subsequent requests.
+      // Non-SysAdmin users need an org context to access content APIs.
+      if (!loggedInUser.isSystemAdmin) {
+        try {
+          const orgRes = await apiClient.get<{ id: string; name: string; slug: string }[]>(
+            '/organizations/my-orgs'
+          );
+          const orgs = orgRes.success && orgRes.data ? orgRes.data : [];
+          if (orgs.length > 0) {
+            setOrg({ id: orgs[0].id, name: orgs[0].name, slug: orgs[0].slug });
+          }
+        } catch {
+          // Org lookup failure is non-fatal; user can select org manually
+        }
+      }
+
+      const dashboardByRole: Record<string, string> = {
+        SysAdmin: '/sysadmin/dashboard',
+        OrgAdmin: '/admin/dashboard',
+        Teacher: '/admin/dashboard',
+        Student: '/user/home',
+      };
+      const role = loggedInUser.isSystemAdmin ? 'SysAdmin' : loggedInUser.role;
+      navigate(dashboardByRole[role] ?? '/user/home', { replace: true });
     } catch (err) {
       setSubmitError(
-        typeof err === 'string'
-          ? err
-          : (err as any)?.message || 'Failed to login. Please check your credentials and try again.'
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Failed to login. Please check your credentials and try again.'
       );
     }
   };
@@ -91,12 +118,12 @@ export const LoginPage: React.FC = () => {
           <div className="absolute -bottom-20 right-0 h-96 w-96 rounded-full bg-[#0099ff]/10 blur-3xl" />
           <div className="absolute left-1/3 top-1/2 h-80 w-80 rounded-full bg-[#00ccff]/5 blur-3xl" />
 
-          {/* Badge */}
+          {/* Badge
           <div className="relative">
             <div className="inline-block rounded-full border border-[#0099ff]/40 bg-white/5 px-4 py-2 backdrop-blur-sm">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#99ccff]">+ THE ETHEREAL LABORATORY</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Heading and Description */}
           <div className="relative mt-8">
@@ -104,11 +131,11 @@ export const LoginPage: React.FC = () => {
               Illuminate Your<br />Intellectual Path.
             </h1>
             <p className="mt-6 max-w-lg text-base leading-relaxed text-[#b3d9ff]">
-              Access our proprietary curriculum and laboratory research environment through the Luminal Interface.
+              Sharing made simple. Welcome to your new collaborative workspace, where ideas flow freely and knowledge knows no bounds.
             </p>
           </div>
 
-          {/* Stats */}
+          {/* Stats
           <div className="relative space-y-4">
             <div className="flex items-baseline gap-4">
               <div>
@@ -122,14 +149,14 @@ export const LoginPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-widest text-[#99ccff] mt-1">Success Rate</div>
               </div>
             </div>
-          </div>
+          </div> */}
         </section>
 
         {/* Right Section - Login Form */}
         <section className="flex flex-col justify-between p-8 sm:p-12">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-black text-[#001a4d]">Luminal.</div>
+            <div className="text-4xl font-black text-[#001a4d]">Lumina</div>
             <Link to="#" className="text-sm font-medium text-[#6b7280] hover:text-[#001a4d]">
               Help Center
             </Link>
@@ -138,9 +165,9 @@ export const LoginPage: React.FC = () => {
           {/* Form Container */}
           <div className="flex flex-col justify-center">
             <div>
-              <h2 className="text-4xl font-black text-[#1f2937]">Welcome back.</h2>
+              <h2 className="text-2xl font-black text-[#1f2937]">Welcome back.</h2>
               <p className="mt-2 text-sm text-[#6b7280]">
-                Please enter your credentials to access your laboratory workspace.
+                Please enter your credentials to access your workspace.
               </p>
             </div>
 
@@ -261,20 +288,15 @@ export const LoginPage: React.FC = () => {
             {/* Create Account Link */}
             <div className="mt-8 text-center">
               <p className="text-sm text-[#6b7280]">
-                New to the Laboratory?{' '}
+                New to the Lumina?{' '}
                 <Link to="/register" className="font-semibold text-[#0066ff] hover:underline">
-                  Create
+                  Create Account
                 </Link>
               </p>
             </div>
           </div>
 
-          {/* Footer - System Status */}
-          <div className="flex items-center gap-2 mt-8">
-            <div className="w-2 h-2 rounded-full bg-green-500"></div>
-            <span className="text-xs font-medium text-[#6b7280]">SYSTEM STATUS</span>
-            <span className="text-xs text-[#9ca3af]">All neural networks fully operational at 99.9% uptime.</span>
-          </div>
+
         </section>
       </div>
     </div>

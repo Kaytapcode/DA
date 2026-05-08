@@ -1,2 +1,2 @@
-﻿export { SpecificCoursePageLightPage } from './UserFeConvertedPages'
+﻿export { SpecificCoursePagePage } from './UserFeConvertedPages'
 

@@ -437,7 +437,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   )
 }
 
-export const SystemadminOrganizationDirectoryLight1Page: React.FC = () => {
+export const OrgadminOrganizationDirectoryPage: React.FC = () => {
   const isVi = useLang()
   const [search, setSearch] = useState('')
   const items = ['Lumi Academy', 'Quantum College', 'Future Skills Hub', 'Delta Learning']

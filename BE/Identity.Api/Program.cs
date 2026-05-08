@@ -6,10 +6,12 @@ using Identity.Api.Validators;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Shared.Contracts.Requests;
+using Shared.Contracts.Responses;
 using System.Text;
 
 try
@@ -90,6 +92,20 @@ try
     // FluentValidation registration — auto-validates on every controller action
     builder.Services.AddFluentValidationAutoValidation();
     builder.Services.AddValidatorsFromAssemblyContaining<RegisterRequestValidator>();
+
+    // Return validation errors in ApiResponse format instead of ProblemDetails
+    builder.Services.Configure<ApiBehaviorOptions>(options =>
+    {
+        options.InvalidModelStateResponseFactory = ctx =>
+        {
+            var errors = ctx.ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .ToList();
+            var message = errors.FirstOrDefault() ?? "Validation failed";
+            return new BadRequestObjectResult(new ApiResponse(Success: false, Message: message, Errors: errors));
+        };
+    });
 
     builder.Services.AddControllers();
 

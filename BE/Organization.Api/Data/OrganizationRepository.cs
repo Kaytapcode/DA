@@ -7,6 +7,7 @@ namespace Organization.Api.Data
     {
         Task<List<OrganizationModel>> GetAllAsync(CancellationToken ct = default);
         Task<List<OrganizationModel>> GetByOwnerIdAsync(Guid ownerId, CancellationToken ct = default);
+        Task<List<OrganizationModel>> GetByMemberUserIdAsync(Guid userId, CancellationToken ct = default);
         Task<OrganizationModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<OrganizationModel?> GetBySlugAsync(string slug, CancellationToken ct = default);
         Task<OrganizationModel> CreateAsync(OrganizationModel org, CancellationToken ct = default);
@@ -30,6 +31,11 @@ namespace Organization.Api.Data
         public async Task<List<OrganizationModel>> GetByOwnerIdAsync(Guid ownerId, CancellationToken ct = default)
             => await _context.Organizations.Include(o => o.Members)
                 .Where(o => o.OwnerId == ownerId)
+                .ToListAsync(ct);
+
+        public async Task<List<OrganizationModel>> GetByMemberUserIdAsync(Guid userId, CancellationToken ct = default)
+            => await _context.Organizations.Include(o => o.Members)
+                .Where(o => o.Members.Any(m => m.UserId == userId))
                 .ToListAsync(ct);
 
         public async Task<OrganizationModel?> GetByIdAsync(Guid id, CancellationToken ct = default)

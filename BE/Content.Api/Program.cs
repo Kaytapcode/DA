@@ -120,6 +120,17 @@ try
     app.UseCors("AllowFrontend");
     app.UseRouting();
     app.UseAuthentication();
+
+    // Read X-Org-Id header forwarded by Gateway into Items so OrgContextService can find it.
+    // This supplements the JWT OnTokenValidated path (which only works when org_id is in the token).
+    app.Use(async (context, next) =>
+    {
+        var orgIdHeader = context.Request.Headers["X-Org-Id"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(orgIdHeader))
+            context.Items["org_id"] = orgIdHeader;
+        await next();
+    });
+
     app.UseAuthorization();
     app.MapControllers();
 

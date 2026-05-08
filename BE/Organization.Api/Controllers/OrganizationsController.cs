@@ -50,6 +50,23 @@ public class OrganizationsController : ControllerBase
         ));
     }
 
+    /// <summary>Returns all orgs the current user belongs to (as member or owner)</summary>
+    [HttpGet("my-orgs")]
+    [ProducesResponseType(typeof(ApiResponse<List<OrganizationListResponseDto>>), 200)]
+    public async Task<IActionResult> GetMyOrganizations()
+    {
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userId, out var userGuid))
+            return BadRequest(new ApiResponse(false, "Invalid user ID"));
+
+        var organizations = await _organizationRepository.GetByMemberUserIdAsync(userGuid);
+        return Ok(new ApiResponse<List<OrganizationListResponseDto>>(
+            true,
+            _mapper.Map<List<OrganizationListResponseDto>>(organizations),
+            "Organizations retrieved successfully"
+        ));
+    }
+
     /// <summary>Resolve organization by slug (public — used by FE to map slug → id)</summary>
     [HttpGet("slug/{slug}")]
     [AllowAnonymous]

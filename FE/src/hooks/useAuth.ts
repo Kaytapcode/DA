@@ -15,7 +15,7 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   orgId: string | null;
-  login: (username: string, password: string, orgId?: string) => Promise<AuthUser>;
+  login: (usernameOrEmail: string, password: string, orgId?: string) => Promise<AuthUser>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   setOrgContext: (orgId: string) => void;
@@ -51,7 +51,7 @@ export const useAuth = (): AuthContextType => {
     }
   }, []);
 
-  const login = useCallback(async (username: string, password: string, orgIdParam?: string) => {
+  const login = useCallback(async (usernameOrEmail: string, password: string, orgIdParam?: string) => {
     setIsLoading(true);
     try {
       const headers: Record<string, string> = {};
@@ -62,7 +62,11 @@ export const useAuth = (): AuthContextType => {
         message: string;
         user: { id: string; username: string; email: string; role: string; isSystemAdmin: boolean };
         orgId?: string;
-      }>('/auth/login', { username, password }, { headers });
+      // Backend accepts username or email in the "username" field
+      }>('/auth/login', { username: usernameOrEmail, password }, { headers }).catch((err: unknown) => {
+        const msg = (err as Record<string, unknown>)?.message;
+        throw new Error(typeof msg === 'string' ? msg : 'Invalid login credentials.');
+      });
 
       if (!response.success || !response.data) throw new Error(response.message || 'Login failed');
 
@@ -94,7 +98,10 @@ export const useAuth = (): AuthContextType => {
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.post('/auth/register', { username, email, password });
+      const response = await apiClient.post('/auth/register', { username, email, password }).catch((err: unknown) => {
+        const msg = (err as Record<string, unknown>)?.message;
+        throw new Error(typeof msg === 'string' ? msg : 'Registration failed. Please try again.');
+      });
       if (!response.success) throw new Error(response.message || 'Registration failed');
     } finally {
       setIsLoading(false);

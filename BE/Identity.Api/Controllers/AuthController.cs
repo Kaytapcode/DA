@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Identity.Api.Models;
@@ -39,7 +40,8 @@ namespace Identity.Api.Controllers
                     Username = request.Username,
                     Email = request.Email,
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    Role = "Student"
+                    Role = "Student",
+                    FullName = request.Username
                 };
                 await _userRepository.AddAsync(newUser);
                 return Ok(new ApiResponse(Success: true, Message: "Registration successful."));
@@ -80,7 +82,17 @@ namespace Identity.Api.Controllers
                 Data: new LoginResponseDto(
                     Token: token,
                     Message: "Login successful.",
-                    User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.IsSystemAdmin),
+                    User: new UserInfoDto(
+                        user.Id,
+                        user.Username,
+                        user.Email,
+                        user.Role,
+                        user.IsSystemAdmin,
+                        user.FullName,
+                        user.Bio,
+                        user.Institution,
+                        user.Degree
+                    ),
                     OrgId: orgId?.ToString()
                 ),
                 Message: "Login successful."
@@ -88,7 +100,7 @@ namespace Identity.Api.Controllers
         }
 
         [HttpGet("me")]
-        [Microsoft.AspNetCore.Authorization.Authorize]
+        [Authorize]
         public async Task<IActionResult> GetCurrentUser()
         {
             var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
@@ -100,8 +112,65 @@ namespace Identity.Api.Controllers
 
             return Ok(new ApiResponse<UserInfoDto>(
                 Success: true,
-                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.IsSystemAdmin),
+                Data: new UserInfoDto(
+                    user.Id,
+                    user.Username,
+                    user.Email,
+                    user.Role,
+                    user.IsSystemAdmin,
+                    user.FullName,
+                    user.Bio,
+                    user.Institution,
+                    user.Degree
+                ),
                 Message: null
+            ));
+        }
+
+        [HttpPut("me")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequestDto request)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return NotFound(new ApiResponse(false, "User not found."));
+
+            if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                var normalizedEmail = request.Email.Trim();
+                if (!string.Equals(user.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (await _userRepository.UserExistsByEmailAsync(normalizedEmail))
+                        return BadRequest(new ApiResponse(false, "Email is already in use."));
+                    user.Email = normalizedEmail;
+                }
+            }
+
+            user.FullName = string.IsNullOrWhiteSpace(request.FullName) ? null : request.FullName.Trim();
+            user.Bio = string.IsNullOrWhiteSpace(request.Bio) ? null : request.Bio.Trim();
+            user.Institution = string.IsNullOrWhiteSpace(request.Institution) ? null : request.Institution.Trim();
+            user.Degree = string.IsNullOrWhiteSpace(request.Degree) ? null : request.Degree.Trim();
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _userRepository.UpdateAsync(user);
+
+            return Ok(new ApiResponse<UserInfoDto>(
+                Success: true,
+                Data: new UserInfoDto(
+                    user.Id,
+                    user.Username,
+                    user.Email,
+                    user.Role,
+                    user.IsSystemAdmin,
+                    user.FullName,
+                    user.Bio,
+                    user.Institution,
+                    user.Degree
+                ),
+                Message: "Profile updated."
             ));
         }
     }

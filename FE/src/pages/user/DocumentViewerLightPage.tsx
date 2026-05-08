@@ -1,2 +1,2 @@
-﻿export { DocumentViewerLightPage } from './UserFeConvertedPages'
+﻿export { DocumentViewerPage } from './UserFeConvertedPages'
 

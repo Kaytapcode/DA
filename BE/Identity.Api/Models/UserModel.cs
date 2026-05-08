@@ -16,10 +16,26 @@ namespace Identity.Api.Models
         [StringLength(100)]
         public string Username { get; set; } = string.Empty;
 
+        [Column("full_name")]
+        [StringLength(150)]
+        public string? FullName { get; set; }
+
         [Required]
         [Column("email")]
         [StringLength(255)]
         public string Email { get; set; } = string.Empty;
+
+        [Column("bio")]
+        [StringLength(500)]
+        public string? Bio { get; set; }
+
+        [Column("institution")]
+        [StringLength(200)]
+        public string? Institution { get; set; }
+
+        [Column("degree")]
+        [StringLength(200)]
+        public string? Degree { get; set; }
 
         [Required]
         [Column("password_hash")]

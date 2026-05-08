@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -9,6 +9,8 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { Badge } from '@components/ui/Badge'
 import { t } from '@/i18n/translations'
 import { useForm } from '@hooks/useForm'
+import { useAuthContext } from '@/contexts/AuthContext'
+import { apiClient } from '@/utils/apiClient'
 
 interface ProfileFormData {
   fullName: string
@@ -16,6 +18,18 @@ interface ProfileFormData {
   bio: string
   institution: string
   degree: string
+}
+
+interface UserInfoResponse {
+  id: string
+  username: string
+  email: string
+  role: string
+  isSystemAdmin: boolean
+  fullName?: string | null
+  bio?: string | null
+  institution?: string | null
+  degree?: string | null
 }
 
 type TabType = 'personal' | 'security' | 'wallet' | 'notifications'
@@ -27,21 +41,104 @@ type TabType = 'personal' | 'security' | 'wallet' | 'notifications'
 export const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('personal')
   const [isSaved, setIsSaved] = useState(false)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const { user, isAuthenticated } = useAuthContext()
 
-  const { values, handleChange, handleSubmit } = useForm<ProfileFormData>(
+  const { values, handleChange, handleSubmit, setValues } = useForm<ProfileFormData>(
     {
-      fullName: 'Alex Johnson',
-      email: 'alex.johnson@luminalearning.edu',
-      bio: 'Passionate learner focusing on Quantum Physics and Neural Computing.',
-      institution: 'Stanford University',
-      degree: 'M.S. Physics',
+      fullName: '',
+      email: '',
+      bio: '',
+      institution: '',
+      degree: '',
     },
     async (data) => {
-      console.log('Saving profile:', data)
-      setIsSaved(true)
-      setTimeout(() => setIsSaved(false), 2000)
+      setProfileSaving(true)
+      setProfileError(null)
+      try {
+        const response = await apiClient.put<UserInfoResponse>('/auth/me', {
+          fullName: data.fullName,
+          email: data.email,
+          bio: data.bio,
+          institution: data.institution,
+          degree: data.degree,
+        })
+
+        if (!response.success) {
+          throw new Error(response.message || 'Failed to save profile.')
+        }
+
+        if (response.data) {
+          setValues(prev => ({
+            ...prev,
+            fullName: response.data.fullName || response.data.username || '',
+            email: response.data.email || '',
+            bio: response.data.bio || '',
+            institution: response.data.institution || '',
+            degree: response.data.degree || '',
+          }))
+        }
+
+        setIsSaved(true)
+        setTimeout(() => setIsSaved(false), 2000)
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to save profile.'
+        setProfileError(message)
+      } finally {
+        setProfileSaving(false)
+      }
     }
   )
+
+  useEffect(() => {
+    if (user) {
+      setValues(prev => ({
+        ...prev,
+        fullName: user.username || '',
+        email: user.email || '',
+      }))
+    }
+  }, [user, setValues])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    let isActive = true
+
+    const loadProfile = async () => {
+      setProfileLoading(true)
+      setProfileError(null)
+      try {
+        const response = await apiClient.get<UserInfoResponse>('/auth/me')
+        if (!isActive) return
+        if (response.success && response.data) {
+          const { username, email, fullName, bio, institution, degree } = response.data
+          setValues(prev => ({
+            ...prev,
+            fullName: fullName || username || '',
+            email: email || '',
+            bio: bio || '',
+            institution: institution || '',
+            degree: degree || '',
+          }))
+        } else {
+          setProfileError(response.message || 'Failed to load profile.')
+        }
+      } catch (err: unknown) {
+        if (!isActive) return
+        const message = err instanceof Error ? err.message : 'Failed to load profile.'
+        setProfileError(message)
+      } finally {
+        if (isActive) setProfileLoading(false)
+      }
+    }
+
+    loadProfile()
+    return () => {
+      isActive = false
+    }
+  }, [isAuthenticated, setValues])
 
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal Details', icon: 'person' },
@@ -50,18 +147,11 @@ export const UserProfilePage: React.FC = () => {
     { id: 'notifications', label: 'Notifications', icon: 'notifications' },
   ]
 
-  const achievements = [
-    { icon: 'star', title: 'Quantum Master', date: '3 weeks ago', color: 'text-yellow-500' },
-    { icon: 'verified', title: 'Data Ethics Certification', date: '2 days ago', color: 'text-blue-500' },
-    { icon: 'trophy', title: 'Top 1% Learner', date: '1 week ago', color: 'text-orange-500' },
-  ]
+  const achievements: Array<{ icon: string; title: string; date: string; color: string }> = []
 
-  const learningStats = [
-    { label: 'Course Completion', value: '84%' },
-    { label: 'Cognitive Score', value: '1,240 XP' },
-    { label: 'Study Streak', value: '23 days' },
-    { label: 'Total Hours', value: '340 hrs' },
-  ]
+  const learningStats: Array<{ label: string; value: string }> = []
+
+  const recentActivity: Array<{ action: string; time: string }> = []
 
   return (
     <MainLayout
@@ -75,6 +165,18 @@ export const UserProfilePage: React.FC = () => {
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
               <MaterialIcon icon="check_circle" className="text-green-600" />
               <span className="text-green-700">{t('ui.success')}! {t('ui.changes')} saved.</span>
+            </div>
+          )}
+          {profileLoading && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+              <MaterialIcon icon="hourglass_empty" className="text-blue-600" />
+              <span className="text-blue-700">Loading profile...</span>
+            </div>
+          )}
+          {profileError && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
+              <MaterialIcon icon="error" className="text-red-600" />
+              <span className="text-red-700">{profileError}</span>
             </div>
           )}
 
@@ -111,17 +213,9 @@ export const UserProfilePage: React.FC = () => {
                     {/* Profile Picture & Basic Info */}
                     <div className="flex flex-col md:flex-row gap-8 items-start">
                       <div className="relative group shrink-0">
-                        <img
-                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3b7h7MU8sg26t0mcgt2ZcpVsoiUfYCcJ0s7VbatFAUf7oF_O1B_Gw-L9K9j9ATAXI5gcGrUcVG8jXBbmDRjCCmIwQ0ZGk_-gb_Xj9Dlo6qh17tNPkiOPaf-Z11NkgMiuFiXT59AbUEPEOSd1HRwmeaGByKCwQ2Zc_ZmoHtL_Jmz_CpydPui2WN2XWNjA-dq8THz058CUGDaalDz0Tu4MyzhcmBVEllVcM6Gz7lv8tKjWiILwElM1ZoUBnMwIA_vB1alYHzBgFWcK5"
-                          alt="Profile"
-                          className="w-32 h-32 rounded-xl object-cover shadow-xl"
-                        />
-                        <button
-                          type="button"
-                          className="absolute -bottom-2 -right-2 bg-primary-container text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
-                        >
-                          <MaterialIcon icon="edit" className="text-sm" />
-                        </button>
+                        <div className="w-32 h-32 rounded-xl bg-primary/10 flex items-center justify-center shadow-xl">
+                          <MaterialIcon icon="person" className="text-5xl text-primary" />
+                        </div>
                       </div>
 
                       {/* Form Fields */}
@@ -156,29 +250,35 @@ export const UserProfilePage: React.FC = () => {
                       <h3 className="text-xl font-bold mb-6">Academic Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Institution
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">{values.institution}</p>
+                          <Input
+                            label="Institution"
+                            name="institution"
+                            value={values.institution}
+                            onChange={handleChange}
+                            placeholder="Your institution"
+                          />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Degree
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">{values.degree}</p>
+                          <Input
+                            label="Degree"
+                            name="degree"
+                            value={values.degree}
+                            onChange={handleChange}
+                            placeholder="Your degree"
+                          />
                         </div>
                         <div>
                           <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
                             Graduation Date
                           </label>
-                          <p className="text-xl font-semibold text-on-surface">June 2025</p>
+                          <p className="text-xl font-semibold text-on-surface">Not set</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Save Button */}
                     <div className="flex justify-end pt-4">
-                      <Button variant="primary" type="submit" size="md">
+                      <Button variant="primary" type="submit" size="md" loading={profileSaving}>
                         {t('ui.save')} Changes
                       </Button>
                     </div>
@@ -202,11 +302,9 @@ export const UserProfilePage: React.FC = () => {
                   </div>
                   <div className="border-t border-outline-variant pt-6">
                     <h3 className="text-lg font-bold mb-4">Two-Factor Authentication</h3>
-                    <Badge variant="success" size="md">
-                      ✓ Enabled
-                    </Badge>
+                    <Badge variant="warning" size="md">Not configured</Badge>
                     <p className="text-sm text-on-surface-variant mt-2">
-                      Your account is protected with 2FA
+                      Two-factor authentication is not enabled yet.
                     </p>
                   </div>
                 </Card>
@@ -218,22 +316,26 @@ export const UserProfilePage: React.FC = () => {
                   <p className="text-on-surface-variant">
                     Your academic credentials and certifications are stored here
                   </p>
-                  <div className="space-y-4">
-                    {achievements.map((achievement, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg"
-                      >
-                        <div className={`text-2xl ${achievement.color}`}>
-                          <MaterialIcon icon={achievement.icon} fill />
+                  {achievements.length === 0 ? (
+                    <p className="text-sm text-on-surface-variant">No achievements yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {achievements.map((achievement, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg"
+                        >
+                          <div className={`text-2xl ${achievement.color}`}>
+                            <MaterialIcon icon={achievement.icon} fill />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-on-surface">{achievement.title}</p>
+                            <p className="text-xs text-on-surface-variant">{achievement.date}</p>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-on-surface">{achievement.title}</p>
-                          <p className="text-xs text-on-surface-variant">{achievement.date}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </Card>
               )}
 
@@ -273,56 +375,46 @@ export const UserProfilePage: React.FC = () => {
               {/* Learning Stats */}
               <Card className="p-6">
                 <h3 className="font-headline text-lg font-bold mb-6">Learning Vitality</h3>
-                <div className="space-y-6">
-                  {learningStats.map((stat, idx) => (
-                    <div key={idx}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium text-on-surface-variant">{stat.label}</span>
-                        <span className="font-bold text-primary">{stat.value}</span>
+                {learningStats.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant">No learning stats yet.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {learningStats.map((stat, idx) => (
+                      <div key={idx}>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="font-medium text-on-surface-variant">{stat.label}</span>
+                          <span className="font-bold text-primary">{stat.value}</span>
+                        </div>
+                        <div className="h-2 bg-surface-container-low rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-primary to-tertiary"
+                            style={{ width: `${30 + idx * 15}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-2 bg-surface-container-low rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-tertiary"
-                          style={{ width: `${30 + idx * 15}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Upgrade Card */}
-              <Card className="bg-gradient-to-br from-primary/10 to-tertiary/10 p-6 border border-primary/20">
-                <div className="text-center">
-                  <MaterialIcon icon="workspace_premium" className="text-4xl text-primary mx-auto mb-4" />
-                  <h3 className="font-headline font-bold mb-2">Upgrade to Pro</h3>
-                  <p className="text-sm text-on-surface-variant mb-4">
-                    Unlock advanced features and analytics
-                  </p>
-                  <Button variant="primary" size="sm" className="w-full">
-                    Upgrade Now
-                  </Button>
-                </div>
+                    ))}
+                  </div>
+                )}
               </Card>
 
               {/* Recent Activity */}
               <Card className="p-6">
                 <h3 className="font-headline text-lg font-bold mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                  {[
-                    { action: 'Completed Quiz', time: '2 hours ago' },
-                    { action: 'Earned Badge', time: '1 day ago' },
-                    { action: 'Joined Course', time: '3 days ago' },
-                  ].map((activity, idx) => (
-                    <div key={idx} className="flex gap-3 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-on-surface">{activity.action}</p>
-                        <p className="text-xs text-on-surface-variant">{activity.time}</p>
+                {recentActivity.length === 0 ? (
+                  <p className="text-sm text-on-surface-variant">No recent activity yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {recentActivity.map((activity, idx) => (
+                      <div key={idx} className="flex gap-3 text-sm">
+                        <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-medium text-on-surface">{activity.action}</p>
+                          <p className="text-xs text-on-surface-variant">{activity.time}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             </div>
           </div>

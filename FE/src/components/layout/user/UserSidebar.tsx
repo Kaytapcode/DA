@@ -1,8 +1,9 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { USER_NAV_ITEMS } from '@constants/navigation'
 import { t } from '@/i18n/translations'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
+import { useAuthContext } from '@/contexts/AuthContext'
 
 /**
  * User Sidebar
@@ -12,6 +13,9 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
  * - Resources and profile
  */
 export const UserSidebar: React.FC = () => {
+  const { user } = useAuthContext()
+  const location = useLocation()
+  const isReview = location.pathname.endsWith('_review')
   const primaryIds = ['home', 'courses', 'dashboard', 'learning']
   const toolIds = ['flashcards']
   const resourceIds = ['documents', 'library', 'messages', 'profile']
@@ -23,7 +27,7 @@ export const UserSidebar: React.FC = () => {
   const renderItem = (item: (typeof USER_NAV_ITEMS)[number]) => (
     <NavLink
       key={item.id}
-      to={item.path}
+      to={isReview ? `${item.path}_review` : item.path}
       className={({ isActive }) => [
         'group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200',
         isActive
@@ -69,25 +73,13 @@ export const UserSidebar: React.FC = () => {
         {resourceItems.map(renderItem)}
       </div>
 
-      <div className="mt-4 rounded-[22px] border border-[#dde5ff] bg-gradient-to-br from-[#edf2ff] to-[#e0e8ff] p-4 shadow-[0_12px_30px_rgba(71,92,196,0.12)]">
-        <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#6d7a91]">
-          Pro Access
-        </div>
-        <p className="text-sm leading-6 text-[#5d6b85]">
-          Unlock advanced research papers, simulations, and guided learning paths.
-        </p>
-        <button className="mt-4 w-full rounded-full bg-[#4d6df6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#335af0]">
-          Upgrade to Pro
-        </button>
-      </div>
-
       <div className="mt-4 flex items-center gap-3 rounded-[22px] bg-white px-3 py-3 shadow-sm ring-1 ring-[#eef2f8]">
         <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-[#f0f4ff] text-[#4d6df6]">
           <MaterialIcon icon="person" size="sm" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-[#243043]">Alex Thorne</div>
-          <div className="truncate text-xs font-medium text-[#7a879e]">Quantum Engineer</div>
+          <div className="truncate text-sm font-bold text-[#243043]">{user?.username ?? 'User'}</div>
+          <div className="truncate text-xs font-medium text-[#7a879e]">{user?.role ?? 'Student'}</div>
         </div>
       </div>
     </aside>

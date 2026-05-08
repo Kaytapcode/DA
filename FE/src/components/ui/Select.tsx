@@ -1,4 +1,6 @@
 import React from 'react'
+import TextField from '@mui/material/TextField'
+import MenuItem from '@mui/material/MenuItem'
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
@@ -7,48 +9,38 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   helperText?: string
 }
 
-/**
- * Reusable Select Component
- */
-export const Select: React.FC<SelectProps> = ({ 
-  label, 
+export const Select: React.FC<SelectProps> = ({
+  label,
   options,
-  error, 
+  error,
   helperText,
-  className = "",
-  ...props 
+  className,
+  value,
+  disabled,
+  required,
+  onChange,
+  name,
+  id,
 }) => {
   return (
-    <div className="w-full">
-      {label && (
-        <label className="block text-sm font-medium text-on-surface mb-2">
-          {label}
-        </label>
-      )}
-      <select 
-        className={`
-          w-full px-4 py-2.5 rounded-lg border-2
-          border-outline-variant bg-surface
-          text-on-surface appearance-none
-          focus:outline-none focus:border-primary
-          transition-colors duration-200
-          ${error ? 'border-error' : ''}
-          ${className}
-        `}
-        {...props}
-      >
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {error && (
-        <p className="text-sm text-error mt-1">{error}</p>
-      )}
-      {helperText && !error && (
-        <p className="text-sm text-on-surface-variant mt-1">{helperText}</p>
-      )}
-    </div>
+    <TextField
+      select
+      label={label}
+      error={!!error}
+      helperText={error ?? helperText}
+      className={className}
+      value={value ?? ''}
+      disabled={disabled}
+      required={required}
+      name={name}
+      id={id}
+      onChange={onChange as unknown as React.ChangeEventHandler<HTMLInputElement>}
+    >
+      {options.map((option) => (
+        <MenuItem key={option.value} value={option.value}>
+          {option.label}
+        </MenuItem>
+      ))}
+    </TextField>
   )
 }

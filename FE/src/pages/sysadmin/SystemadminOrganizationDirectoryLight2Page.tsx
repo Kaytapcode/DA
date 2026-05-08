@@ -1,2 +1,2 @@
-﻿export { SystemadminOrganizationDirectoryLight2Page } from './SysAdminFeConvertedPages'
+﻿export { SystemadminOrganizationDirectoryPage } from './SysAdminFeConvertedPages'
 

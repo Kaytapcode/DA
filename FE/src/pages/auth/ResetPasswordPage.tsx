@@ -100,7 +100,7 @@ export const ResetPasswordPage: React.FC = () => {
 
           {/* Footer */}
           <div className="text-center pt-6">
-            <a href="#" className="text-primary font-medium hover:underline">
+            <a href="/login" className="text-primary font-medium hover:underline">
               Back to login
             </a>
           </div>
