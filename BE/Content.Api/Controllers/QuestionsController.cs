@@ -111,6 +111,27 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionTeacherDto>(true, ToTeacherDto(created), "Question created."));
         }
 
+        // POST /api/quizzes/{quizId}/generate
+        [HttpPost("generate")]
+        [Authorize(Policy = "RequireTeacher")]
+        public async Task<IActionResult> ImportAiQuestions(Guid quizId, [FromBody] ImportAiQuestionsRequestDto request, CancellationToken ct)
+        {
+            if (!await VerifyQuizAccessAsync(quizId))
+                return NotFound(new ApiResponse(false, "Quiz not found."));
+
+            if (request.Questions == null || request.Questions.Count == 0)
+                return BadRequest(new ApiResponse(false, "At least one question is required."));
+
+            var questions = request.Questions
+                .Select(q => (q.Question, q.Options, q.CorrectIndex, (string?)q.Explanation))
+                .ToList();
+
+            var created = await _repo.CreateBulkAsync(quizId, questions, ct);
+            var dtos = created.Select(ToTeacherDto).ToList();
+
+            return Ok(new ApiResponse<List<QuestionTeacherDto>>(true, dtos, $"Successfully imported {created.Count} questions."));
+        }
+
         // PUT /api/quizzes/{quizId}/questions/{questionId}
         [HttpPut("questions/{questionId:guid}")]
         [Authorize(Policy = "RequireTeacher")]

@@ -11,6 +11,7 @@ namespace Content.Api.Data
         Task<Guid?> GetQuizOrgIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default);
         Task<QuestionModel> CreateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
+        Task<List<QuestionModel>> CreateBulkAsync(Guid quizId, List<(string QuestionText, List<string> Options, int CorrectIndex, string? Explanation)> questions, CancellationToken ct = default);
         Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
         Task SoftDeleteAsync(Guid id, CancellationToken ct = default);
         Task ReorderAsync(Guid quizId, Guid questionId, int newIndex, CancellationToken ct = default);
@@ -71,6 +72,48 @@ namespace Content.Api.Data
             _db.Questions.Add(question);
             await _db.SaveChangesAsync(ct);
             return question;
+        }
+
+        public async Task<List<QuestionModel>> CreateBulkAsync(Guid quizId, List<(string QuestionText, List<string> Options, int CorrectIndex, string? Explanation)> questions, CancellationToken ct = default)
+        {
+            var maxOrder = await _db.Questions
+                .Where(q => q.QuizId == quizId && q.DeletedAt == null)
+                .MaxAsync(q => (int?)q.OrderIndex, ct) ?? -1;
+
+            var createdQuestions = new List<QuestionModel>();
+            var now = DateTime.UtcNow;
+
+            foreach (var (questionText, options, correctIndex, explanation) in questions)
+            {
+                maxOrder++;
+                var question = new QuestionModel
+                {
+                    Id = Guid.NewGuid(),
+                    QuizId = quizId,
+                    QuestionText = questionText,
+                    Explanation = explanation,
+                    OrderIndex = maxOrder,
+                    CreatedAt = now
+                };
+
+                var optionModels = options.Select((optionText, index) => new QuestionOptionModel
+                {
+                    Id = Guid.NewGuid(),
+                    QuestionId = question.Id,
+                    OptionText = optionText,
+                    IsCorrect = index == correctIndex,
+                    OrderIndex = index,
+                    CreatedAt = now
+                }).ToList();
+
+                question.Options = optionModels;
+                _db.Questions.Add(question);
+                _db.QuestionOptions.AddRange(optionModels);
+                createdQuestions.Add(question);
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return createdQuestions;
         }
 
         public async Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default)

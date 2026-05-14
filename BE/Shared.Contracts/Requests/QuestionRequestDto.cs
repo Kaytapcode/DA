@@ -33,4 +33,16 @@ namespace Shared.Contracts.Requests
         Guid QuestionId,
         Guid SelectedOptionId
     );
+
+    // For importing AI-generated questions
+    public record GeneratedQuestionDto(
+        string Question,
+        List<string> Options,
+        int CorrectIndex,
+        string Explanation
+    );
+
+    public record ImportAiQuestionsRequestDto(
+        List<GeneratedQuestionDto> Questions
+    );
 }
