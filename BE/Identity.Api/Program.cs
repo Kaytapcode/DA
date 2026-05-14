@@ -86,6 +86,9 @@ try
     builder.Services.AddScoped<IUserRepository, UserRepository>();
     builder.Services.AddScoped<ITokenService, TokenService>();
 
+    // HTTP client for inter-service membership check (Identity → Organization)
+    builder.Services.AddHttpClient<IOrganizationServiceClient, OrganizationServiceClient>();
+
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
