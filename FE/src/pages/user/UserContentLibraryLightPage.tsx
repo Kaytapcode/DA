@@ -388,11 +388,11 @@ export const UserContentLibraryLightPage: React.FC = () => {
 										)}
 									</div>
 
-									<div className="space-y-3 p-4">
+									<div className="space-y-3 p-6 gap-6">
 										<p className="text-xs text-[#7a8ba3]">
 											{isVi ? item.categoryVi : item.categoryEn} • {isVi ? item.levelVi : item.levelEn}
 										</p>
-										<h4 className="min-h-[48px] text-lg font-bold leading-tight text-[#111b2d]">{isVi ? item.titleVi : item.titleEn}</h4>
+										<h4 className="min-h-[48px] text-xl font-semibold text-slate-800 tracking-tight leading-tight text-[#111b2d]">{isVi ? item.titleVi : item.titleEn}</h4>
 
 										<div className="h-1 rounded-full bg-[#e8edf6]">
 											<div className="h-1 rounded-full" style={{ width: `${item.progress}%`, backgroundColor: item.progressColor }} />

@@ -233,7 +233,7 @@ export const UserHomePageLightPage: React.FC = () => {
 					</div>
 				</section>
 
-				<p className="text-center text-xs text-[#9aa4b7]">
+				<p className="text-center text-[10px] font-bold uppercase tracking-wider text-slate-500 text-[#9aa4b7]">
 					{isVi ? '© 2026 Lumina Quantum Systems. Moi du lieu duoc ma hoa.' : '© 2026 Lumina Quantum Systems. All neural data encrypted.'}
 				</p>
 			</div>

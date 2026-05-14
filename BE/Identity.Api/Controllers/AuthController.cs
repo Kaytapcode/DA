@@ -14,13 +14,13 @@ namespace Identity.Api.Controllers
     {
         private readonly IUserRepository _userRepository;
         private readonly ITokenService _tokenService;
-        // private readonly IMemberRepository _memberRepository;  // TODO: Replace with HttpClient call through Gateway
+        private readonly IOrganizationServiceClient _orgClient;
 
-        public AuthController(IUserRepository userRepository, ITokenService tokenService)
+        public AuthController(IUserRepository userRepository, ITokenService tokenService, IOrganizationServiceClient orgClient)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;
-            // _memberRepository = memberRepository;
+            _orgClient = orgClient;
         }
 
         [HttpPost("register")]
@@ -64,15 +64,14 @@ namespace Identity.Api.Controllers
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 return Unauthorized(new ApiResponse(Success: false, Message: "Invalid login credentials."));
 
-            // Resolve org context from X-Org-Id header if provided
+            // Resolve org context from X-Org-Id header if provided, verifying membership inter-service.
             Guid? orgId = null;
-            // TODO: Verify organization membership via HttpClient call to Organization.Api
-            // if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
-            //     && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
-            // {
-            //     if (await httpClient.GetAsync(...))
-            //         orgId = parsedOrgId;
-            // }
+            if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
+                && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
+            {
+                if (user.IsSystemAdmin || await _orgClient.IsUserMemberAsync(user.Id, parsedOrgId))
+                    orgId = parsedOrgId;
+            }
 
             var token = _tokenService.CreateToken(user, orgId);
             return Ok(new ApiResponse<LoginResponseDto>(

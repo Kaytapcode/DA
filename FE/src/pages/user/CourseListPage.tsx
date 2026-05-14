@@ -131,7 +131,7 @@ export const CourseListPage: React.FC = () => {
             {courses.map(course => (
               <Card key={course.id} className="overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-xl">
                 <div className={`mb-4 h-40 rounded-xl bg-gradient-to-br ${course.theme} flex items-center justify-center`}>
-                  <div className="rounded-3xl bg-white/75 p-4 shadow-sm backdrop-blur-sm">
+                  <div className="rounded-3xl bg-white/75 p-8 shadow-sm backdrop-blur-sm">
                     <MaterialIcon icon="school" className="text-4xl text-[#4f6cf7]" />
                   </div>
                 </div>

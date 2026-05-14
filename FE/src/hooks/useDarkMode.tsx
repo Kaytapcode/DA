@@ -42,4 +42,3 @@ export const useDarkMode = (): DarkModeContextValue => {
   if (!context) throw new Error('useDarkMode must be used within DarkModeProvider')
   return context
 }
-
