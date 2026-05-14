@@ -46,16 +46,24 @@ namespace Content.Api.Models
         [Column("question_text")]
         public string QuestionText { get; set; } = string.Empty;
 
+        [Column("explanation")]
+        public string? Explanation { get; set; }
+
         [Column("order_index")]
         public int OrderIndex { get; set; } = 0;
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [Column("deleted_at")]
+        public DateTime? DeletedAt { get; set; }
+
         [ForeignKey(nameof(QuizId))]
         public QuizModel? Quiz { get; set; }
 
-        // Navigation properties
         public ICollection<QuestionOptionModel> Options { get; set; } = new List<QuestionOptionModel>();
     }
 

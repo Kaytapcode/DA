@@ -9,6 +9,7 @@ namespace Identity.Api.Data
     public interface IUserRepository
     {
         Task<UserModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
+        Task<List<UserModel>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
         Task<UserModel?> GetByUsernameAsync(string username, CancellationToken ct = default);
         Task<UserModel?> GetByEmailAsync(string email, CancellationToken ct = default);
         Task<List<UserModel>> GetAllAsync(CancellationToken ct = default);
@@ -32,6 +33,12 @@ namespace Identity.Api.Data
         public async Task<UserModel?> GetByIdAsync(Guid id, CancellationToken ct = default)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+        }
+
+        public async Task<List<UserModel>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+        {
+            var idList = ids.ToList();
+            return await _context.Users.Where(u => idList.Contains(u.Id)).ToListAsync(ct);
         }
 
         public async Task<UserModel?> GetByUsernameAsync(string username, CancellationToken ct = default)

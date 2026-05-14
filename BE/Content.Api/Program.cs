@@ -83,6 +83,11 @@ try
     builder.Services.AddScoped<ICourseRepository, CourseRepository>();
     builder.Services.AddScoped<IModuleRepository, ModuleRepository>();
     builder.Services.AddScoped<IContentRepository, ContentRepository>();
+    builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+    builder.Services.AddScoped<IFlashcardRepository, FlashcardRepository>();
+    builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+    builder.Services.AddScoped<IStudentProgressRepository, StudentProgressRepository>();
+    builder.Services.AddScoped<IStorageService, LocalStorageService>();
     // Removed: IOrganizationRepository, IUserRepository - use HttpClient through Gateway for inter-service queries
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
 

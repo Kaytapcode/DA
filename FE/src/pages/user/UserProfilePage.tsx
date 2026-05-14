@@ -295,12 +295,12 @@ export const UserProfilePage: React.FC = () => {
               <Card className="bg-gradient-to-br from-primary/10 to-tertiary/10 p-6 border border-primary/20">
                 <div className="text-center">
                   <MaterialIcon icon="workspace_premium" className="text-4xl text-primary mx-auto mb-4" />
-                  <h3 className="font-headline font-bold mb-2">Upgrade to Pro</h3>
+                  <h3 className="font-headline font-bold mb-2">Personalize Learning</h3>
                   <p className="text-sm text-on-surface-variant mb-4">
-                    Unlock advanced features and analytics
+                    Tune recommendations and keep your study flow optimized
                   </p>
                   <Button variant="primary" size="sm" className="w-full">
-                    Upgrade Now
+                    Open Preferences
                   </Button>
                 </div>
               </Card>

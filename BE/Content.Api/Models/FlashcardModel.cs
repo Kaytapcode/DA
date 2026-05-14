@@ -48,11 +48,20 @@ namespace Content.Api.Models
         [Column("back_text")]
         public string BackText { get; set; } = string.Empty;
 
+        [Column("is_mastered")]
+        public bool IsMastered { get; set; } = false;
+
+        [Column("mastered_at")]
+        public DateTime? MasteredAt { get; set; }
+
         [Column("order_index")]
         public int OrderIndex { get; set; } = 0;
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
 
         [ForeignKey(nameof(DeckId))]
         public FlashcardDeckModel? Deck { get; set; }

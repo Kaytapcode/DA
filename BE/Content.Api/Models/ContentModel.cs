@@ -70,23 +70,41 @@ namespace Content.Api.Models
         [Column("id")]
         public Guid Id { get; set; }
 
-        [Required]
+        // Nullable: null when document is a standalone user upload, set when linked to course content
         [Column("content_id")]
-        public Guid ContentId { get; set; }
+        public Guid? ContentId { get; set; }
+
+        // Uploader user ID (cross-service reference, no FK constraint)
+        [Column("created_by_user_id")]
+        public Guid? CreatedByUserId { get; set; }
+
+        [Required]
+        [Column("file_name")]
+        [StringLength(255)]
+        public string FileName { get; set; } = string.Empty;
 
         [Required]
         [Column("file_path")]
-        public string FilePath { get; set; } = string.Empty; // Firebase URL
+        public string FilePath { get; set; } = string.Empty;
 
         [Column("file_size")]
         public long FileSize { get; set; }
 
         [Column("file_type")]
         [StringLength(50)]
-        public string FileType { get; set; } = "PDF"; // 'PDF', 'DOCX', 'PPTX', etc.
+        public string FileType { get; set; } = "PDF"; // 'PDF', 'PNG', 'JPEG', 'TXT'
+
+        [Column("is_public")]
+        public bool IsPublic { get; set; } = false;
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [Column("deleted_at")]
+        public DateTime? DeletedAt { get; set; }
 
         [ForeignKey(nameof(ContentId))]
         public ContentModel? Content { get; set; }

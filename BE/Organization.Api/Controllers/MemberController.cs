@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Organization.Api.Data;
 using Organization.Api.Models;
+using Organization.Api.Services;
 using Shared.Contracts.Requests;
 using Shared.Contracts.Responses;
 
@@ -14,12 +15,12 @@ namespace Organization.Api.Controllers
     public class MemberController : ControllerBase
     {
         private readonly IMemberRepository _memberRepository;
-        // private readonly IUserRepository _userRepository;  // TODO: Replace with HttpClient call through Gateway
+        private readonly IIdentityServiceClient _identityClient;
 
-        public MemberController(IMemberRepository memberRepository)
+        public MemberController(IMemberRepository memberRepository, IIdentityServiceClient identityClient)
         {
             _memberRepository = memberRepository;
-            // _userRepository = userRepository;
+            _identityClient = identityClient;
         }
 
         private Guid? GetCurrentUserId()
@@ -44,13 +45,18 @@ namespace Organization.Api.Controllers
                 return Forbid();
 
             var members = await _memberRepository.GetByOrgIdAsync(orgId);
-            var result = members.Select(m => new MemberListResponseDto(
-                UserId: m.UserId,
-                Username: string.Empty,  // TODO: Fetch from Identity.Api via HttpClient
-                Email: string.Empty,     // TODO: Fetch from Identity.Api via HttpClient
-                Role: m.Role,
-                JoinDate: m.JoinDate
-            ));
+            var userMap = await _identityClient.GetUsersAsync(members.Select(m => m.UserId));
+            var result = members.Select(m =>
+            {
+                userMap.TryGetValue(m.UserId, out var info);
+                return new MemberListResponseDto(
+                    UserId: m.UserId,
+                    Username: info.Username ?? string.Empty,
+                    Email: info.Email ?? string.Empty,
+                    Role: m.Role,
+                    JoinDate: m.JoinDate
+                );
+            });
 
             return Ok(new ApiResponse<IEnumerable<MemberListResponseDto>>(
                 Success: true, Data: result, Message: null

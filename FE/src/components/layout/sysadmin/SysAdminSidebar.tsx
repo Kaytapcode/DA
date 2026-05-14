@@ -1,6 +1,7 @@
 import React from 'react'
 import { Sidebar } from '../Sidebar'
 import { SYSADMIN_NAV_ITEMS } from '@constants/navigation'
+import { useAuthContext } from '@/contexts/AuthContext'
 
 /**
  * System Admin Sidebar
@@ -10,12 +11,18 @@ import { SYSADMIN_NAV_ITEMS } from '@constants/navigation'
  * - Divider at index 4: separates content from system monitoring
  */
 export const SysAdminSidebar: React.FC = () => {
+  const { user } = useAuthContext()
+
   return (
     <Sidebar
       items={SYSADMIN_NAV_ITEMS}
       title="Lumina"
       subtitle="System"
       sectionDividers={[1, 3, 4]}
+      variant="sysadmin"
+      profileName={user?.username || 'System Administrator'}
+      profileRole={user?.role || 'SysAdmin'}
+      profileIcon="admin_panel_settings"
     />
   )
 }

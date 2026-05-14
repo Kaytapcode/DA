@@ -1,9 +1,11 @@
-﻿import React, { useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
 import { Card } from '@components/ui/Card'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
+import { DocumentUploadModal } from '@components/DocumentUploadModal'
+import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
 
 type FilterKey = 'ALL' | 'VIDEO' | 'QUIZ' | 'DOC' | 'CARDS'
@@ -24,6 +26,13 @@ interface MaterialItem {
 	progress: number
 	progressColor: string
 	image: string
+}
+
+interface UploadedDocument {
+	id: string
+	fileName: string
+	fileType?: string
+	fileSizeBytes?: number
 }
 
 const filters: Array<{ key: FilterKey; icon: string; labelEn: string; labelVi: string }> = [
@@ -176,14 +185,43 @@ const materials: MaterialItem[] = [
 export const UserContentLibraryLightPage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const [activeFilter, setActiveFilter] = useState<FilterKey>('ALL')
+	const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+	const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([])
+	const [documentsError, setDocumentsError] = useState<string | null>(null)
 
 	const visibleMaterials = useMemo(
 		() => (activeFilter === 'ALL' ? materials : materials.filter((item) => item.type === activeFilter)),
 		[activeFilter]
 	)
 
+	const fetchUploadedDocuments = useCallback(async () => {
+		setDocumentsError(null)
+
+		try {
+			const response = await apiClient.get<UploadedDocument[]>('/documents')
+			if (!response.success || !response.data) throw new Error(response.message || 'Unable to load documents')
+			setUploadedDocuments(response.data)
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Unable to load documents'
+			setDocumentsError(message)
+			setUploadedDocuments([])
+		}
+	}, [])
+
+	useEffect(() => {
+		void fetchUploadedDocuments()
+	}, [fetchUploadedDocuments])
+
 	return (
 		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+			<DocumentUploadModal
+				isOpen={isUploadModalOpen}
+				onClose={() => setIsUploadModalOpen(false)}
+				onUploaded={() => {
+					void fetchUploadedDocuments()
+				}}
+			/>
+
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[1320px] space-y-6">
 					<section className="grid gap-6 border-b border-[#dde3ec] pb-6 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -232,11 +270,60 @@ export const UserContentLibraryLightPage: React.FC = () => {
 							})}
 						</div>
 
-						<button className="inline-flex items-center gap-2 rounded-lg border border-[#d6dfea] bg-white px-4 py-2 text-sm text-[#5d6d85]">
-							<span>{isVi ? 'Sap xep theo:' : 'Sort by:'}</span>
-							<span className="font-semibold text-[#223048]">{isVi ? 'Hoat dong gan day' : 'Recent Activity'}</span>
-							<MaterialIcon icon="expand_more" size="xs" />
-						</button>
+						<div className="flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => setIsUploadModalOpen(true)}
+								className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
+							>
+								<MaterialIcon icon="upload_file" size="xs" />
+								<span>{isVi ? 'Tai len' : 'Upload'}</span>
+							</button>
+
+							<button className="inline-flex items-center gap-2 rounded-lg border border-[#d6dfea] bg-white px-4 py-2 text-sm text-[#5d6d85]">
+								<span>{isVi ? 'Sap xep theo:' : 'Sort by:'}</span>
+								<span className="font-semibold text-[#223048]">{isVi ? 'Hoat dong gan day' : 'Recent Activity'}</span>
+								<MaterialIcon icon="expand_more" size="xs" />
+							</button>
+						</div>
+					</section>
+
+					<section className="space-y-4">
+						<div className="flex items-center gap-2 text-[#111b2d]">
+							<MaterialIcon icon="description" size="sm" className="text-[#1463ff]" fill />
+							<h3 className="text-2xl font-bold">{isVi ? 'Tai lieu da tai len' : 'Uploaded Documents'}</h3>
+						</div>
+
+						{documentsError && (
+							<Card className="border border-red-200 bg-red-50">
+								<p className="text-sm text-red-700">{documentsError}</p>
+							</Card>
+						)}
+
+						{!documentsError && uploadedDocuments.length === 0 && (
+							<Card>
+								<p className="text-sm text-on-surface-variant">{isVi ? 'Chua co tai lieu nao duoc tai len.' : 'No uploaded documents yet.'}</p>
+							</Card>
+						)}
+
+						{uploadedDocuments.length > 0 && (
+							<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+								{uploadedDocuments.map((document) => (
+									<Card key={document.id} className="border border-[#dce3ed] bg-white">
+										<div className="mb-2 flex items-center gap-2">
+											<MaterialIcon icon="description" className="text-[#1463ff]" size="sm" />
+											<h4 className="truncate text-base font-bold text-[#111b2d]">{document.fileName}</h4>
+										</div>
+										<div className="text-xs text-[#6d7f98]">
+											{document.fileType ? document.fileType.toUpperCase() : 'FILE'}
+											{typeof document.fileSizeBytes === 'number' && (
+												<> • {(document.fileSizeBytes / 1024 / 1024).toFixed(2)} MB</>
+											)}
+										</div>
+									</Card>
+								))}
+							</div>
+						)}
 					</section>
 
 					<section className="space-y-3">

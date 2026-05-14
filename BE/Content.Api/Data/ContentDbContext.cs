@@ -52,8 +52,9 @@ namespace Content.Api.Data
         public DbSet<FlashcardDeckModel> FlashcardDecks { get; set; }
         public DbSet<FlashcardModel> Flashcards { get; set; }
 
-        // TODO: CourseParticipants, Attempts, Results, UserActivity belong to different services or need to be modeled differently
-        // Removed: CourseParticipantModel, AttemptModel, ResultModel, UserActivityModel
+        // Progress & Attempts
+        public DbSet<StudentProgressModel> StudentProgress { get; set; }
+        public DbSet<QuizAttemptModel> QuizAttempts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -85,11 +86,13 @@ namespace Content.Api.Data
                 .HasForeignKey<VideoModel>(v => v.ContentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // Document is now optional content (content_id nullable for standalone uploads)
             modelBuilder.Entity<DocumentModel>()
                 .HasOne(d => d.Content)
                 .WithOne(c => c.Document)
                 .HasForeignKey<DocumentModel>(d => d.ContentId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<QuizModel>()
                 .HasOne(q => q.Content)
@@ -101,6 +104,41 @@ namespace Content.Api.Data
                 .HasOne(f => f.Content)
                 .WithOne(c => c.FlashcardDeck)
                 .HasForeignKey<FlashcardDeckModel>(f => f.ContentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Student progress: unique per (course, user, module) combination
+            modelBuilder.Entity<StudentProgressModel>()
+                .HasIndex(sp => new { sp.CourseId, sp.UserId, sp.ModuleId })
+                .IsUnique();
+
+            modelBuilder.Entity<StudentProgressModel>()
+                .HasOne(sp => sp.Course)
+                .WithMany()
+                .HasForeignKey(sp => sp.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<StudentProgressModel>()
+                .HasOne(sp => sp.Module)
+                .WithMany()
+                .HasForeignKey(sp => sp.ModuleId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<StudentProgressModel>()
+                .HasOne(sp => sp.Content)
+                .WithMany()
+                .HasForeignKey(sp => sp.ContentId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Quiz attempts index for fast lookup by user + quiz
+            modelBuilder.Entity<QuizAttemptModel>()
+                .HasIndex(qa => new { qa.UserId, qa.QuizId });
+
+            modelBuilder.Entity<QuizAttemptModel>()
+                .HasOne(qa => qa.Quiz)
+                .WithMany()
+                .HasForeignKey(qa => qa.QuizId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

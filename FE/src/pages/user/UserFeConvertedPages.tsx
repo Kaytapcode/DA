@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { UserShell, useUserLanguage } from './UserShell'
+import { useQuiz } from '@/hooks/useQuiz'
+import { useFlashcard } from '@/hooks/useFlashcard'
+import { useDocument } from '@/hooks/useDocument'
 
 const useLang = useUserLanguage
 
@@ -65,7 +68,86 @@ export const UserLearningDashboardLightPage: React.FC = () => {
 
 export const DocumentViewerLightPage: React.FC = () => {
   const isVi = useLang()
-  const docs = ['Quantum Notes.pdf', 'Wave Packet Guide.pdf', 'Operator Cheatsheet.pdf']
+  const [searchParams, setSearchParams] = useSearchParams()
+  const documentId = searchParams.get('docId')
+  const courseId = searchParams.get('courseId')
+  const {
+    documents,
+    selectedDocument,
+    currentPage,
+    totalPages,
+    isLoading,
+    error,
+    selectDocument,
+    nextPage,
+    previousPage,
+  } = useDocument(documentId, courseId)
+
+  React.useEffect(() => {
+    if (documentId || documents.length === 0) return
+    const firstDocumentId = documents[0].id
+    void selectDocument(firstDocumentId)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('docId', firstDocumentId)
+      return next
+    })
+  }, [documentId, documents, selectDocument, setSearchParams])
+
+  const openDocument = (id: string) => {
+    void selectDocument(id)
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      next.set('docId', id)
+      return next
+    })
+  }
+
+  const documentType = selectedDocument?.fileType || ''
+  const documentUrl = selectedDocument?.fileUrl || selectedDocument?.filePath
+
+  const renderDocumentPreview = () => {
+    if (!selectedDocument) {
+      return (
+        <div className="text-center text-on-surface-variant">
+          <MaterialIcon icon="menu_book" className="mb-3 text-5xl" />
+          <p>{isVi ? 'Chon mot tai lieu de xem' : 'Select a document to preview'}</p>
+        </div>
+      )
+    }
+
+    if (documentType.includes('pdf') && documentUrl) {
+      return (
+        <iframe
+          title={selectedDocument.fileName}
+          src={`${documentUrl}#page=${currentPage}`}
+          className="h-full w-full rounded-xl border border-outline-variant bg-white"
+        />
+      )
+    }
+
+    if ((documentType.includes('image') || /\.(png|jpe?g)$/i.test(selectedDocument.fileName)) && documentUrl) {
+      return <img src={documentUrl} alt={selectedDocument.fileName} className="max-h-full max-w-full rounded-xl object-contain" />
+    }
+
+    if ((documentType.includes('text') || /\.txt$/i.test(selectedDocument.fileName)) && selectedDocument.contentText) {
+      return (
+        <pre className="h-full w-full overflow-auto rounded-xl bg-white p-4 text-left text-sm text-on-surface">
+          {selectedDocument.contentText}
+        </pre>
+      )
+    }
+
+    if (documentUrl) {
+      return (
+        <a href={documentUrl} target="_blank" rel="noreferrer" className="text-primary underline">
+          {isVi ? 'Mo tai lieu trong tab moi' : 'Open document in a new tab'}
+        </a>
+      )
+    }
+
+    return <p className="text-on-surface-variant">{isVi ? 'Khong the hien thi tai lieu nay.' : 'Preview is unavailable for this file.'}</p>
+  }
 
   return (
     <UserShell
@@ -78,21 +160,47 @@ export const DocumentViewerLightPage: React.FC = () => {
         <Card className="p-6">
           <h3 className="mb-4 text-lg font-bold text-on-surface">{isVi ? 'Danh sach tai lieu' : 'Documents'}</h3>
           <div className="space-y-3">
-            {docs.map((doc) => (
-              <button key={doc} className="flex w-full items-center gap-3 rounded-xl border border-outline-variant px-4 py-3 text-left hover:bg-surface-container-low">
+            {documents.map((document) => (
+              <button
+                key={document.id}
+                onClick={() => openDocument(document.id)}
+                className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                  selectedDocument?.id === document.id
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-outline-variant hover:bg-surface-container-low'
+                }`}
+              >
                 <MaterialIcon icon="description" className="text-primary" />
-                <span className="text-sm text-on-surface">{doc}</span>
+                <span className="text-sm text-on-surface">{document.fileName}</span>
               </button>
             ))}
+            {!isLoading && documents.length === 0 && (
+              <p className="text-sm text-on-surface-variant">{isVi ? 'Chua co tai lieu nao.' : 'No documents available.'}</p>
+            )}
           </div>
         </Card>
 
         <Card className="p-6">
-          <div className="flex h-[360px] items-center justify-center rounded-2xl bg-surface-container-low text-center text-on-surface-variant">
-            <div>
-              <MaterialIcon icon="menu_book" className="mb-3 text-5xl" />
-              <p>{isVi ? 'Khu vuc xem truoc tai lieu' : 'Document preview area'}</p>
+          <div className="mb-4 flex items-center justify-between">
+            <h4 className="text-lg font-bold text-on-surface">{selectedDocument?.fileName || (isVi ? 'Xem truoc' : 'Preview')}</h4>
+            <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+              <Button size="sm" variant="secondary" onClick={previousPage} disabled={currentPage <= 1 || isLoading}>
+                <MaterialIcon icon="chevron_left" size="xs" />
+              </Button>
+              <span>{isVi ? `Trang ${currentPage} / ${totalPages}` : `Page ${currentPage} of ${totalPages}`}</span>
+              <Button size="sm" variant="secondary" onClick={nextPage} disabled={currentPage >= totalPages || isLoading}>
+                <MaterialIcon icon="chevron_right" size="xs" />
+              </Button>
             </div>
+          </div>
+          <div className="flex h-[360px] items-center justify-center rounded-2xl bg-surface-container-low text-center text-on-surface-variant">
+            {isLoading ? (
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+            ) : error ? (
+              <p className="text-error">{error}</p>
+            ) : (
+              renderDocumentPreview()
+            )}
           </div>
         </Card>
       </div>
@@ -102,7 +210,23 @@ export const DocumentViewerLightPage: React.FC = () => {
 
 export const InteractiveFlashcardsLightPage: React.FC = () => {
   const isVi = useLang()
-  const [showAnswer, setShowAnswer] = useState(false)
+  const [searchParams] = useSearchParams()
+  const deckId = searchParams.get('deckId')
+  const {
+    currentCard,
+    currentIndex,
+    totalCards,
+    isFlipped,
+    shuffleMode,
+    isLoading,
+    isUpdating,
+    error,
+    toggleShuffle,
+    toggleFlip,
+    nextCard,
+    previousCard,
+    markCurrentAsMastered,
+  } = useFlashcard(deckId)
 
   return (
     <UserShell
@@ -112,23 +236,55 @@ export const InteractiveFlashcardsLightPage: React.FC = () => {
       subtitleVi="Luyen tap khai niem voi bo the nhanh"
     >
       <Card className="p-10 text-center">
-        <p className="mb-3 text-xs uppercase tracking-widest text-on-surface-variant">{isVi ? 'The 04/20' : 'Card 04/20'}</p>
-        <h3 className="mb-6 text-2xl font-bold font-headline text-on-surface">
-          {isVi ? 'HTTP 304 co y nghia gi?' : 'What does HTTP 304 represent?'}
-        </h3>
-        <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-surface-container-low p-8">
-          {showAnswer ? (
-            <p className="text-on-surface">{isVi ? 'Tai nguyen khong thay doi, trinh duyet dung cache.' : 'Resource is unchanged; browser should use cached data.'}</p>
-          ) : (
-            <p className="text-on-surface-variant">{isVi ? 'Nhan xem dap an' : 'Tap to reveal answer'}</p>
-          )}
-        </div>
-        <div className="mt-6 flex justify-center gap-3">
-          <Button variant="secondary" onClick={() => setShowAnswer((prev) => !prev)}>
-            {showAnswer ? (isVi ? 'An dap an' : 'Hide Answer') : (isVi ? 'Xem dap an' : 'Show Answer')}
-          </Button>
-          <Button>{isVi ? 'The tiep theo' : 'Next Card'}</Button>
-        </div>
+        {!deckId && <p className="text-sm text-on-surface-variant">{isVi ? 'Them ?deckId=... vao URL de hoc bo the.' : 'Add ?deckId=... to URL to study a deck.'}</p>}
+
+        {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
+
+        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+
+        {!isLoading && !error && currentCard && (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xs uppercase tracking-widest text-on-surface-variant">
+                {isVi ? `The ${currentIndex + 1}/${totalCards}` : `Card ${currentIndex + 1}/${totalCards}`}
+              </p>
+              <Button variant="ghost" size="sm" onClick={toggleShuffle}>
+                <MaterialIcon icon="shuffle" size="xs" className="mr-1" />
+                {shuffleMode ? (isVi ? 'Bo tron' : 'Shuffled') : (isVi ? 'Tron the' : 'Shuffle')}
+              </Button>
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleFlip}
+              className="flex min-h-[220px] w-full items-center justify-center rounded-xl bg-surface-container-low p-8 text-center transition-all duration-300 hover:bg-surface-container"
+              style={{ transform: `perspective(1000px) rotateY(${isFlipped ? 180 : 0}deg)` }}
+            >
+              <div style={{ transform: `rotateY(${isFlipped ? 180 : 0}deg)` }}>
+                <h3 className="mb-2 text-2xl font-bold font-headline text-on-surface">
+                  {isFlipped ? currentCard.backText : currentCard.frontText}
+                </h3>
+                <p className="text-sm text-on-surface-variant">{isVi ? 'Cham de lat the' : 'Tap to flip'}</p>
+              </div>
+            </button>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button variant="secondary" onClick={previousCard} disabled={totalCards <= 1}>
+                {isVi ? 'The truoc' : 'Previous'}
+              </Button>
+              <Button variant="secondary" onClick={nextCard} disabled={totalCards <= 1}>
+                {isVi ? 'The tiep theo' : 'Next Card'}
+              </Button>
+              <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating}>
+                {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {!isLoading && !error && !currentCard && deckId && (
+          <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
+        )}
       </Card>
     </UserShell>
   )
@@ -395,8 +551,43 @@ export { UserContentLibraryLightPage } from './UserContentLibraryLightPage'
 
 export const UserQuizInterfaceLightPage: React.FC = () => {
   const isVi = useLang()
-  const [selected, setSelected] = useState('')
-  const options = ['A. Stateless protocol for hypertext', 'B. Local database schema', 'C. CSS rendering pipeline', 'D. Browser memory model']
+  const [searchParams] = useSearchParams()
+  const quizId = searchParams.get('quizId')
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  const {
+    questions,
+    answers,
+    answeredCount,
+    timeLimitSeconds,
+    isLoading,
+    isSubmitting,
+    error,
+    result,
+    selectAnswer,
+    submitQuiz,
+  } = useQuiz(quizId)
+
+  const currentQuestion = questions[currentQuestionIndex] ?? null
+  const selectedIndex = currentQuestion ? answers[currentQuestion.id] : undefined
+
+  React.useEffect(() => {
+    setCurrentQuestionIndex(0)
+    setElapsedSeconds(0)
+  }, [quizId, questions.length])
+
+  React.useEffect(() => {
+    if (questions.length === 0 || result) return
+
+    const timer = window.setInterval(() => {
+      setElapsedSeconds((seconds) => seconds + 1)
+    }, 1000)
+
+    return () => window.clearInterval(timer)
+  }, [questions.length, result])
+
+  const remainingSeconds = timeLimitSeconds !== null ? Math.max(0, timeLimitSeconds - elapsedSeconds) : null
+  const canGoNext = currentQuestionIndex < questions.length - 1
 
   return (
     <UserShell
@@ -406,18 +597,98 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
       subtitleVi="Tra loi cau hoi tinh gio va nop ket qua"
     >
       <Card className="p-8">
-        <p className="mb-2 text-sm text-on-surface-variant">{isVi ? 'Cau 3/10' : 'Question 3/10'}</p>
-        <h3 className="mb-6 text-xl font-bold text-on-surface">HTTP la viet tat cua gi?</h3>
-        <div className="space-y-3">
-          {options.map((opt) => (
-            <button key={opt} onClick={() => setSelected(opt)} className={`w-full rounded-lg border p-4 text-left transition-colors ${selected === opt ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant text-on-surface hover:bg-surface-container-low'}`}>
-              {opt}
-            </button>
-          ))}
-        </div>
-        <div className="mt-6 flex justify-end">
-          <Button>{isVi ? 'Cau tiep theo' : 'Next Question'}</Button>
-        </div>
+        {!quizId && <p className="text-sm text-on-surface-variant">{isVi ? 'Them ?quizId=... vao URL de bat dau quiz.' : 'Add ?quizId=... to URL to start the quiz.'}</p>}
+
+        {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
+
+        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+
+        {!isLoading && !error && result && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+              <h3 className="text-xl font-bold text-on-surface">{isVi ? 'Ket qua bai quiz' : 'Quiz Results'}</h3>
+              <p className="mt-1 text-on-surface-variant">
+                {isVi ? 'Diem so' : 'Score'}: <span className="font-semibold text-on-surface">{result.scorePercentage}%</span> ({result.correctCount}/{result.totalCount})
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {result.results.map((item) => (
+                <div key={item.questionId} className="rounded-lg border border-outline-variant p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-semibold text-on-surface">#{item.questionId.slice(0, 8)}</p>
+                    <Badge variant={item.isCorrect ? 'success' : 'warning'} size="sm">
+                      {item.isCorrect ? (isVi ? 'Dung' : 'Correct') : (isVi ? 'Sai' : 'Incorrect')}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-on-surface-variant">
+                    {isVi ? 'Ban chon' : 'Selected'}: {item.selectedIndex + 1} • {isVi ? 'Dap an dung' : 'Correct'}: {item.correctIndex + 1}
+                  </p>
+                  {item.explanation && <p className="mt-2 text-sm text-on-surface">{item.explanation}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isLoading && !error && !result && currentQuestion && (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm text-on-surface-variant">
+                {isVi ? `Cau ${currentQuestionIndex + 1}/${questions.length}` : `Question ${currentQuestionIndex + 1}/${questions.length}`}
+              </p>
+              {remainingSeconds !== null && (
+                <p className="text-sm font-semibold text-on-surface">
+                  {isVi ? 'Con lai' : 'Time left'}: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
+                </p>
+              )}
+            </div>
+
+            <h3 className="mb-6 text-xl font-bold text-on-surface">{currentQuestion.questionText}</h3>
+
+            <div className="space-y-3">
+              {currentQuestion.options.map((option, optionIndex) => (
+                <button
+                  key={option}
+                  onClick={() => selectAnswer(currentQuestion.id, optionIndex)}
+                  className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                    selectedIndex === optionIndex
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-outline-variant text-on-surface hover:bg-surface-container-low'
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-between gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setCurrentQuestionIndex((index) => Math.max(0, index - 1))}
+                disabled={currentQuestionIndex === 0}
+              >
+                {isVi ? 'Cau truoc' : 'Previous Question'}
+              </Button>
+
+              <div className="flex gap-3">
+                {canGoNext ? (
+                  <Button onClick={() => setCurrentQuestionIndex((index) => Math.min(questions.length - 1, index + 1))}>
+                    {isVi ? 'Cau tiep theo' : 'Next Question'}
+                  </Button>
+                ) : (
+                  <Button onClick={() => void submitQuiz()} disabled={isSubmitting}>
+                    {isSubmitting ? (isVi ? 'Dang nop...' : 'Submitting...') : (isVi ? 'Nop bai' : 'Submit Quiz')}
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs text-on-surface-variant">
+              {isVi ? 'Da tra loi' : 'Answered'}: {answeredCount}/{questions.length}
+            </p>
+          </>
+        )}
       </Card>
     </UserShell>
   )

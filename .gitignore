@@ -47,6 +47,10 @@ Thumbs.db
 .claude/
 
 ## Documentation / Planning Files
+
+A7.txt
+A8.txt
+
 *.md
 !README.md
 !SETUP.md

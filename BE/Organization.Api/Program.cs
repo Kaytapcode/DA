@@ -80,8 +80,10 @@ try
     // DI registrations
     builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
     builder.Services.AddScoped<IMemberRepository, MemberRepository>();
-    // Removed: IUserRepository registration - use HttpClient through Gateway for user verification
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
+    // Identity service client for cross-service user info enrichment
+    builder.Services.AddMemoryCache();
+    builder.Services.AddHttpClient<IIdentityServiceClient, IdentityServiceClient>();
 
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());

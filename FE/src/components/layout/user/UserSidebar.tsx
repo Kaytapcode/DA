@@ -71,13 +71,13 @@ export const UserSidebar: React.FC = () => {
 
       <div className="mt-4 rounded-[22px] border border-[#dde5ff] bg-gradient-to-br from-[#edf2ff] to-[#e0e8ff] p-4 shadow-[0_12px_30px_rgba(71,92,196,0.12)]">
         <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#6d7a91]">
-          Pro Access
+          Learning Tips
         </div>
         <p className="text-sm leading-6 text-[#5d6b85]">
-          Unlock advanced research papers, simulations, and guided learning paths.
+          Explore recommendations, smart review plans, and focused study routines.
         </p>
         <button className="mt-4 w-full rounded-full bg-[#4d6df6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#335af0]">
-          Upgrade to Pro
+          Explore Resources
         </button>
       </div>
 
