@@ -123,6 +123,7 @@ try
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Organization.Api" }));
     app.MapControllers();
 
     app.Run();

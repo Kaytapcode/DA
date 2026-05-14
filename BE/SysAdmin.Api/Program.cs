@@ -111,6 +111,7 @@ try
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "SysAdmin.Api" }));
     app.MapControllers();
 
     app.Run();

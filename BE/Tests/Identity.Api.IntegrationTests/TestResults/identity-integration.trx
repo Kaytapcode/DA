@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="c148dd56-6ec5-4104-94c2-ccdc26012fde" name="khoad@A14235867 2026-05-14 21:46:30" runUser="A14235867\khoad" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-05-14T21:46:30.9728092+07:00" queuing="2026-05-14T21:46:30.9728097+07:00" start="2026-05-14T21:46:20.0109309+07:00" finish="2026-05-14T21:46:34.7257971+07:00" />
+  <TestSettings name="default" id="f811ef55-f153-4bf8-a8bd-7f83c315a4dc">
+    <Deployment runDeploymentRoot="khoad_A14235867_2026-05-14_21_46_30" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="3a0de02d-f8ff-4aee-a221-033c560e5661" testId="008d2e28-07a9-1a1a-0780-8bfc951acd18" testName="Identity.Api.IntegrationTests.QuestionRepositoryIntegrationTests.CreateBulkAsync_ImportsBulkQuestions_WithPostgreSqlContainer" computerName="A14235867" duration="00:00:03.7042377" startTime="2026-05-14T21:46:34.6467608+07:00" endTime="2026-05-14T21:46:34.6467611+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3a0de02d-f8ff-4aee-a221-033c560e5661" />
+    <UnitTestResult executionId="e1cafe28-8d6b-453b-a6c4-439209793e8b" testId="ec2f9765-4f7f-1ac7-5ac2-6edb639f5262" testName="Identity.Api.IntegrationTests.QuestionRepositoryIntegrationTests.CreateBulkAsync_AppendsOrderIndexAcrossBatches" computerName="A14235867" duration="00:00:10.1069770" startTime="2026-05-14T21:46:30.9410083+07:00" endTime="2026-05-14T21:46:30.9410291+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e1cafe28-8d6b-453b-a6c4-439209793e8b" />
+    <UnitTestResult executionId="9e0ad599-2be1-4562-b18e-0cea433a1b6b" testId="46b0a84f-4578-055c-366b-7505f28eedb0" testName="Identity.Api.IntegrationTests.UserRepositoryIntegrationTests.RepositoryCrud_Works_WithPostgreSqlContainer" computerName="A14235867" duration="00:00:10.3782036" startTime="2026-05-14T21:46:31.2066539+07:00" endTime="2026-05-14T21:46:31.2066542+07:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9e0ad599-2be1-4562-b18e-0cea433a1b6b" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Identity.Api.IntegrationTests.QuestionRepositoryIntegrationTests.CreateBulkAsync_AppendsOrderIndexAcrossBatches" storage="d:\github\da-be\be\tests\identity.api.integrationtests\bin\debug\net9.0\identity.api.integrationtests.dll" id="ec2f9765-4f7f-1ac7-5ac2-6edb639f5262">
+      <Execution id="e1cafe28-8d6b-453b-a6c4-439209793e8b" />
+      <TestMethod codeBase="D:\Github\DA-BE\BE\Tests\Identity.Api.IntegrationTests\bin\Debug\net9.0\Identity.Api.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Identity.Api.IntegrationTests.QuestionRepositoryIntegrationTests" name="CreateBulkAsync_AppendsOrderIndexAcrossBatches" />
+    </UnitTest>
+    <UnitTest name="Identity.Api.IntegrationTests.QuestionRepositoryIntegrationTests.CreateBulkAsync_ImportsBulkQuestions_WithPostgreSqlContainer" storage="d:\github\da-be\be\tests\identity.api.integrationtests\bin\debug\net9.0\identity.api.integrationtests.dll" id="008d2e28-07a9-1a1a-0780-8bfc951acd18">
+      <Execution id="3a0de02d-f8ff-4aee-a221-033c560e5661" />
+      <TestMethod codeBase="D:\Github\DA-BE\BE\Tests\Identity.Api.IntegrationTests\bin\Debug\net9.0\Identity.Api.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Identity.Api.IntegrationTests.QuestionRepositoryIntegrationTests" name="CreateBulkAsync_ImportsBulkQuestions_WithPostgreSqlContainer" />
+    </UnitTest>
+    <UnitTest name="Identity.Api.IntegrationTests.UserRepositoryIntegrationTests.RepositoryCrud_Works_WithPostgreSqlContainer" storage="d:\github\da-be\be\tests\identity.api.integrationtests\bin\debug\net9.0\identity.api.integrationtests.dll" id="46b0a84f-4578-055c-366b-7505f28eedb0">
+      <Execution id="9e0ad599-2be1-4562-b18e-0cea433a1b6b" />
+      <TestMethod codeBase="D:\Github\DA-BE\BE\Tests\Identity.Api.IntegrationTests\bin\Debug\net9.0\Identity.Api.IntegrationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="Identity.Api.IntegrationTests.UserRepositoryIntegrationTests" name="RepositoryCrud_Works_WithPostgreSqlContainer" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="008d2e28-07a9-1a1a-0780-8bfc951acd18" executionId="3a0de02d-f8ff-4aee-a221-033c560e5661" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ec2f9765-4f7f-1ac7-5ac2-6edb639f5262" executionId="e1cafe28-8d6b-453b-a6c4-439209793e8b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="46b0a84f-4578-055c-366b-7505f28eedb0" executionId="9e0ad599-2be1-4562-b18e-0cea433a1b6b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="3" executed="3" passed="3" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.8.2+699d445a1a (64-bit .NET 9.0.8)&#xD;
+[xUnit.net 00:00:00.10]   Discovering: Identity.Api.IntegrationTests&#xD;
+[xUnit.net 00:00:00.14]   Discovered:  Identity.Api.IntegrationTests&#xD;
+[xUnit.net 00:00:00.15]   Starting:    Identity.Api.IntegrationTests&#xD;
+[testcontainers.org 00:00:00.24] Connected to Docker:&#xD;
+  Host: npipe://./pipe/docker_engine&#xD;
+  Server Version: 29.4.2&#xD;
+  Kernel Version: 6.6.114.1-microsoft-standard-WSL2&#xD;
+  API Version: 1.54&#xD;
+  Operating System: Docker Desktop&#xD;
+  Total Memory: 7.45 GB&#xD;
+  Labels: &#xD;
+    com.docker.desktop.address=npipe://\\.\pipe\docker_cli&#xD;
+[testcontainers.org 00:00:00.88] Docker container 39a1d5b702af created&#xD;
+[testcontainers.org 00:00:01.05] Start Docker container 39a1d5b702af&#xD;
+[testcontainers.org 00:00:01.55] Wait for Docker container 39a1d5b702af to complete readiness checks&#xD;
+[testcontainers.org 00:00:02.63] Docker container 39a1d5b702af ready&#xD;
+[testcontainers.org 00:00:02.92] Docker container 5991b2d3290e created&#xD;
+[testcontainers.org 00:00:02.94] Docker container a91e9ff4a45d created&#xD;
+[testcontainers.org 00:00:02.94] Start Docker container 5991b2d3290e&#xD;
+[testcontainers.org 00:00:02.96] Start Docker container a91e9ff4a45d&#xD;
+[testcontainers.org 00:00:03.40] Wait for Docker container 5991b2d3290e to complete readiness checks&#xD;
+[testcontainers.org 00:00:03.42] Execute "pg_isready --host localhost --dbname identity_integration_tests --username postgres" at Docker container 5991b2d3290e&#xD;
+[testcontainers.org 00:00:03.43] Wait for Docker container a91e9ff4a45d to complete readiness checks&#xD;
+[testcontainers.org 00:00:03.44] Execute "pg_isready --host localhost --dbname content_integration_tests_order --username postgres" at Docker container a91e9ff4a45d&#xD;
+[testcontainers.org 00:00:04.53] Execute "pg_isready --host localhost --dbname content_integration_tests_order --username postgres" at Docker container a91e9ff4a45d&#xD;
+[testcontainers.org 00:00:04.53] Execute "pg_isready --host localhost --dbname identity_integration_tests --username postgres" at Docker container 5991b2d3290e&#xD;
+[testcontainers.org 00:00:05.63] Execute "pg_isready --host localhost --dbname identity_integration_tests --username postgres" at Docker container 5991b2d3290e&#xD;
+[testcontainers.org 00:00:05.63] Execute "pg_isready --host localhost --dbname content_integration_tests_order --username postgres" at Docker container a91e9ff4a45d&#xD;
+[testcontainers.org 00:00:06.71] Execute "pg_isready --host localhost --dbname identity_integration_tests --username postgres" at Docker container 5991b2d3290e&#xD;
+[testcontainers.org 00:00:06.71] Execute "pg_isready --host localhost --dbname content_integration_tests_order --username postgres" at Docker container a91e9ff4a45d&#xD;
+[testcontainers.org 00:00:06.83] Docker container 5991b2d3290e ready&#xD;
+[testcontainers.org 00:00:06.83] Docker container a91e9ff4a45d ready&#xD;
+[testcontainers.org 00:00:08.31] Delete Docker container a91e9ff4a45d&#xD;
+[testcontainers.org 00:00:08.52] Delete Docker container 5991b2d3290e&#xD;
+[testcontainers.org 00:00:09.27] Docker container f2ef0f1618b9 created&#xD;
+[testcontainers.org 00:00:09.28] Start Docker container f2ef0f1618b9&#xD;
+[testcontainers.org 00:00:09.52] Wait for Docker container f2ef0f1618b9 to complete readiness checks&#xD;
+[testcontainers.org 00:00:09.53] Execute "pg_isready --host localhost --dbname content_integration_tests --username postgres" at Docker container f2ef0f1618b9&#xD;
+[testcontainers.org 00:00:10.62] Execute "pg_isready --host localhost --dbname content_integration_tests --username postgres" at Docker container f2ef0f1618b9&#xD;
+[testcontainers.org 00:00:11.73] Execute "pg_isready --host localhost --dbname content_integration_tests --username postgres" at Docker container f2ef0f1618b9&#xD;
+[testcontainers.org 00:00:11.81] Docker container f2ef0f1618b9 ready&#xD;
+[testcontainers.org 00:00:12.08] Delete Docker container f2ef0f1618b9&#xD;
+[xUnit.net 00:00:14.01]   Finished:    Identity.Api.IntegrationTests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

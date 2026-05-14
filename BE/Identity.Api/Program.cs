@@ -101,6 +101,7 @@ try
         options.AddPolicy("AllowFrontend", policy =>
             policy.WithOrigins(
                 "http://localhost:5173",  // Vite dev server
+                "http://127.0.0.1:5173",
                 "http://localhost:3000",
                 "http://localhost:5000"   // Gateway
             )
@@ -124,6 +125,7 @@ try
     app.UseAuthentication();
     app.UseMiddleware<OrgContextMiddleware>(); // T3.9: resolves X-Org-Slug ? org_id after auth
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Identity.Api" }));
     app.MapControllers();
 
     app.Run();

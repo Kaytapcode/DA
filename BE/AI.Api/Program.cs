@@ -128,6 +128,7 @@ try
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "AI.Api" }));
     app.MapControllers();
 
     // Hangfire dashboard (admin-only in production; open in dev)

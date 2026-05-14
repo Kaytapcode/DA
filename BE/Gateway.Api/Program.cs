@@ -54,6 +54,7 @@ try
         options.AddPolicy("AllowFrontend", policy =>
             policy.WithOrigins(
                 "http://localhost:5173",
+                "http://127.0.0.1:5173",
                 "http://localhost:3000"
             )
             .AllowAnyHeader()
@@ -87,6 +88,7 @@ try
     app.UseAuthentication();
     app.UseMiddleware<OrgContextMiddleware>();
     app.UseAuthorization();
+    app.MapGet("/health", () => Results.Ok(new { status = "ok", service = "Gateway.Api" }));
 
     try
     {

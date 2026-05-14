@@ -67,3 +67,11 @@ A8.txt
 
 *.ps1
 *.bat
+test-results/
+
+TEST*.md
+TEST*.py
+
+Testing
+
+
