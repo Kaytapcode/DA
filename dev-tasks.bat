@@ -1,6 +1,6 @@
 ﻿@echo off
 REM ============================================================================
-REM TINY-LMS - QUICK DEVELOPMENT TASKS (Batch Helper)
+REM LUMINA - QUICK DEVELOPMENT TASKS (Batch Helper)
 REM Purpose: Shortcuts for common development tasks
 REM ============================================================================
 
@@ -10,7 +10,7 @@ if "%1"=="" (
     cls
     echo.
     echo ╔════════════════════════════════════════════════════════════════╗
-    echo ║     TINY-LMS - DEVELOPMENT TASKS HELPER (Command Prompt)       ║
+    echo ║     LUMINA - DEVELOPMENT TASKS HELPER (Command Prompt)         ║
     echo ╚════════════════════════════════════════════════════════════════╝
     echo.
     echo Available commands:

@@ -1,5 +1,5 @@
 ﻿# ============================================================================
-# TINY-LMS PROJECT SETUP SCRIPT (PowerShell)
+# LUMINA PROJECT SETUP SCRIPT (PowerShell)
 # Purpose: Setup complete development environment for BE and FE
 # ============================================================================
 
@@ -83,7 +83,7 @@ function Pause-Script {
 
 Write-Host "" -ForegroundColor $COLOR_INFO
 Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor $COLOR_INFO
-Write-Host "║       TINY-LMS PROJECT - ENVIRONMENT SETUP (PowerShell)        ║" -ForegroundColor $COLOR_INFO
+Write-Host "║       LUMINA PROJECT - ENVIRONMENT SETUP (PowerShell)          ║" -ForegroundColor $COLOR_INFO
 Write-Host "║                      Version: $SCRIPT_VERSION                         ║" -ForegroundColor $COLOR_INFO
 Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor $COLOR_INFO
 
@@ -211,7 +211,7 @@ if (Test-Path $appsettings_path) {
     Write-Step "Default database connection:"
     Write-Host "  Host: 127.0.0.1" -ForegroundColor Gray
     Write-Host "  Port: 5432" -ForegroundColor Gray
-    Write-Host "  Database: tiny_lms" -ForegroundColor Gray
+    Write-Host "  Database: lumina" -ForegroundColor Gray
     Write-Host "  User: postgres" -ForegroundColor Gray
     Write-Host "" -ForegroundColor Gray
     

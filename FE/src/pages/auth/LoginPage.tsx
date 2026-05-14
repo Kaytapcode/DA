@@ -104,7 +104,7 @@ export const LoginPage: React.FC = () => {
               Illuminate Your<br />Intellectual Path.
             </h1>
             <p className="mt-6 max-w-lg text-base leading-relaxed text-[#b3d9ff]">
-              Access our proprietary curriculum and laboratory research environment through the Luminal Interface.
+              Access our proprietary curriculum and laboratory research environment through the Lumina Interface.
             </p>
           </div>
 
@@ -129,7 +129,7 @@ export const LoginPage: React.FC = () => {
         <section className="flex flex-col justify-between p-8 sm:p-12">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="text-2xl font-black text-[#001a4d]">Luminal.</div>
+            <div className="text-2xl font-black text-[#001a4d]">Lumina.</div>
             <Link to="#" className="text-sm font-medium text-[#6b7280] hover:text-[#001a4d]">
               Help Center
             </Link>

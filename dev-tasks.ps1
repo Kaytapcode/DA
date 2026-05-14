@@ -1,5 +1,5 @@
 ﻿# ============================================================================
-# TINY-LMS - QUICK DEVELOPMENT TASKS (PowerShell Helper)
+# LUMINA - QUICK DEVELOPMENT TASKS (PowerShell Helper)
 # Purpose: Shortcuts for common development tasks
 # ============================================================================
 
@@ -7,7 +7,7 @@
 
 Write-Host ""
 Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
-Write-Host "║     TINY-LMS - DEVELOPMENT TASKS HELPER (PowerShell)           ║" -ForegroundColor Cyan
+Write-Host "║     LUMINA - DEVELOPMENT TASKS HELPER (PowerShell)             ║" -ForegroundColor Cyan
 Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Available commands:" -ForegroundColor Green
@@ -114,7 +114,7 @@ function fe-clean {
 function dev-start {
     Write-Host ""
     Write-Host "╔════════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║      TINY-LMS - START ALL SERVICES                             ║" -ForegroundColor Green
+    Write-Host "║      LUMINA - START ALL SERVICES                               ║" -ForegroundColor Green
     Write-Host "╚════════════════════════════════════════════════════════════════╝" -ForegroundColor Green
     Write-Host ""
     

@@ -31,7 +31,7 @@ export const UserProfilePage: React.FC = () => {
   const { values, handleChange, handleSubmit } = useForm<ProfileFormData>(
     {
       fullName: 'Alex Johnson',
-      email: 'alex.johnson@luminalearning.edu',
+      email: 'alex.johnson@lumina-learning.edu',
       bio: 'Passionate learner focusing on Quantum Physics and Neural Computing.',
       institution: 'Stanford University',
       degree: 'M.S. Physics',

@@ -2,7 +2,7 @@
  * App Configuration Constants
  */
 
-export const APP_NAME = 'Luminal'
+export const APP_NAME = 'Lumina'
 export const APP_VERSION = '0.0.1'
 
 export const COLORS = {

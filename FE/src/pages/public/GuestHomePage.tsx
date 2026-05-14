@@ -28,7 +28,7 @@ export default function GuestHomePage() {
       requestDemo: 'Yêu Cầu Demo',
       login: 'Đăng Nhập',
       joinNow: 'Tham Gia Ngay',
-      copyright: '© 2026 LUMINAL INTERFACE. BUILT FOR THE ETHEREAL LABORATORY',
+      copyright: '© 2026 LUMINA INTERFACE. BUILT FOR THE ETHEREAL LABORATORY',
     },
     en: {
       tagline: 'NEXT-GEN COGNITIVE ENGINE',
@@ -53,7 +53,7 @@ export default function GuestHomePage() {
       requestDemo: 'Request Demo',
       login: 'Login',
       joinNow: 'Join Now',
-      copyright: '© 2024 LUMINAL INTERFACE. BUILT FOR THE ETHEREAL LABORATORY',
+      copyright: '© 2024 LUMINA INTERFACE. BUILT FOR THE ETHEREAL LABORATORY',
     },
   };
 
@@ -66,7 +66,7 @@ export default function GuestHomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Luminal
+              Lumina
             </div>
             <div className="hidden md:flex gap-6 text-sm text-gray-300">
               <button className="hover:text-white transition-colors">Curriculum</button>
@@ -292,7 +292,7 @@ export default function GuestHomePage() {
             {/* Testimonial Content */}
             <div className="space-y-6">
               <blockquote className="text-xl md:text-2xl italic text-gray-200 leading-relaxed">
-                "The precision of the Luminal interface is unlike anything we've seen in the education sector. It feels less like a platform and more like a cognitive extension."
+                "The precision of the Lumina interface is unlike anything we've seen in the education sector. It feels less like a platform and more like a cognitive extension."
               </blockquote>
 
               <div className="flex items-center gap-4 pt-4">

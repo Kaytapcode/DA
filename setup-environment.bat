@@ -1,6 +1,6 @@
 ﻿@echo off
 REM ============================================================================
-REM TINY-LMS PROJECT SETUP SCRIPT (Batch)
+REM LUMINA PROJECT SETUP SCRIPT (Batch)
 REM Purpose: Setup complete development environment for BE and FE
 REM ============================================================================
 
@@ -11,7 +11,7 @@ set PROJECT_ROOT=%cd%
 cls
 echo.
 echo ╔════════════════════════════════════════════════════════════════╗
-echo ║       TINY-LMS PROJECT - ENVIRONMENT SETUP (Batch)            ║
+echo ║       LUMINA PROJECT - ENVIRONMENT SETUP (Batch)              ║
 echo ║                      Version: %SCRIPT_VERSION%                         ║
 echo ╚════════════════════════════════════════════════════════════════╝
 echo.
@@ -176,7 +176,7 @@ if exist "%APPSETTINGS_PATH%" (
     echo ▶ Default database connection:
     echo   Host: 127.0.0.1
     echo   Port: 5432
-    echo   Database: tiny_lms
+    echo   Database: lumina
     echo   User: postgres
     echo.
     echo ⚠️  IMPORTANT: Ensure PostgreSQL is running!

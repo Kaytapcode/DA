@@ -170,7 +170,7 @@ export const RegisterPage: React.FC = () => {
         <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
           <div className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-800">Create Account</h2>
-            <p className="text-gray-600 text-sm mt-2">Join Tiny LMS</p>
+            <p className="text-gray-600 text-sm mt-2">Join Lumina</p>
           </div>
 
           {submitError && (
