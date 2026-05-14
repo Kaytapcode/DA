@@ -8,11 +8,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Shared.Contracts.Configuration;
 using Shared.Contracts.Requests;
 using System.Text;
 
 try
 {
+    DotEnvLoader.LoadFromStandardLocations(Directory.GetCurrentDirectory());
     var builder = WebApplication.CreateBuilder(args);
 
     // Serilog configuration
@@ -87,6 +89,7 @@ try
     builder.Services.AddScoped<IFlashcardRepository, FlashcardRepository>();
     builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
     builder.Services.AddScoped<IStudentProgressRepository, StudentProgressRepository>();
+    builder.Services.AddScoped<IVideoRepository, VideoRepository>();
     builder.Services.AddScoped<IStorageService, LocalStorageService>();
     // Removed: IOrganizationRepository, IUserRepository - use HttpClient through Gateway for inter-service queries
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();

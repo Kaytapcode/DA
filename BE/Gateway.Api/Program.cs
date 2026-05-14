@@ -2,10 +2,12 @@ using Gateway.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Shared.Contracts.Configuration;
 using System.Text;
 
 try
 {
+    DotEnvLoader.LoadFromStandardLocations(Directory.GetCurrentDirectory());
     var builder = WebApplication.CreateBuilder(args);
 
     // Serilog configuration

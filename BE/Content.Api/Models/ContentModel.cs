@@ -50,14 +50,31 @@ namespace Content.Api.Models
         public Guid ContentId { get; set; }
 
         [Required]
-        [Column("url")]
-        public string Url { get; set; } = string.Empty; // Cloudinary URL
+        [Column("youtube_video_id")]
+        [StringLength(11)]
+        public string YouTubeVideoId { get; set; } = string.Empty;
+
+        [Column("title")]
+        [StringLength(255)]
+        public string? Title { get; set; }
+
+        [Column("description")]
+        public string? Description { get; set; }
+
+        [Column("thumbnail_url")]
+        public string? ThumbnailUrl { get; set; }
 
         [Column("duration")]
         public int? Duration { get; set; } // Duration in seconds
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [Column("deleted_at")]
+        public DateTime? DeletedAt { get; set; }
 
         [ForeignKey(nameof(ContentId))]
         public ContentModel? Content { get; set; }

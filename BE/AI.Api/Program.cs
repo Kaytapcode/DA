@@ -11,10 +11,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using Shared.Contracts.Configuration;
 using System.Text;
 
 try
 {
+    DotEnvLoader.LoadFromStandardLocations(Directory.GetCurrentDirectory());
     var builder = WebApplication.CreateBuilder(args);
 
     // Serilog configuration
@@ -90,6 +92,8 @@ try
     // DI registrations
     builder.Services.AddScoped<IAiQuotaService, AiQuotaService>();
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
+    builder.Services.AddScoped<IOpenRouterService, OpenRouterService>();
+    builder.Services.AddHttpClient();
 
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
