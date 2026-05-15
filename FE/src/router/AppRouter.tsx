@@ -19,7 +19,6 @@ import {
   DocumentViewerPage,
   InteractiveFlashcardsPage,
   LearningHistoryPage,
-  LuminaQuantumPage,
   OrganizationListPage,
   SpecificCoursePage,
   UserContentLibraryPage,
@@ -29,6 +28,8 @@ import {
   DeckEditorPage,
   VideoCreatePage,
   VideoWatchPage,
+  CollectionsPage,
+  BrowsePublicPage,
 } from '@pages/user'
 import {
   OrgAdminDashboardPage,
@@ -49,6 +50,7 @@ import {
   PlatformSettingsLogsPage,
   SystemadminOrganizationDirectoryAltPage,
   UserDetailsSystemadminPage,
+  AiKeysPage,
 } from '@pages/sysadmin'
 import { NotificationPage } from '@pages/notification'
 
@@ -132,11 +134,14 @@ export const AppRouter: React.FC = () => {
           <Route path="/user/messages" element={
             <ProtectedRoute><NotificationPage /></ProtectedRoute>
           } />
-          <Route path="/user/lumina-quantum" element={
-            <ProtectedRoute><LuminaQuantumPage /></ProtectedRoute>
-          } />
           <Route path="/user/organizations" element={
             <ProtectedRoute><OrganizationListPage /></ProtectedRoute>
+          } />
+          <Route path="/user/collections" element={
+            <ProtectedRoute><CollectionsPage /></ProtectedRoute>
+          } />
+          <Route path="/user/browse" element={
+            <ProtectedRoute><BrowsePublicPage /></ProtectedRoute>
           } />
           <Route path="/user/course/:courseId" element={
             <ProtectedRoute><SpecificCoursePage /></ProtectedRoute>
@@ -225,6 +230,11 @@ export const AppRouter: React.FC = () => {
               <PlatformSettingsLogsPage />
             </ProtectedRoute>
           } />
+          <Route path="/sysadmin/ai-keys" element={
+            <ProtectedRoute roles={['SysAdmin']}>
+              <AiKeysPage />
+            </ProtectedRoute>
+          } />
           <Route path="/sysadmin/org-details" element={
             <ProtectedRoute roles={['SysAdmin']}>
               <OrgDetailsSystemadminPage />
@@ -258,7 +268,6 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/user/document_viewer_light" element={<DocumentViewerPage />} />
           <Route path="/fe/user/interactive_flashcards_light" element={<InteractiveFlashcardsPage />} />
           <Route path="/fe/user/learning_history_light" element={<LearningHistoryPage />} />
-          <Route path="/fe/user/lumina_quantum" element={<LuminaQuantumPage />} />
           <Route path="/fe/user/organization_list_light" element={<OrganizationListPage />} />
           <Route path="/fe/user/specific_course_page_light" element={<SpecificCoursePage />} />
           <Route path="/fe/user/user_content_library_light" element={<UserContentLibraryPage />} />

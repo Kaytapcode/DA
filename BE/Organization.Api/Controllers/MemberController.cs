@@ -96,6 +96,36 @@ namespace Organization.Api.Controllers
             ));
         }
 
+        // POST /api/orgs/{orgId}/members/self - any authenticated User joins the org as Student
+        // Spec §1: "Can join Organizations." Self-service join produces a Student member.
+        [HttpPost("self")]
+        public async Task<IActionResult> JoinSelf(Guid orgId)
+        {
+            var userId = GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized();
+
+            var existing = await _memberRepository.GetByUserAndOrgAsync(userId.Value, orgId);
+            if (existing != null)
+                return Ok(new ApiResponse<MemberResponseDto>(
+                    Success: true,
+                    Data: new MemberResponseDto(existing.UserId, existing.OrgId, existing.Role, existing.JoinDate),
+                    Message: "Already a member."
+                ));
+
+            var member = new MemberModel
+            {
+                UserId = userId.Value,
+                OrgId = orgId,
+                Role = "Student"
+            };
+            var created = await _memberRepository.CreateAsync(member);
+            return Ok(new ApiResponse<MemberResponseDto>(
+                Success: true,
+                Data: new MemberResponseDto(created.UserId, created.OrgId, created.Role, created.JoinDate),
+                Message: "Joined organization."
+            ));
+        }
+
         // PUT /api/orgs/{orgId}/members/{memberId} - update role (OrgAdmin or SysAdmin)
         [HttpPut("{memberId:guid}")]
         public async Task<IActionResult> UpdateMember(Guid orgId, Guid memberId, [FromBody] UpdateMemberRequestDto request)

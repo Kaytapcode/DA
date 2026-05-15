@@ -32,7 +32,7 @@ export const UserProfilePage: React.FC = () => {
     {
       fullName: 'Alex Johnson',
       email: 'alex.johnson@lumina-learning.edu',
-      bio: 'Passionate learner focusing on Quantum Physics and Neural Computing.',
+      bio: '',
       institution: 'Stanford University',
       degree: 'M.S. Physics',
     },
@@ -51,7 +51,7 @@ export const UserProfilePage: React.FC = () => {
   ]
 
   const achievements = [
-    { icon: 'star', title: 'Quantum Master', date: '3 weeks ago', color: 'text-yellow-500' },
+    { icon: 'star', title: 'First Course Completed', date: '3 weeks ago', color: 'text-yellow-500' },
     { icon: 'verified', title: 'Data Ethics Certification', date: '2 days ago', color: 'text-blue-500' },
     { icon: 'trophy', title: 'Top 1% Learner', date: '1 week ago', color: 'text-orange-500' },
   ]

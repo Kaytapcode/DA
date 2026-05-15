@@ -168,7 +168,7 @@ namespace Content.Api.Controllers
             var thumbnailUrl = $"https://i.ytimg.com/vi/{videoId}/maxresdefault.jpg";
 
             var created = await _videoRepository.CreatePersonalAsync(
-                videoId, request.Title, request.Description, thumbnailUrl, ct);
+                videoId, request.Title, request.Description, thumbnailUrl, _orgContext.GetCurrentUserId(), ct);
 
             return Ok(new ApiResponse<VideoDto>(
                 Success: true,

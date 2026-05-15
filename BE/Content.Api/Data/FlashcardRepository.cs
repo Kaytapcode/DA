@@ -8,7 +8,8 @@ namespace Content.Api.Data
         Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
         Task<FlashcardDeckModel?> GetDeckByIdAsync(Guid deckId, CancellationToken ct = default);
         Task<Guid?> GetDeckOrgIdAsync(Guid deckId, CancellationToken ct = default);
-        Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, CancellationToken ct = default);
+        Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, Guid? createdByUserId, CancellationToken ct = default);
+        Task<int> ResetMasteredAsync(Guid deckId, CancellationToken ct = default);
         Task<List<FlashcardModel>> GetByDeckIdAsync(Guid deckId, CancellationToken ct = default);
         Task<FlashcardModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<FlashcardModel> CreateAsync(FlashcardModel card, CancellationToken ct = default);
@@ -55,7 +56,7 @@ namespace Content.Api.Data
                 .Select(mc => (Guid?)mc.Module!.OrgId)
                 .FirstOrDefaultAsync(ct);
 
-        public async Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, CancellationToken ct = default)
+        public async Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, Guid? createdByUserId, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
             var content = new ContentModel
@@ -64,6 +65,8 @@ namespace Content.Api.Data
                 Title = title,
                 ContentType = "FLASHCARD",
                 Status = "DRAFT",
+                CreatedByUserId = createdByUserId,
+                IsPublic = true, // Spec §1
                 CreatedAt = now
             };
             var deck = new FlashcardDeckModel
@@ -79,6 +82,21 @@ namespace Content.Api.Data
             await _db.SaveChangesAsync(ct);
             deck.Content = content;
             return deck;
+        }
+
+        public async Task<int> ResetMasteredAsync(Guid deckId, CancellationToken ct = default)
+        {
+            var cards = await _db.Flashcards
+                .Where(f => f.DeckId == deckId && f.IsMastered)
+                .ToListAsync(ct);
+            foreach (var c in cards)
+            {
+                c.IsMastered = false;
+                c.MasteredAt = null;
+                c.UpdatedAt = DateTime.UtcNow;
+            }
+            if (cards.Count > 0) await _db.SaveChangesAsync(ct);
+            return cards.Count;
         }
 
         public async Task<List<FlashcardModel>> GetByDeckIdAsync(Guid deckId, CancellationToken ct = default)

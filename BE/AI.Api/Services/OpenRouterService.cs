@@ -13,16 +13,19 @@ namespace AI.Api.Services
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _configuration;
+        private readonly IAiKeyResolver _keyResolver;
         private readonly ILogger<OpenRouterService> _logger;
         private const string OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
         public OpenRouterService(
             IHttpClientFactory httpClientFactory,
             IConfiguration configuration,
+            IAiKeyResolver keyResolver,
             ILogger<OpenRouterService> logger)
         {
             _httpClientFactory = httpClientFactory;
             _configuration = configuration;
+            _keyResolver = keyResolver;
             _logger = logger;
         }
 
@@ -30,7 +33,9 @@ namespace AI.Api.Services
         {
             try
             {
-                var apiKey = _configuration["OpenRouter:ApiKey"];
+                // Prefer the SysAdmin-managed key (spec §1: SysAdmin "Configure AI API Keys");
+                // fall back to configuration for local dev / bootstrap.
+                var apiKey = await _keyResolver.ResolveAsync("OpenRouter");
                 var model = _configuration["OpenRouter:Model"] ?? "meta-llama/llama-3.1-70b-instruct";
 
                 if (string.IsNullOrEmpty(apiKey))

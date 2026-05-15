@@ -93,6 +93,7 @@ try
     builder.Services.AddScoped<IStorageService, LocalStorageService>();
     // Removed: IOrganizationRepository, IUserRepository - use HttpClient through Gateway for inter-service queries
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
+    builder.Services.AddScoped<ICourseAccessService, CourseAccessService>();
 
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());

@@ -103,6 +103,31 @@ namespace Content.Api.Controllers
                 null));
         }
 
+        // GET /api/courses/{courseId}/progress/items — flat per-content rows for the caller.
+        [HttpGet("items")]
+        public async Task<IActionResult> GetItemProgress(Guid courseId, CancellationToken ct)
+        {
+            if (!await VerifyCourseAccessAsync(courseId))
+                return NotFound(new ApiResponse(false, "Course not found."));
+
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            var rows = await _progressRepo.GetByCourseUserAsync(courseId, userId.Value, ct);
+            var items = rows
+                .Where(p => p.ContentId.HasValue)
+                .Select(p => new {
+                    contentId = p.ContentId,
+                    moduleId = p.ModuleId,
+                    progressPercentage = p.ProgressPercentage,
+                    isCompleted = p.IsCompleted,
+                    updatedAt = p.UpdatedAt ?? p.CreatedAt,
+                });
+
+            return Ok(new ApiResponse<object>(true, items, null));
+        }
+
         // GET /api/courses/{courseId}/progress/analytics
         [HttpGet("analytics")]
         [Authorize(Policy = "RequireTeacher")]

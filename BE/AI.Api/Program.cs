@@ -92,6 +92,7 @@ try
     // DI registrations
     builder.Services.AddScoped<IAiQuotaService, AiQuotaService>();
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
+    builder.Services.AddSingleton<IAiKeyResolver, AiKeyResolver>();
     builder.Services.AddScoped<IOpenRouterService, OpenRouterService>();
     builder.Services.AddHttpClient();
 

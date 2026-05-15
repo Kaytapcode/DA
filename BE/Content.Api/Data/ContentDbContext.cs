@@ -72,8 +72,10 @@ namespace Content.Api.Data
                 .HasForeignKey(m => m.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Personal collections (OrgId == null) are visible to all; org-scoped modules
+            // are filtered by the caller's current org.
             modelBuilder.Entity<ModuleModel>()
-                .HasQueryFilter(m => IsSysAdmin || CurrentOrgId == null || m.OrgId == CurrentOrgId);
+                .HasQueryFilter(m => IsSysAdmin || m.OrgId == null || CurrentOrgId == null || m.OrgId == CurrentOrgId);
 
             // CourseModule - junction table
             modelBuilder.Entity<CourseModuleModel>()

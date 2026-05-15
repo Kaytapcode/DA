@@ -71,7 +71,7 @@ namespace Content.Api.Controllers
             if (string.IsNullOrWhiteSpace(request.Title))
                 return BadRequest(new ApiResponse(false, "Title is required."));
 
-            var quiz = await _repo.CreateQuizAsync(request.Title.Trim(), request.TimeLimit, request.PassingScore, ct);
+            var quiz = await _repo.CreateQuizAsync(request.Title.Trim(), request.TimeLimit, request.PassingScore, _orgCtx.GetCurrentUserId(), ct);
 
             var summary = new QuizSummaryDto(
                 quiz.Id,
@@ -162,6 +162,8 @@ namespace Content.Api.Controllers
                 .ToList();
 
             var created = await _repo.CreateBulkAsync(quizId, questions, ct);
+            // Spec §2.1: when AI-generated, mark so the UI can require Explanation display on results.
+            await _repo.MarkQuizAiGeneratedAsync(quizId, ct);
             var dtos = created.Select(ToTeacherDto).ToList();
 
             return Ok(new ApiResponse<List<QuestionTeacherDto>>(true, dtos, $"Successfully imported {created.Count} questions."));

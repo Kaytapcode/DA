@@ -54,6 +54,8 @@ export const translations = {
   'user.learning': { en: 'Learning History', vi: 'Lịch Sử Học Tập' },
   'user.inbox': { en: 'Messages', vi: 'Tin Nhắn' },
   'user.library': { en: 'Content Library', vi: 'Thư Viện Nội Dung' },
+  'user.collections': { en: 'Collections', vi: 'Bộ Sưu Tập' },
+  'user.browse': { en: 'Browse Public', vi: 'Khám Phá' },
   'user.quiz': { en: 'Quizzes', vi: 'Bài Kiểm Tra' },
   'user.lesson': { en: 'Video Lessons', vi: 'Bài Học Video' },
   'user.flashcards': { en: 'Flashcards', vi: 'Thẻ Ghi Nhớ' },
@@ -78,6 +80,7 @@ export const translations = {
   'sysadmin.organizations': { en: 'Organizations', vi: 'Tổ Chức' },
   'sysadmin.courses': { en: 'Global Courses', vi: 'Khóa Học Toàn Cục' },
   'sysadmin.logs': { en: 'System Logs', vi: 'Nhật Ký Hệ Thống' },
+  'sysadmin.aiKeys': { en: 'AI API Keys', vi: 'Khóa API AI' },
   'sysadmin.settings': { en: 'Platform Settings', vi: 'Cài Đặt Nền Tảng' },
 
   // Common UI

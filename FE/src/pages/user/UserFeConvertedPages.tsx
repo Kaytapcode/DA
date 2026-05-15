@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
@@ -8,14 +8,58 @@ import { UserShell, useUserLanguage } from './UserShell'
 import { useQuiz } from '@/hooks/useQuiz'
 import { useFlashcard } from '@/hooks/useFlashcard'
 import { useDocument } from '@/hooks/useDocument'
+import { useOrganization, type OrganizationList } from '@/hooks/useOrganization'
+import { useModuleContent, type ModuleItem, type ContentItem } from '@/hooks/useModuleContent'
 import { apiClient } from '@/utils/apiClient'
 
 const useLang = useUserLanguage
 
 // UserHomePage imported from wrapper
 
+interface DashboardHistoryEntry {
+  courseId: string
+  courseTitle: string | null
+  moduleId: string | null
+  moduleTitle: string | null
+  contentId: string | null
+  contentTitle: string | null
+  contentType: string | null
+  progressPercentage: number
+  isCompleted: boolean
+  activityAt: string
+}
+
 export const UserLearningDashboardPage: React.FC = () => {
   const isVi = useLang()
+  const [rows, setRows] = useState<DashboardHistoryEntry[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+    apiClient
+      .get<DashboardHistoryEntry[]>('/student-progress/recent?limit=50')
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data) setRows(res.data)
+        else throw new Error(res.message || 'Unable to load progress')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Unable to load progress')
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const featured = rows[0] ?? null
+  const completedItems = rows.filter((r) => r.isCompleted).length
+  const distinctCourses = new Set(rows.map((r) => r.courseId)).size
+  const avgProgress = rows.length === 0
+    ? 0
+    : Math.round(rows.reduce((sum, r) => sum + r.progressPercentage, 0) / rows.length)
 
   return (
     <UserShell
@@ -24,25 +68,47 @@ export const UserLearningDashboardPage: React.FC = () => {
       subtitleEn="Track progress and resume your courses"
       subtitleVi="Theo doi tien do va tiep tuc khoa hoc"
     >
+      {error && !isLoading && <p className="mb-4 text-sm text-error">{error}</p>}
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">{isVi ? 'Khoa hoc noi bat' : 'Featured Course'}</p>
-              <h3 className="mt-1 text-2xl font-bold text-on-surface">Advanced Quantum Mechanics</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
+                {isVi ? 'Hoat dong gan day' : 'Most recent activity'}
+              </p>
+              <h3 className="mt-1 text-2xl font-bold text-on-surface">
+                {isLoading
+                  ? '…'
+                  : featured?.courseTitle ?? (isVi ? 'Chua co khoa hoc nao' : 'No course activity yet')}
+              </h3>
             </div>
-            <Badge variant="primary">45%</Badge>
+            {featured && (
+              <Badge variant="primary">{featured.progressPercentage}%</Badge>
+            )}
           </div>
-          <p className="text-on-surface-variant">{isVi ? 'Tiep tuc lo trinh va hoan thanh phan bai hoc con lai.' : 'Continue the current path and finish the remaining units.'}</p>
+          {featured && (
+            <p className="text-on-surface-variant">
+              {featured.contentTitle ?? featured.moduleTitle ?? (isVi ? 'Tiep tuc bai hoc tiep theo.' : 'Continue with the next item.')}
+            </p>
+          )}
           <div className="mt-5 h-2 rounded-full bg-surface-container-low">
-            <div className="h-2 w-[45%] rounded-full bg-primary" />
+            <div
+              className="h-2 rounded-full bg-primary"
+              style={{ width: `${featured?.progressPercentage ?? 0}%` }}
+            />
           </div>
           <div className="mt-6 flex gap-3">
-            <Link to="/user/course/advanced-quantum-mechanics" className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary">
+            <Link
+              to={featured ? `/user/course/${featured.courseId}` : '/user/courses'}
+              className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary"
+            >
               {isVi ? 'Mo khoa hoc' : 'Open Course'}
             </Link>
-            <Link to="/user/lesson" className="inline-flex items-center justify-center rounded-lg border border-outline-variant px-5 py-2.5 text-sm font-medium text-on-surface">
-              {isVi ? 'Xem bai hoc' : 'View Lesson'}
+            <Link
+              to="/user/learning"
+              className="inline-flex items-center justify-center rounded-lg border border-outline-variant px-5 py-2.5 text-sm font-medium text-on-surface"
+            >
+              {isVi ? 'Xem lich su' : 'View History'}
             </Link>
           </div>
         </Card>
@@ -51,9 +117,9 @@ export const UserLearningDashboardPage: React.FC = () => {
           <h3 className="mb-4 text-lg font-bold text-on-surface">{isVi ? 'Chi so nhanh' : 'Quick stats'}</h3>
           <div className="space-y-4">
             {[
-              { label: isVi ? 'Hoan thanh' : 'Completed', value: '8 units' },
-              { label: isVi ? 'Dang hoc' : 'In progress', value: '1 course' },
-              { label: isVi ? 'Diem so' : 'Score', value: '92%' },
+              { label: isVi ? 'Hoan thanh' : 'Completed items', value: isLoading ? '…' : `${completedItems}` },
+              { label: isVi ? 'Khoa hoc' : 'Courses touched', value: isLoading ? '…' : `${distinctCourses}` },
+              { label: isVi ? 'Tien do trung binh' : 'Avg. progress', value: isLoading ? '…' : `${avgProgress}%` },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between rounded-xl bg-surface-container-low px-4 py-3">
                 <span className="text-sm text-on-surface-variant">{item.label}</span>
@@ -227,6 +293,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     nextCard,
     previousCard,
     markCurrentAsMastered,
+    resetMastered,
   } = useFlashcard(deckId)
 
   return (
@@ -284,20 +351,61 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         )}
 
         {!isLoading && !error && !currentCard && deckId && (
-          <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
+          <div className="space-y-3">
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
+            <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating}>
+              {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
+            </Button>
+          </div>
         )}
       </Card>
     </UserShell>
   )
 }
 
+interface LearningHistoryEntry {
+  courseId: string
+  courseTitle: string | null
+  moduleTitle: string | null
+  contentTitle: string | null
+  contentType: string | null
+  progressPercentage: number
+  isCompleted: boolean
+  activityAt: string
+}
+
 export const LearningHistoryPage: React.FC = () => {
   const isVi = useLang()
-  const rows = [
-    { action: 'Completed module: Async JS', time: '2026-04-02 20:15', score: '92%' },
-    { action: 'Submitted quiz: SQL Basics', time: '2026-04-01 19:02', score: '85%' },
-    { action: 'Reviewed flashcards: React Hooks', time: '2026-03-31 18:40', score: '78%' },
-  ]
+  const [rows, setRows] = useState<LearningHistoryEntry[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+    apiClient.get<LearningHistoryEntry[]>('/student-progress/recent?limit=30')
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data) setRows(res.data)
+        else throw new Error(res.message || 'Unable to load history')
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setError(err instanceof Error ? err.message : 'Unable to load history')
+      })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  const describe = (r: LearningHistoryEntry) => {
+    const parts = [r.contentTitle ?? r.moduleTitle ?? r.courseTitle ?? '—']
+    if (r.contentType) parts.push(`(${r.contentType.toLowerCase()})`)
+    return parts.join(' ')
+  }
+  const fmtTime = (iso: string) => {
+    try { return new Date(iso).toLocaleString() } catch { return iso }
+  }
 
   return (
     <UserShell
@@ -307,68 +415,58 @@ export const LearningHistoryPage: React.FC = () => {
       subtitleVi="Dong thoi gian cac hoat dong da hoan thanh"
     >
       <Card className="p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-outline-variant">
-                <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Hoat dong' : 'Activity'}</th>
-                <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Thoi gian' : 'Time'}</th>
-                <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Ket qua' : 'Result'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.action} className="border-b border-outline-variant/40">
-                  <td className="py-3 text-on-surface">{row.action}</td>
-                  <td className="py-3 text-on-surface-variant">{row.time}</td>
-                  <td className="py-3 text-on-surface-variant">{row.score}</td>
+        {isLoading && <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />}
+        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+        {!isLoading && !error && rows.length === 0 && (
+          <p className="text-sm text-on-surface-variant text-center py-4">
+            {isVi ? 'Chua co hoat dong nao.' : 'No activity yet.'}
+          </p>
+        )}
+        {!isLoading && !error && rows.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-outline-variant">
+                  <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Hoat dong' : 'Activity'}</th>
+                  <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Thoi gian' : 'Time'}</th>
+                  <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Ket qua' : 'Result'}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((row, idx) => (
+                  <tr key={`${row.courseId}-${row.activityAt}-${idx}`} className="border-b border-outline-variant/40">
+                    <td className="py-3 text-on-surface">{describe(row)}</td>
+                    <td className="py-3 text-on-surface-variant">{fmtTime(row.activityAt)}</td>
+                    <td className="py-3 text-on-surface-variant">
+                      {row.isCompleted ? (isVi ? 'Hoan thanh' : 'Completed') : `${row.progressPercentage}%`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
-    </UserShell>
-  )
-}
-
-export const LuminaQuantumPage: React.FC = () => {
-  const isVi = useLang()
-
-  return (
-    <UserShell
-      titleEn="Lumina Quantum"
-      titleVi="Lumina Quantum"
-      subtitleEn="Futuristic learning experience"
-      subtitleVi="Trai nghiem hoc tap tuong lai"
-    >
-      <Card className="border border-primary/20 bg-gradient-to-br from-primary/10 via-white to-tertiary/10 p-10">
-        <h3 className="mb-4 text-4xl font-black font-headline text-on-surface">{isVi ? 'Mo khoa che do Quantum' : 'Unlock Quantum Mode'}</h3>
-        <p className="mb-6 max-w-2xl text-on-surface-variant">
-          {isVi ? 'Che do hoc tap nang cao voi lo trinh ca nhan hoa va tro ly AI theo ngu canh.' : 'Advanced learning mode with adaptive pathing and context-aware AI tutoring.'}
-        </p>
-        <div className="flex gap-3">
-          <Button>{isVi ? 'Bat dau ngay' : 'Start Now'}</Button>
-          <Button variant="secondary">{isVi ? 'Xem demo' : 'View Demo'}</Button>
-        </div>
-      </Card>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        {['Neural Notes', 'Adaptive Quiz', 'Realtime Coach'].map((feature) => (
-          <Card key={feature} className="p-6">
-            <MaterialIcon icon="auto_awesome" className="mb-3 text-primary" />
-            <h4 className="mb-2 font-bold text-on-surface">{feature}</h4>
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Tinh nang thong minh cho hoc tap toc do cao.' : 'Smart capability for high-velocity learning.'}</p>
-          </Card>
-        ))}
-      </div>
     </UserShell>
   )
 }
 
 export const OrganizationListPage: React.FC = () => {
   const isVi = useLang()
-  const orgs = ['Lumina Research Hub', 'AI Innovators Guild', 'Quantum Labs Network']
+  const { organizations, isLoading, error, fetchOrganizations, joinSelf } = useOrganization()
+  const [pendingJoin, setPendingJoin] = useState<string | null>(null)
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    void fetchOrganizations(0, 50)
+  }, [fetchOrganizations])
+
+  const handleJoin = async (org: OrganizationList) => {
+    setPendingJoin(org.id)
+    const ok = await joinSelf(org.id)
+    if (ok) setJoinedIds((prev) => new Set(prev).add(org.id))
+    setPendingJoin(null)
+  }
 
   return (
     <UserShell
@@ -377,15 +475,39 @@ export const OrganizationListPage: React.FC = () => {
       subtitleEn="Join and follow learning organizations"
       subtitleVi="Tham gia va theo doi cac to chuc hoc tap"
     >
+      {isLoading && (
+        <div className="flex justify-center py-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+        </div>
+      )}
+      {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+      {!isLoading && !error && organizations.length === 0 && (
+        <p className="text-sm text-on-surface-variant text-center py-4">
+          {isVi ? 'Chua co to chuc nao.' : 'No organizations yet.'}
+        </p>
+      )}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {orgs.map((org) => (
-          <Card key={org} className="p-6">
+        {organizations.map((org) => (
+          <Card key={org.id} className="p-6">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <MaterialIcon icon="corporate_fare" className="text-primary" />
             </div>
-            <h3 className="mb-2 font-bold text-on-surface">{org}</h3>
-            <p className="mb-4 text-sm text-on-surface-variant">{isVi ? '24 khoa hoc dang hoat dong' : '24 active courses available'}</p>
-            <Button size="sm" className="w-full">{isVi ? 'Tham gia' : 'Join'}</Button>
+            <h3 className="mb-2 font-bold text-on-surface">{org.name}</h3>
+            <p className="mb-4 text-sm text-on-surface-variant">
+              {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+            </p>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={() => void handleJoin(org)}
+              disabled={pendingJoin === org.id || joinedIds.has(org.id)}
+            >
+              {joinedIds.has(org.id)
+                ? (isVi ? 'Da tham gia' : 'Joined')
+                : pendingJoin === org.id
+                  ? (isVi ? 'Dang xu ly...' : 'Joining...')
+                  : (isVi ? 'Tham gia' : 'Join')}
+            </Button>
           </Card>
         ))}
       </div>
@@ -393,34 +515,88 @@ export const OrganizationListPage: React.FC = () => {
   )
 }
 
+interface CourseDetail {
+  id: string
+  title: string
+  description?: string | null
+  courseCode?: string | null
+  status?: string | null
+  createdAt: string
+}
+
+const contentIcon = (type: string): string => {
+  switch (type) {
+    case 'VIDEO': return 'play_circle'
+    case 'QUIZ': return 'quiz'
+    case 'FLASHCARD': return 'style'
+    case 'PDF': return 'description'
+    default: return 'article'
+  }
+}
+
+const contentHref = (c: { id: string; contentType: string; quizId?: string | null; deckId?: string | null; documentId?: string | null; videoId?: string | null }) => {
+  switch (c.contentType) {
+    case 'QUIZ': return c.quizId ? `/user/quiz?quizId=${c.quizId}` : null
+    case 'FLASHCARD': return c.deckId ? `/user/flashcards?deckId=${c.deckId}` : null
+    case 'PDF': return c.documentId ? `/user/documents?docId=${c.documentId}` : null
+    case 'VIDEO': return `/user/lesson?contentId=${c.id}${c.videoId ? `&videoId=${c.videoId}` : ''}`
+    default: return null
+  }
+}
+
+interface ItemProgressRow {
+  contentId: string
+  moduleId: string | null
+  progressPercentage: number
+  isCompleted: boolean
+  updatedAt: string
+}
+
 export const SpecificCoursePage: React.FC = () => {
   const { courseId } = useParams()
+  const { modules, fetchModules, isLoading: modulesLoading } = useModuleContent()
+  const [course, setCourse] = useState<CourseDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [progressByContent, setProgressByContent] = useState<Record<string, ItemProgressRow>>({})
 
-  const course = {
-    breadcrumb: 'Physics',
-    description:
-      'Deep dive into wave-particle duality, Schrödinger\'s equation, and the mathematical foundations of subatomic phenomena.',
-    progress: 45,
-    unitsCompleted: 8,
-    totalUnits: 18,
-    instructor: 'Dr. Sarah Chen',
-    duration: '12h 45m',
-    status: 'In Progress',
-    courseCode: courseId || 'quantum-mechanics',
-  }
+  useEffect(() => {
+    if (!courseId) return
+    let cancelled = false
+    setIsLoading(true)
+    setError(null)
+    apiClient
+      .get<CourseDetail>(`/courses/${courseId}`)
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data) setCourse(res.data)
+        else throw new Error(res.message || 'Course not found')
+      })
+      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Course not found') })
+      .finally(() => { if (!cancelled) setIsLoading(false) })
 
-  const learningPath = [
-    { title: 'Hilbert Space Fundamentals', description: 'Understanding the mathematical arena of quantum states.', time: '12:45 MIN', icon: 'play_circle', accent: '#4f6cf7', bg: '#eef2ff', completed: true },
-    { title: 'Operators & Observables', description: 'Comprehensive guide on Hermitian operators and physical values.', time: 'READING', icon: 'description', accent: '#d07a44', bg: '#fff2ea', completed: false },
-    { title: 'Key Postulates Review', description: '24 interactive cards to master the fundamental axioms.', time: 'NEW', icon: 'assignment', accent: '#4f6cf7', bg: '#f4f7ff', completed: false },
-    { title: 'Unit 2 Mid-term Assessment', description: 'Unlock after completing all Unit 2 modules.', time: '45 QUESTIONS', icon: 'lock', accent: '#9aa4b7', bg: '#f2f4f8', completed: false, locked: true },
-  ] as const
+    void fetchModules(courseId)
 
-  const courseLobby = [
-    { author: 'Dr. Sarah Chen', text: 'The visualization in module 4 really clarifies the wave packet dispersion. Check it out!' },
-    { author: 'Marcus V.', text: 'Is anyone struggling with the Hamiltonian operator proof? Looking for a study partner.' },
-    { author: 'Alex Thorne', text: 'I can help, Marcus. Let\'s meet in the virtual lab after the next lesson.' },
-  ]
+    // Pull per-item progress for the current user; quietly ignore failures
+    // (the spec only requires display when data is present).
+    apiClient
+      .get<ItemProgressRow[]>(`/courses/${courseId}/progress/items`)
+      .then((res) => {
+        if (cancelled) return
+        if (res.success && res.data) {
+          const map: Record<string, ItemProgressRow> = {}
+          for (const row of res.data) map[row.contentId] = row
+          setProgressByContent(map)
+        }
+      })
+      .catch(() => { /* progress is non-essential */ })
+
+    return () => { cancelled = true }
+  }, [courseId, fetchModules])
+
+  const totalContents = modules.reduce((sum: number, m: ModuleItem) => sum + (m.contents?.length ?? 0), 0)
+  const completedContents = Object.values(progressByContent).filter((p) => p.isCompleted).length
+  const overallPct = totalContents > 0 ? Math.round((completedContents * 100) / totalContents) : 0
 
   return (
     <UserShell
@@ -430,119 +606,121 @@ export const SpecificCoursePage: React.FC = () => {
       subtitleVi="Thong tin chi tiet cua khoa hoc duoc chon"
     >
       <div className="space-y-8">
-        <Card className="overflow-hidden border border-[#e7ebf6] p-0 shadow-[0_20px_50px_rgba(69,84,153,0.12)]">
-          <div className="grid gap-0 lg:grid-cols-[1.7fr_0.95fr]">
-            <div className="space-y-6 bg-gradient-to-br from-[#f8fbff] via-white to-[#eef3ff] p-8 lg:p-10">
-              <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7b86a3]">Courses &gt; {course.breadcrumb}</div>
-              <div>
-                <h3 className="max-w-3xl text-[44px] font-black leading-[1.02] text-on-surface font-headline lg:text-[54px]">
-                  Advanced <span className="text-[#4f6cf7]">Quantum Mechanics</span>
-                </h3>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">{course.description}</p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <Link to="/user/lesson" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#4f6cf7] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#395de8]">
-                  Continue Learning
-                  <MaterialIcon icon="arrow_forward" size="sm" />
-                </Link>
-                <Link to="/user/quiz" className="inline-flex items-center justify-center rounded-full border border-[#d8e0f0] bg-white px-6 py-3 text-sm font-semibold text-on-surface transition hover:bg-[#f6f8ff]">
-                  Open Course
-                </Link>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center bg-white p-8 lg:p-10">
-              <Card className="w-full max-w-[280px] border border-[#edf1f8] p-6 shadow-[0_18px_40px_rgba(73,89,162,0.08)]">
-                <div className="text-xs font-black uppercase tracking-[0.2em] text-[#8a95af]">Current Progress</div>
-                <div className="mt-3 flex items-end justify-between gap-4">
-                  <div>
-                    <div className="text-5xl font-black text-on-surface">{course.progress}%</div>
-                    <p className="mt-1 text-sm text-on-surface-variant">{course.unitsCompleted} / {course.totalUnits} Units</p>
-                  </div>
-                  <div className="rounded-2xl bg-[#eef2ff] px-4 py-3 text-center text-xs font-bold text-[#4f6cf7]">
-                    {course.unitsCompleted} / {course.totalUnits}
-                    <br />
-                    Units
-                  </div>
-                </div>
-                <div className="mt-5 h-2 rounded-full bg-[#e5eaf6]">
-                  <div className="h-2 w-[45%] rounded-full bg-[#4f6cf7]" />
-                </div>
-                <Button className="mt-6 w-full justify-center" size="md">Continue Learning</Button>
-              </Card>
-            </div>
+        {isLoading && (
+          <div className="flex justify-center py-8">
+            <div className="h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />
           </div>
-        </Card>
+        )}
+        {error && !isLoading && (
+          <Card className="border border-error/30 p-4">
+            <p className="text-sm text-error">{error}</p>
+          </Card>
+        )}
 
-        <div className="grid gap-8 xl:grid-cols-[1.5fr_0.75fr]">
+        {!isLoading && course && (
+          <Card className="overflow-hidden border border-[#e7ebf6] p-0 shadow-[0_20px_50px_rgba(69,84,153,0.12)]">
+            <div className="grid gap-0 lg:grid-cols-[1.7fr_0.95fr]">
+              <div className="space-y-6 bg-gradient-to-br from-[#f8fbff] via-white to-[#eef3ff] p-8 lg:p-10">
+                <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7b86a3]">
+                  Courses &gt; {course.courseCode ?? course.title}
+                </div>
+                <div>
+                  <h3 className="max-w-3xl text-[44px] font-black leading-[1.02] text-on-surface font-headline lg:text-[54px]">
+                    <span className="text-[#4f6cf7]">{course.title}</span>
+                  </h3>
+                  {course.description && (
+                    <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">{course.description}</p>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Link to="/user/learning" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#4f6cf7] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#395de8]">
+                    View History
+                    <MaterialIcon icon="arrow_forward" size="sm" />
+                  </Link>
+                </div>
+              </div>
+              <div className="flex items-center justify-center bg-white p-8 lg:p-10">
+                <Card className="w-full max-w-[280px] border border-[#edf1f8] p-6 shadow-[0_18px_40px_rgba(73,89,162,0.08)]">
+                  <div className="text-xs font-black uppercase tracking-[0.2em] text-[#8a95af]">Course Summary</div>
+                  <div className="mt-3 space-y-2 text-sm text-on-surface-variant">
+                    <p><span className="font-semibold text-on-surface">Status:</span> {course.status ?? 'ACTIVE'}</p>
+                    <p><span className="font-semibold text-on-surface">Code:</span> {course.courseCode ?? '—'}</p>
+                    <p><span className="font-semibold text-on-surface">Modules:</span> {modules.length}</p>
+                    <p><span className="font-semibold text-on-surface">Items:</span> {completedContents} / {totalContents}</p>
+                  </div>
+                  <div className="mt-4 h-2 rounded-full bg-[#e5eaf6]">
+                    <div className="h-2 rounded-full bg-[#4f6cf7]" style={{ width: `${overallPct}%` }} />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-[#4f6cf7]">{overallPct}% complete</p>
+                </Card>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {!isLoading && course && (
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <h4 className="text-2xl font-bold text-on-surface font-headline">Learning Path</h4>
-              <div className="flex items-center gap-3 text-[#6e7890]"><MaterialIcon icon="filter_list" size="sm" /><MaterialIcon icon="grid_view" size="sm" /></div>
             </div>
-
-            <div className="space-y-4">
-              {learningPath.map((item) => (
-                <div key={item.title} className="rounded-[24px] border border-[#edf1f8] bg-white p-4 shadow-[0_10px_28px_rgba(65,79,145,0.06)]">
-                  <div className="flex items-center gap-4">
-                    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl" style={{ backgroundColor: item.bg, color: item.accent }}>
-                      <MaterialIcon icon={item.icon} size="md" fill />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h5 className="text-lg font-bold text-on-surface">{item.title}</h5>
-                        <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#a0a8b8]">{item.time}</span>
+            {modulesLoading && (
+              <div className="flex justify-center py-4">
+                <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+              </div>
+            )}
+            {!modulesLoading && modules.length === 0 && (
+              <p className="text-sm text-on-surface-variant">No modules have been added to this course yet.</p>
+            )}
+            {!modulesLoading && modules.length > 0 && modules.map((m: ModuleItem) => (
+              <Card key={m.id} className="border border-[#edf1f8] p-4 shadow-[0_10px_28px_rgba(65,79,145,0.06)]">
+                <div className="mb-3">
+                  <h5 className="text-lg font-bold text-on-surface">{m.title}</h5>
+                  {m.description && <p className="mt-1 text-sm text-on-surface-variant">{m.description}</p>}
+                </div>
+                <div className="space-y-2">
+                  {(m.contents ?? []).length === 0 && (
+                    <p className="text-xs text-on-surface-variant">No items yet.</p>
+                  )}
+                  {(m.contents ?? []).map((c: ContentItem) => {
+                    const href = contentHref(c)
+                    const progress = progressByContent[c.id]
+                    const row = (
+                      <div className="flex items-center gap-3 rounded-xl bg-surface-container-low p-3">
+                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#eef2ff] text-[#4f6cf7]">
+                          <MaterialIcon
+                            icon={progress?.isCompleted ? 'check_circle' : contentIcon(c.contentType)}
+                            size="sm"
+                            fill={progress?.isCompleted}
+                          />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium text-on-surface">{c.title}</p>
+                          <p className="truncate text-xs text-on-surface-variant">
+                            {c.contentType} • {c.status}
+                            {progress && !progress.isCompleted && ` • ${progress.progressPercentage}%`}
+                          </p>
+                        </div>
+                        {progress?.isCompleted ? (
+                          <Badge variant="success" size="sm">Completed</Badge>
+                        ) : progress ? (
+                          <Badge variant="primary" size="sm">In progress</Badge>
+                        ) : null}
+                        {href && (
+                          <span className="text-xs font-semibold text-[#4f6cf7]">Open</span>
+                        )}
                       </div>
-                      <p className="mt-1 text-sm leading-6 text-on-surface-variant">{item.description}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {'locked' in item && item.locked ? (
-                        <div className="grid h-10 w-10 place-items-center rounded-full bg-[#f3f5f9] text-[#a2abbb]"><MaterialIcon icon="lock" size="sm" /></div>
-                      ) : item.completed ? (
-                        <div className="grid h-10 w-10 place-items-center rounded-full bg-[#eef2ff] text-[#4f6cf7]"><MaterialIcon icon="check_circle" size="sm" fill /></div>
-                      ) : (
-                        <button className="rounded-full bg-[#4f6cf7] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#395de8]">{item.time === 'NEW' ? 'Start' : 'Open'}</button>
-                      )}
-                    </div>
-                  </div>
+                    )
+                    return href ? (
+                      <Link key={c.id} to={href} className="block hover:opacity-80">{row}</Link>
+                    ) : (
+                      <div key={c.id}>{row}</div>
+                    )
+                  })}
                 </div>
-              ))}
-            </div>
+              </Card>
+            ))}
           </div>
-
-          <div className="space-y-6">
-            <Card className="border border-[#edf1f8] p-5 shadow-[0_10px_28px_rgba(65,79,145,0.06)]">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-black uppercase tracking-[0.18em] text-[#8a95af]">Course Lobby</div>
-                  <h4 className="mt-1 text-xl font-bold text-on-surface">12 online</h4>
-                </div>
-                <div className="flex -space-x-2">
-                  {['S', 'M', 'A'].map((avatar) => <div key={avatar} className="grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-[#4f6cf7] text-xs font-bold text-white">{avatar}</div>)}
-                </div>
-              </div>
-              <div className="mt-5 space-y-4">
-                {courseLobby.map((message) => (
-                  <div key={message.author} className="rounded-[20px] bg-[#f8fafe] p-4">
-                    <div className="mb-2 text-sm font-bold text-[#4f6cf7]">{message.author}</div>
-                    <p className="text-sm leading-6 text-on-surface-variant">{message.text}</p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card className="border border-[#edf1f8] p-5 shadow-[0_10px_28px_rgba(65,79,145,0.06)]">
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-[#8a95af]">Course Summary</div>
-              <div className="mt-3 space-y-3 text-sm text-on-surface-variant">
-                <p><span className="font-semibold text-on-surface">Instructor:</span> {course.instructor}</p>
-                <p><span className="font-semibold text-on-surface">Duration:</span> {course.duration}</p>
-                <p><span className="font-semibold text-on-surface">Status:</span> {course.status}</p>
-                <p><span className="font-semibold text-on-surface">Course ID:</span> {course.courseCode}</p>
-              </div>
-            </Card>
-          </div>
-        </div>
+        )}
       </div>
     </UserShell>
   )
@@ -725,8 +903,7 @@ export const VideoLessonPage: React.FC = () => {
     try {
       const raw = localStorage.getItem('auth_user')
       if (!raw) return null
-      const parsed = JSON.parse(raw) as { role?: string; isSystemAdmin?: boolean }
-      if (parsed.isSystemAdmin) return 'SysAdmin'
+      const parsed = JSON.parse(raw) as { role?: string }
       return parsed.role || null
     } catch {
       return null

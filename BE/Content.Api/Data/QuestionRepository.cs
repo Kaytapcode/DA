@@ -11,7 +11,8 @@ namespace Content.Api.Data
         Task<QuestionModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<Guid?> GetQuizOrgIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default);
-        Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, CancellationToken ct = default);
+        Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, Guid? createdByUserId, CancellationToken ct = default);
+        Task MarkQuizAiGeneratedAsync(Guid quizId, CancellationToken ct = default);
         Task<QuestionModel> CreateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
         Task<List<QuestionModel>> CreateBulkAsync(Guid quizId, List<(string QuestionText, List<string> Options, int CorrectIndex, string? Explanation)> questions, CancellationToken ct = default);
         Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
@@ -67,7 +68,7 @@ namespace Content.Api.Data
                 .Select(mc => (Guid?)mc.Module!.OrgId)
                 .FirstOrDefaultAsync(ct);
 
-        public async Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, CancellationToken ct = default)
+        public async Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, Guid? createdByUserId, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
             var content = new ContentModel
@@ -76,6 +77,8 @@ namespace Content.Api.Data
                 Title = title,
                 ContentType = "QUIZ",
                 Status = "DRAFT",
+                CreatedByUserId = createdByUserId,
+                IsPublic = true, // Spec §1: personal resources MUST be public.
                 CreatedAt = now
             };
             var quiz = new QuizModel
@@ -92,6 +95,14 @@ namespace Content.Api.Data
             await _db.SaveChangesAsync(ct);
             quiz.Content = content;
             return quiz;
+        }
+
+        public async Task MarkQuizAiGeneratedAsync(Guid quizId, CancellationToken ct = default)
+        {
+            var quiz = await _db.Quizzes.FirstOrDefaultAsync(q => q.Id == quizId, ct);
+            if (quiz == null || quiz.IsAiGenerated) return;
+            quiz.IsAiGenerated = true;
+            await _db.SaveChangesAsync(ct);
         }
 
         public async Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default)

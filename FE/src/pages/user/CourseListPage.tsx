@@ -22,32 +22,33 @@ interface Course {
  * User Course List Page
  */
 export const CourseListPage: React.FC = () => {
+  // Sample course shells shown until real course data is wired in; replace with /api/courses fetch.
   const courses: Course[] = [
     {
       id: '1',
-      title: 'Advanced Quantum Mechanics',
-      instructor: 'Dr. Sarah Chen',
+      title: 'Sample Course A',
+      instructor: 'Instructor',
       progress: 45,
-      students: 1200,
-      slug: 'advanced-quantum-mechanics',
+      students: 0,
+      slug: 'sample-course-a',
       theme: 'from-[#4f6cf7] via-[#dfe7ff] to-[#f7f9ff]',
     },
     {
       id: '2',
-      title: 'Quantum Field Foundations',
-      instructor: 'Prof. Marcus V.',
+      title: 'Sample Course B',
+      instructor: 'Instructor',
       progress: 65,
-      students: 950,
-      slug: 'quantum-field-foundations',
+      students: 0,
+      slug: 'sample-course-b',
       theme: 'from-[#f6b27a] via-[#fff1e6] to-[#fff9f5]',
     },
     {
       id: '3',
-      title: 'Subatomic Simulation Lab',
-      instructor: 'Dr. Linh Tran',
+      title: 'Sample Course C',
+      instructor: 'Instructor',
       progress: 80,
-      students: 800,
-      slug: 'subatomic-simulation-lab',
+      students: 0,
+      slug: 'sample-course-c',
       theme: 'from-[#7bc6ff] via-[#eaf6ff] to-[#f8fbff]',
     },
   ]
@@ -75,17 +76,17 @@ export const CourseListPage: React.FC = () => {
                 <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7885a6]">Featured Course</div>
                 <div>
                   <h3 className="max-w-2xl text-4xl font-black leading-[1.05] text-on-surface font-headline">
-                    Advanced <span className="text-[#4f6cf7]">Quantum Mechanics</span>
+                    <span className="text-[#4f6cf7]">Featured Course</span>
                   </h3>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                    Deep dive into wave-particle duality, Schrödinger&apos;s equation, and the mathematical foundations of subatomic phenomena.
+                    A short description of the highlighted course will appear here once content is wired in.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
                   <Button variant="primary">Continue Learning</Button>
                   <Link
-                    to="/user/course/advanced-quantum-mechanics"
+                    to="/user/course/sample-course-a"
                     className="inline-flex items-center justify-center rounded-lg border border-[#d6def0] bg-white px-6 py-2.5 text-base font-medium text-on-surface transition hover:bg-[#f6f8ff]"
                   >
                     Open Course

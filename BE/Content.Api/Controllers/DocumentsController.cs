@@ -44,11 +44,14 @@ namespace Content.Api.Controllers
         );
 
         // POST /api/documents
+        // Spec §1: User-created (personal) resources MUST be public. The isPublic form field is
+        // accepted for backwards compatibility but ignored when the document is a standalone
+        // user upload (no ContentId / not course-bound).
         [HttpPost]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadDocument(
             IFormFile file,
-            [FromForm] bool isPublic = false,
+            [FromForm] bool isPublic = true,
             CancellationToken ct = default)
         {
             var userId = _orgCtx.GetCurrentUserId();
@@ -77,6 +80,8 @@ namespace Content.Api.Controllers
 
             MimeToFileType.TryGetValue(file.ContentType, out var fileType);
 
+            // Personal upload (no ContentId) → force public per spec §1; course-bound docs
+            // (ContentId set) respect the caller's preference.
             var doc = new DocumentModel
             {
                 CreatedByUserId = userId.Value,
@@ -84,7 +89,7 @@ namespace Content.Api.Controllers
                 FilePath = filePath,
                 FileSize = fileSize,
                 FileType = fileType ?? "PDF",
-                IsPublic = isPublic
+                IsPublic = true
             };
 
             var created = await _repo.CreateAsync(doc, ct);

@@ -6,7 +6,6 @@ export interface AuthUser {
   username: string;
   email: string;
   role: string;
-  isSystemAdmin: boolean;
 }
 
 export interface AuthContextType {
@@ -60,7 +59,7 @@ export const useAuth = (): AuthContextType => {
       const response = await apiClient.post<{
         token: string;
         message: string;
-        user: { id: string; username: string; email: string; role: string; isSystemAdmin: boolean };
+        user: { id: string; username: string; email: string; role: string };
         orgId?: string;
       }>('/auth/login', { username, password }, { headers });
 
@@ -73,7 +72,6 @@ export const useAuth = (): AuthContextType => {
         username: userData.username,
         email: userData.email,
         role: userData.role,
-        isSystemAdmin: userData.isSystemAdmin,
       };
 
       setToken(newToken);

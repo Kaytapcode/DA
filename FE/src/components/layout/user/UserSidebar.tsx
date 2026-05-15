@@ -1,8 +1,9 @@
 import React from 'react'
 import { NavLink } from 'react-router-dom'
-import { USER_NAV_ITEMS } from '@constants/navigation'
+import { USER_NAV_ITEMS, APP_BRAND } from '@constants/navigation'
 import { t } from '@/i18n/translations'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
+import { useAuthContext } from '@/contexts/AuthContext'
 
 /**
  * User Sidebar
@@ -12,9 +13,10 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
  * - Resources and profile
  */
 export const UserSidebar: React.FC = () => {
+  const { user } = useAuthContext()
   const primaryIds = ['home', 'courses', 'dashboard', 'learning']
   const toolIds = ['flashcards']
-  const resourceIds = ['documents', 'library', 'messages', 'profile']
+  const resourceIds = ['documents', 'library', 'collections', 'browse', 'messages', 'profile']
 
   const primaryItems = USER_NAV_ITEMS.filter((item) => primaryIds.includes(item.id))
   const toolItems = USER_NAV_ITEMS.filter((item) => toolIds.includes(item.id))
@@ -50,9 +52,9 @@ export const UserSidebar: React.FC = () => {
           <MaterialIcon icon="auto_awesome" size="sm" fill />
         </div>
         <div>
-          <div className="text-[22px] font-extrabold leading-none text-[#4d6df6]">Lumina</div>
+          <div className="text-[22px] font-extrabold leading-none text-[#4d6df6]">{APP_BRAND.name}</div>
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#7f8ca5]">
-            Quantum Learning
+            {APP_BRAND.tagline}
           </div>
         </div>
       </div>
@@ -86,8 +88,8 @@ export const UserSidebar: React.FC = () => {
           <MaterialIcon icon="person" size="sm" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-bold text-[#243043]">Alex Thorne</div>
-          <div className="truncate text-xs font-medium text-[#7a879e]">Quantum Engineer</div>
+          <div className="truncate text-sm font-bold text-[#243043]">{user?.username ?? 'Guest'}</div>
+          <div className="truncate text-xs font-medium text-[#7a879e]">{user?.role ?? 'Student'}</div>
         </div>
       </div>
     </aside>

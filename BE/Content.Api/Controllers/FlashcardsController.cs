@@ -61,7 +61,7 @@ namespace Content.Api.Controllers
             if (string.IsNullOrWhiteSpace(request.Title))
                 return BadRequest(new ApiResponse(false, "Title is required."));
 
-            var deck = await _repo.CreateDeckAsync(request.Title.Trim(), request.Theme, ct);
+            var deck = await _repo.CreateDeckAsync(request.Title.Trim(), request.Theme, _orgCtx.GetCurrentUserId(), ct);
 
             var summary = new FlashcardDeckSummaryDto(
                 DeckId: deck.Id,
@@ -156,6 +156,19 @@ namespace Content.Api.Controllers
             await _repo.MarkMasteredAsync(cardId, !card.IsMastered, ct);
             var updated = await _repo.GetByIdAsync(cardId, ct);
             return Ok(new ApiResponse<FlashcardDto>(true, ToDto(updated!), $"Card marked as {(!card.IsMastered ? "mastered" : "unmastered")}."));
+        }
+
+        // POST /api/decks/{deckId}/flashcards/reset-mastered
+        // Spec §2.3: "Allows Users to mark cards as 'Mastered'. The system will not display
+        // these cards in subsequent study sessions unless the User resets them."
+        [HttpPost("reset-mastered")]
+        public async Task<IActionResult> ResetMastered(Guid deckId, CancellationToken ct)
+        {
+            if (!await VerifyDeckAccessAsync(deckId))
+                return NotFound(new ApiResponse(false, "Deck not found."));
+
+            var resetCount = await _repo.ResetMasteredAsync(deckId, ct);
+            return Ok(new ApiResponse<object>(true, new { resetCount }, $"Reset {resetCount} card(s) to unmastered."));
         }
 
         // DELETE /api/decks/{deckId}/flashcards/{cardId}

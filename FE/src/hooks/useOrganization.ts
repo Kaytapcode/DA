@@ -37,13 +37,14 @@ interface UseOrganizationReturn {
   currentOrganization: Organization | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchOrganizations: (pageIndex?: number, pageSize?: number) => Promise<void>;
   fetchOrganization: (id: string) => Promise<void>;
   createOrganization: (data: CreateOrganizationPayload) => Promise<Organization | null>;
   updateOrganization: (data: UpdateOrganizationPayload) => Promise<Organization | null>;
   deleteOrganization: (id: string) => Promise<boolean>;
+  joinSelf: (orgId: string) => Promise<boolean>;
   setCurrentOrganization: (org: Organization | null) => void;
   clearError: () => void;
 }
@@ -196,6 +197,22 @@ export const useOrganization = (): UseOrganizationReturn => {
     [handleError, currentOrganization?.id]
   );
 
+  // Spec §1, User role: "Can join Organizations." Calls POST /api/orgs/{id}/members/self.
+  const joinSelf = useCallback(
+    async (orgId: string): Promise<boolean> => {
+      setError(null);
+      try {
+        const response = await apiClient.post(`/orgs/${orgId}/members/self`);
+        if (!response.success) throw new Error(response.message || 'Failed to join organization');
+        return true;
+      } catch (err) {
+        handleError(err);
+        return false;
+      }
+    },
+    [handleError]
+  );
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -210,6 +227,7 @@ export const useOrganization = (): UseOrganizationReturn => {
     createOrganization,
     updateOrganization,
     deleteOrganization,
+    joinSelf,
     setCurrentOrganization,
     clearError,
   };

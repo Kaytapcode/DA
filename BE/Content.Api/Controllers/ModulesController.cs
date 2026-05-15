@@ -16,12 +16,14 @@ namespace Content.Api.Controllers
         private readonly IModuleRepository _moduleRepo;
         private readonly ICourseRepository _courseRepo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ICourseAccessService _access;
 
-        public ModulesController(IModuleRepository moduleRepo, ICourseRepository courseRepo, IOrgContextService orgCtx)
+        public ModulesController(IModuleRepository moduleRepo, ICourseRepository courseRepo, IOrgContextService orgCtx, ICourseAccessService access)
         {
             _moduleRepo = moduleRepo;
             _courseRepo = courseRepo;
             _orgCtx = orgCtx;
+            _access = access;
         }
 
         private async Task<CourseModel?> GetVerifiedCourseAsync(Guid courseId)
@@ -56,6 +58,8 @@ namespace Content.Api.Controllers
         {
             var course = await GetVerifiedCourseAsync(courseId);
             if (course == null) return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             var module = new ModuleModel
             {
@@ -78,6 +82,8 @@ namespace Content.Api.Controllers
         {
             if (await GetVerifiedCourseAsync(courseId) == null)
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             var module = await _moduleRepo.GetByIdAsync(moduleId);
             if (module == null) return NotFound(new ApiResponse(false, "Module not found."));
@@ -97,18 +103,22 @@ namespace Content.Api.Controllers
         {
             if (await GetVerifiedCourseAsync(courseId) == null)
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             await _moduleRepo.DeleteAsync(moduleId, courseId);
             return Ok(new ApiResponse(true, "Module deleted."));
         }
 
-        // PATCH /api/courses/{courseId}/modules/{moduleId}/order — T3.7 Up/Down sort
+        // PATCH /api/courses/{courseId}/modules/{moduleId}/order ï¿½ T3.7 Up/Down sort
         [HttpPatch("{moduleId:guid}/order")]
         [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> ReorderModule(Guid courseId, Guid moduleId, [FromBody] ReorderModuleRequestDto request)
         {
             if (await GetVerifiedCourseAsync(courseId) == null)
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             await _moduleRepo.ReorderAsync(courseId, moduleId, request.NewIndex);
             return Ok(new ApiResponse(true, "Module reordered."));

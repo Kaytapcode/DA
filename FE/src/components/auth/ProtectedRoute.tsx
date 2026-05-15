@@ -36,7 +36,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (roles && roles.length > 0 && user) {
-    const userRole = user.isSystemAdmin ? 'SysAdmin' : user.role;
+    const userRole = user.role;
     const hasRole = roles.includes(userRole);
     if (!hasRole) {
       // Redirect to appropriate dashboard based on actual role

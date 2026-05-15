@@ -5,11 +5,26 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { MainLayout } from '@layouts/MainLayout'
+import { useOrgContext } from '@/contexts/OrgContext'
+import { useOrgAnalytics } from '@/hooks/useAnalytics'
 
 /**
  * OrgAdmin Dashboard Page
  */
 export const OrgAdminDashboardPage: React.FC = () => {
+  const { org } = useOrgContext()
+  const orgId = org?.id ?? localStorage.getItem('org_id')
+  const { data, isLoading, error } = useOrgAnalytics(orgId)
+
+  const stat = (n: number | undefined | null) => (n ?? 0).toLocaleString()
+
+  const stats = [
+    { label: 'Total Members', value: stat(data.members?.totalMembers), icon: 'people' },
+    { label: 'Active Courses', value: stat(data.content?.activeCourseCount), icon: 'school' },
+    { label: 'Completed Attempts', value: stat(data.content?.completedAttempts), icon: 'done_all' },
+    { label: 'Recent Joins (30d)', value: stat(data.members?.recentJoins), icon: 'person_add' },
+  ]
+
   return (
     <MainLayout
       navbar={<OrgAdminNavbar title="Administration Dashboard" />}
@@ -23,23 +38,24 @@ export const OrgAdminDashboardPage: React.FC = () => {
             <p className="text-on-surface-variant">Manage courses, members, and organization settings</p>
           </div>
 
-          {/* Quick Stats */}
+          {!orgId && (
+            <Card className="mb-6 p-4">
+              <p className="text-sm text-on-surface-variant">Select an organization to view analytics.</p>
+            </Card>
+          )}
+          {error && !isLoading && (
+            <p className="text-sm text-error mb-3">{error}</p>
+          )}
+
+          {/* Quick Stats — sourced from /api/analytics/orgs/{orgId} + /members */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-            {[
-              { label: 'Total Members', value: '1,234', icon: 'people', change: '+12%' },
-              { label: 'Active Courses', value: '24', icon: 'school', change: '+3' },
-              { label: 'Course Completions', value: '456', icon: 'done_all', change: '+28%' },
-              { label: 'Avg. Satisfaction', value: '4.8/5', icon: 'star', change: '+0.2' },
-            ].map((stat, i) => (
-              <Card key={i}>
+            {stats.map((s) => (
+              <Card key={s.label}>
                 <div className="flex items-center justify-between mb-4">
-                  <MaterialIcon icon={stat.icon} className="text-2xl text-primary" />
-                  <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
-                    {stat.change}
-                  </span>
+                  <MaterialIcon icon={s.icon} className="text-2xl text-primary" />
                 </div>
-                <p className="text-2xl font-bold text-on-surface">{stat.value}</p>
-                <p className="text-sm text-on-surface-variant">{stat.label}</p>
+                <p className="text-2xl font-bold text-on-surface">{isLoading ? '…' : s.value}</p>
+                <p className="text-sm text-on-surface-variant">{s.label}</p>
               </Card>
             ))}
           </div>

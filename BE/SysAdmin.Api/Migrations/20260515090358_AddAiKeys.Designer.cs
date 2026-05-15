@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SysAdmin.Api.Data;
@@ -11,9 +12,11 @@ using SysAdmin.Api.Data;
 namespace SysAdmin.Api.Migrations
 {
     [DbContext(typeof(SysAdminDbContext))]
-    partial class SysAdminDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260515090358_AddAiKeys")]
+    partial class AddAiKeys
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

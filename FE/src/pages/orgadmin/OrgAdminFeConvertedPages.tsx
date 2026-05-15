@@ -10,6 +10,10 @@ import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { getCurrentLanguage } from '@/i18n/translations'
 import { useModuleContent, ModuleItem, ContentItem } from '@/hooks/useModuleContent'
+import { useCourse } from '@/hooks/useCourse'
+import { useOrganization } from '@/hooks/useOrganization'
+import { useCourseEnrollment, type CourseEnrollment } from '@/hooks/useCourseEnrollment'
+import { useOrgContext } from '@/contexts/OrgContext'
 
 const useLang = () => getCurrentLanguage() === 'vi'
 
@@ -44,6 +48,44 @@ const OrgShell: React.FC<OrgShellProps> = ({ titleEn, titleVi, subtitleEn, subti
 
 export const CourseManagementPage: React.FC = () => {
   const isVi = useLang()
+  const { org } = useOrgContext()
+  const orgId = org?.id ?? localStorage.getItem('org_id') ?? ''
+  const { courses, isLoading, error, fetchCourses, createCourse, deleteCourse } = useCourse()
+  const [showCreate, setShowCreate] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newCode, setNewCode] = useState('')
+  const [newDescription, setNewDescription] = useState('')
+  const [busyCourseId, setBusyCourseId] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    void fetchCourses(0, 50)
+  }, [fetchCourses])
+
+  const handleCreate = async () => {
+    if (!orgId || !newTitle.trim()) return
+    setSubmitting(true)
+    const created = await createCourse({
+      orgId,
+      title: newTitle.trim(),
+      description: newDescription.trim() || undefined,
+      courseCode: newCode.trim() || undefined,
+    })
+    setSubmitting(false)
+    if (created) {
+      setNewTitle('')
+      setNewCode('')
+      setNewDescription('')
+      setShowCreate(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(isVi ? 'Xoa khoa hoc nay?' : 'Delete this course?')) return
+    setBusyCourseId(id)
+    await deleteCourse(id)
+    setBusyCourseId(null)
+  }
 
   return (
     <OrgShell
@@ -53,38 +95,97 @@ export const CourseManagementPage: React.FC = () => {
       subtitleVi="Quan ly xuat ban, ghi danh va chat luong"
     >
       <div className="flex gap-3">
-        <Button>{isVi ? 'Tao khoa hoc' : 'Create Course'}</Button>
-        <Button variant="secondary">{isVi ? 'Nhap CSV' : 'Import CSV'}</Button>
+        <Button onClick={() => setShowCreate((v) => !v)}>
+          {showCreate ? (isVi ? 'Dong' : 'Cancel') : (isVi ? 'Tao khoa hoc' : 'Create Course')}
+        </Button>
       </div>
+
+      {showCreate && (
+        <Card className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label={isVi ? 'Tieu de' : 'Title'}
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder={isVi ? 'Vi du: Lap trinh React' : 'e.g. React Programming'}
+            />
+            <Input
+              label={isVi ? 'Ma khoa hoc' : 'Course Code'}
+              value={newCode}
+              onChange={(e) => setNewCode(e.target.value)}
+              placeholder="CS101"
+            />
+            <Input
+              label={isVi ? 'Mo ta' : 'Description'}
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              className="md:col-span-2"
+            />
+          </div>
+          {!orgId && (
+            <p className="mt-3 text-sm text-error">
+              {isVi ? 'Vui long chon mot to chuc truoc.' : 'Select an organization first.'}
+            </p>
+          )}
+          <div className="mt-4 flex justify-end">
+            <Button onClick={() => void handleCreate()} disabled={submitting || !orgId || !newTitle.trim()}>
+              {submitting ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Tao' : 'Create')}
+            </Button>
+          </div>
+        </Card>
+      )}
+
       <Card className="p-6">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-outline-variant">
-                <th className="text-left py-3">{isVi ? 'Khoa hoc' : 'Course'}</th>
-                <th className="text-left py-3">{isVi ? 'Giang vien' : 'Instructor'}</th>
-                <th className="text-left py-3">{isVi ? 'Trang thai' : 'Status'}</th>
-                <th className="text-left py-3">{isVi ? 'Hoc vien' : 'Learners'}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                ['Frontend Mastery', 'Nguyen Anh', 'Published', '842'],
-                ['Backend Reliability', 'Tran Linh', 'Draft', '0'],
-                ['AI Product Basics', 'Le Minh', 'Published', '413'],
-              ].map((row) => (
-                <tr key={row[0]} className="border-b border-outline-variant/40">
-                  <td className="py-3 font-medium">{row[0]}</td>
-                  <td className="py-3 text-on-surface-variant">{row[1]}</td>
-                  <td className="py-3">
-                    <Badge variant={row[2] === 'Published' ? 'success' : 'warning'} size="sm">{row[2]}</Badge>
-                  </td>
-                  <td className="py-3">{row[3]}</td>
+        {isLoading && (
+          <div className="flex justify-center py-6">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          </div>
+        )}
+        {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>}
+        {!isLoading && courses.length === 0 && !error && (
+          <p className="py-4 text-center text-sm text-on-surface-variant">
+            {isVi ? 'Chua co khoa hoc nao.' : 'No courses yet.'}
+          </p>
+        )}
+        {!isLoading && courses.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-outline-variant">
+                  <th className="text-left py-3">{isVi ? 'Khoa hoc' : 'Course'}</th>
+                  <th className="text-left py-3">{isVi ? 'Ma' : 'Code'}</th>
+                  <th className="text-left py-3">{isVi ? 'Mo-dun' : 'Modules'}</th>
+                  <th className="text-left py-3">{isVi ? 'Ngay tao' : 'Created'}</th>
+                  <th className="py-3" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {courses.map((c) => (
+                  <tr key={c.id} className="border-b border-outline-variant/40">
+                    <td className="py-3 font-medium">
+                      <Link to={`/admin/editor/curriculum?courseId=${c.id}`} className="hover:text-primary">
+                        {c.title}
+                      </Link>
+                    </td>
+                    <td className="py-3 text-on-surface-variant">{c.courseCode ?? '—'}</td>
+                    <td className="py-3 text-on-surface-variant">{c.moduleCount ?? 0}</td>
+                    <td className="py-3 text-on-surface-variant">{new Date(c.createdAt).toLocaleDateString()}</td>
+                    <td className="py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => void handleDelete(c.id)}
+                        disabled={busyCourseId === c.id}
+                      >
+                        <MaterialIcon icon="delete" size="xs" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </OrgShell>
   )
@@ -430,31 +531,143 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
 
 export const CourseEditorMemberRolesTabPage: React.FC = () => {
   const isVi = useLang()
+  const [searchParams] = useSearchParams()
+  const courseId = searchParams.get('courseId')
+
+  const { enrollments, isLoading, error, create, updateRole, remove } = useCourseEnrollment(courseId)
+  const [newUserId, setNewUserId] = useState('')
+  const [newRole, setNewRole] = useState<'Teacher' | 'Student'>('Student')
+  const [submitting, setSubmitting] = useState(false)
+  const [busyUserId, setBusyUserId] = useState<string | null>(null)
+
+  const handleAdd = async () => {
+    if (!newUserId.trim()) return
+    setSubmitting(true)
+    const ok = await create(newUserId.trim(), newRole)
+    if (ok) {
+      setNewUserId('')
+      setNewRole('Student')
+    }
+    setSubmitting(false)
+  }
+
+  const handleChangeRole = async (e: CourseEnrollment, role: 'Teacher' | 'Student') => {
+    if (role === e.role) return
+    setBusyUserId(e.userId)
+    await updateRole(e.userId, role)
+    setBusyUserId(null)
+  }
+
+  const handleRemove = async (e: CourseEnrollment) => {
+    if (!confirm(isVi ? 'Go bo nguoi nay khoi khoa hoc?' : 'Remove this user from the course?')) return
+    setBusyUserId(e.userId)
+    await remove(e.userId)
+    setBusyUserId(null)
+  }
 
   return (
     <OrgShell
       titleEn="Course Editor - Member Roles"
       titleVi="Trinh sua khoa hoc - Vai tro thanh vien"
-      subtitleEn="Assign responsibilities per course"
-      subtitleVi="Gan trach nhiem cho tung vai tro trong khoa hoc"
+      subtitleEn="Assign Teacher / Student roles per course (spec §4.2)"
+      subtitleVi="Gan vai tro Teacher / Student cho tung khoa hoc"
     >
-      <Card className="p-6">
-        <div className="space-y-4">
-          {[
-            ['Instructor', 'Can create and publish curriculum', 'primary'],
-            ['Teaching Assistant', 'Can review submissions and comments', 'secondary'],
-            ['Reviewer', 'Can only review and leave feedback', 'warning'],
-          ].map((role) => (
-            <div key={role[0]} className="p-4 rounded-lg bg-surface-container-low">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-on-surface">{role[0]}</h3>
-                <Badge variant={role[2] as 'primary' | 'secondary' | 'warning'} size="sm">{isVi ? 'Dang bat' : 'Active'}</Badge>
-              </div>
-              <p className="text-sm text-on-surface-variant">{role[1]}</p>
+      {!courseId && (
+        <Card className="p-4">
+          <p className="text-sm text-on-surface-variant">
+            {isVi
+              ? 'Vui long mo trang nay tu mot khoa hoc cu the (?courseId=...).'
+              : 'Open this page from a specific course (?courseId=...).'}
+          </p>
+        </Card>
+      )}
+
+      {error && courseId && (
+        <Card className="p-4 border border-error/30">
+          <p className="text-sm text-error">{error}</p>
+        </Card>
+      )}
+
+      {courseId && (
+        <Card className="p-6">
+          <h3 className="mb-4 font-bold text-on-surface">
+            {isVi ? 'Them nguoi vao khoa hoc' : 'Enroll a user'}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-3">
+            <Input
+              value={newUserId}
+              onChange={(e) => setNewUserId(e.target.value)}
+              placeholder={isVi ? 'User ID (UUID)' : 'User ID (UUID)'}
+            />
+            <select
+              className="px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value as 'Teacher' | 'Student')}
+            >
+              <option value="Student">Student</option>
+              <option value="Teacher">Teacher</option>
+            </select>
+            <Button onClick={() => void handleAdd()} disabled={submitting || !newUserId.trim()}>
+              {submitting ? (isVi ? 'Dang them...' : 'Adding...') : (isVi ? 'Them' : 'Enroll')}
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-on-surface-variant">
+            {isVi
+              ? 'Tim ID nguoi dung tai trang "Quan ly thanh vien" cua to chuc.'
+              : 'Find user IDs on the organization Members page.'}
+          </p>
+        </Card>
+      )}
+
+      {courseId && (
+        <Card className="p-6">
+          <h3 className="mb-4 font-bold text-on-surface">
+            {isVi ? 'Danh sach ghi danh' : 'Course enrollments'}
+          </h3>
+          {isLoading && (
+            <div className="flex justify-center py-6">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
             </div>
-          ))}
-        </div>
-      </Card>
+          )}
+          {!isLoading && enrollments.length === 0 && (
+            <p className="py-4 text-center text-sm text-on-surface-variant">
+              {isVi ? 'Chua co ai duoc ghi danh.' : 'No one is enrolled yet.'}
+            </p>
+          )}
+          {!isLoading && enrollments.length > 0 && (
+            <div className="space-y-2">
+              {enrollments.map((e) => (
+                <div key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
+                  <Badge variant={e.role === 'Teacher' ? 'warning' : 'primary'} size="sm">
+                    {e.role}
+                  </Badge>
+                  <span className="font-mono text-xs text-on-surface-variant">{e.userId}</span>
+                  <span className="ml-auto text-xs text-on-surface-variant">
+                    {new Date(e.enrolledAt).toLocaleDateString()}
+                  </span>
+                  <select
+                    className="px-2 py-1 rounded border border-outline-variant bg-surface text-on-surface text-sm"
+                    value={e.role}
+                    disabled={busyUserId === e.userId}
+                    onChange={(ev) => void handleChangeRole(e, ev.target.value as 'Teacher' | 'Student')}
+                  >
+                    <option value="Student">Student</option>
+                    <option value="Teacher">Teacher</option>
+                  </select>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleRemove(e)}
+                    disabled={busyUserId === e.userId}
+                  >
+                    <MaterialIcon icon="delete" size="xs" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
     </OrgShell>
   )
 }
@@ -462,12 +675,18 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
 export const SystemadminOrganizationDirectoryPage: React.FC = () => {
   const isVi = useLang()
   const [search, setSearch] = useState('')
-  const items = ['Lumi Academy', 'Quantum College', 'Future Skills Hub', 'Delta Learning']
+  const { organizations, isLoading, error, fetchOrganizations } = useOrganization()
+
+  useEffect(() => { void fetchOrganizations(0, 100) }, [fetchOrganizations])
+
+  const filtered = organizations.filter((org) =>
+    org.name.toLowerCase().includes(search.toLowerCase())
+  )
 
   return (
     <OrgShell
-      titleEn="Organization Directory (Light 1)"
-      titleVi="Danh ba to chuc (Light 1)"
+      titleEn="Organization Directory"
+      titleVi="Danh ba to chuc"
       subtitleEn="Browse organizations linked with admin scope"
       subtitleVi="Duyet danh sach to chuc lien ket pham vi admin"
     >
@@ -478,15 +697,28 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
           placeholder={isVi ? 'Tim to chuc...' : 'Search organizations...'}
         />
       </Card>
+      {isLoading && (
+        <div className="flex justify-center py-6">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+        </div>
+      )}
+      {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+      {!isLoading && filtered.length === 0 && !error && (
+        <p className="text-sm text-on-surface-variant text-center py-4">
+          {isVi ? 'Khong tim thay to chuc nao.' : 'No organizations found.'}
+        </p>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {items.filter((item) => item.toLowerCase().includes(search.toLowerCase())).map((item) => (
-          <Card key={item} className="p-6">
+        {filtered.map((org) => (
+          <Card key={org.id} className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <MaterialIcon icon="corporate_fare" className="text-primary" />
                 <div>
-                  <h3 className="font-semibold text-on-surface">{item}</h3>
-                  <p className="text-xs text-on-surface-variant">{isVi ? '18 khoa hoc dang chay' : '18 running courses'}</p>
+                  <h3 className="font-semibold text-on-surface">{org.name}</h3>
+                  <p className="text-xs text-on-surface-variant">
+                    {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+                  </p>
                 </div>
               </div>
               <Button size="sm">{isVi ? 'Chi tiet' : 'Details'}</Button>

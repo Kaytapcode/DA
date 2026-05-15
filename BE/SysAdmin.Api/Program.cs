@@ -2,6 +2,7 @@ using SysAdmin.Api.Data;
 using SysAdmin.Api.Mappings;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;

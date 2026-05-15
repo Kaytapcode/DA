@@ -17,17 +17,20 @@ namespace Content.Api.Controllers
         private readonly IModuleRepository _moduleRepo;
         private readonly ICourseRepository _courseRepo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ICourseAccessService _access;
 
         public ContentsController(
             IContentRepository contentRepo,
             IModuleRepository moduleRepo,
             ICourseRepository courseRepo,
-            IOrgContextService orgCtx)
+            IOrgContextService orgCtx,
+            ICourseAccessService access)
         {
             _contentRepo = contentRepo;
             _moduleRepo = moduleRepo;
             _courseRepo = courseRepo;
             _orgCtx = orgCtx;
+            _access = access;
         }
 
         private async Task<bool> VerifyAccessAsync(Guid courseId)
@@ -82,6 +85,8 @@ namespace Content.Api.Controllers
         {
             if (!await VerifyAccessAsync(courseId))
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             var validTypes = new[] { "VIDEO", "PDF", "QUIZ", "FLASHCARD" };
             if (!validTypes.Contains(request.ContentType.ToUpper()))
@@ -106,6 +111,8 @@ namespace Content.Api.Controllers
         {
             if (!await VerifyAccessAsync(courseId))
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             var content = await _contentRepo.GetByIdAsync(contentId);
             if (content == null) return NotFound(new ApiResponse(false, "Content not found."));
@@ -123,6 +130,8 @@ namespace Content.Api.Controllers
         {
             if (!await VerifyAccessAsync(courseId))
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             await _contentRepo.DeleteAsync(contentId, moduleId);
             return Ok(new ApiResponse(true, "Content deleted."));
@@ -135,6 +144,8 @@ namespace Content.Api.Controllers
         {
             if (!await VerifyAccessAsync(courseId))
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             if (request.Status is not ("DRAFT" or "PUBLISHED"))
                 return BadRequest(new ApiResponse(false, "Status must be DRAFT or PUBLISHED."));
@@ -150,6 +161,8 @@ namespace Content.Api.Controllers
         {
             if (!await VerifyAccessAsync(courseId))
                 return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
 
             await _contentRepo.ReorderAsync(moduleId, contentId, request.NewIndex);
             return Ok(new ApiResponse(true, "Content reordered."));

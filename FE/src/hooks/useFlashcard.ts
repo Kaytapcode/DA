@@ -158,6 +158,28 @@ export const useFlashcard = (deckId: string | null) => {
     }
   }, [currentCard, deckId, orderedCards.length, resolvedDeckId])
 
+  // Spec §2.3: "...unless the User resets them." Calls POST /decks/{id}/flashcards/reset-mastered
+  // and reloads so previously hidden cards reappear.
+  const resetMastered = useCallback(async () => {
+    const activeDeckId = deckId ?? resolvedDeckId
+    if (!activeDeckId) return false
+
+    setIsUpdating(true)
+    setError(null)
+    try {
+      const response = await apiClient.post(`/decks/${activeDeckId}/flashcards/reset-mastered`)
+      if (!response.success) throw new Error(response.message || 'Unable to reset mastered cards')
+      await refresh()
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to reset mastered cards'
+      setError(message)
+      return false
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [deckId, resolvedDeckId, refresh])
+
   return {
     cards: orderedCards,
     currentCard,
@@ -175,6 +197,7 @@ export const useFlashcard = (deckId: string | null) => {
     nextCard,
     previousCard,
     markCurrentAsMastered,
+    resetMastered,
   }
 }
 

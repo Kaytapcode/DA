@@ -9,7 +9,7 @@ namespace Content.Api.Data
         Task<List<VideoModel>> GetByModuleIdAsync(Guid moduleId, CancellationToken ct = default);
         Task<Guid?> GetModuleOrgIdAsync(Guid moduleId, CancellationToken ct = default);
         Task<VideoModel> CreateAsync(VideoModel video, CancellationToken ct = default);
-        Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, CancellationToken ct = default);
+        Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, Guid? createdByUserId, CancellationToken ct = default);
         Task<List<VideoModel>> GetPersonalAsync(CancellationToken ct = default);
         Task<VideoModel> UpdateAsync(VideoModel video, CancellationToken ct = default);
         Task SoftDeleteAsync(Guid id, CancellationToken ct = default);
@@ -59,7 +59,7 @@ namespace Content.Api.Data
             return video;
         }
 
-        public async Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, CancellationToken ct = default)
+        public async Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, Guid? createdByUserId, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
             var content = new ContentModel
@@ -68,6 +68,8 @@ namespace Content.Api.Data
                 Title = string.IsNullOrWhiteSpace(title) ? "YouTube Video" : title!,
                 ContentType = "VIDEO",
                 Status = "PUBLISHED",
+                CreatedByUserId = createdByUserId,
+                IsPublic = true, // Spec §1
                 CreatedAt = now
             };
             var video = new VideoModel

@@ -9,6 +9,7 @@ import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { getCurrentLanguage } from '@/i18n/translations'
 import { useOrganization } from '@/hooks/useOrganization'
+import { useSysAdminAnalytics } from '@/hooks/useAnalytics'
 import { apiClient } from '@/utils/apiClient'
 
 const useLang = () => getCurrentLanguage() === 'vi'
@@ -44,6 +45,9 @@ const SysShell: React.FC<SysShellProps> = ({ titleEn, titleVi, subtitleEn, subti
 
 export const GlobalContentCoursesPage: React.FC = () => {
   const isVi = useLang()
+  const { data, isLoading, error } = useSysAdminAnalytics()
+
+  const stat = (n: number | undefined | null) => (n ?? 0).toLocaleString()
 
   return (
     <SysShell
@@ -53,18 +57,44 @@ export const GlobalContentCoursesPage: React.FC = () => {
       subtitleVi="Quan tri chat luong noi dung tren toan he thong"
     >
       <Card className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          </div>
+        )}
+        {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 rounded-lg bg-surface-container-low">
             <p className="text-sm text-on-surface-variant">{isVi ? 'Tong khoa hoc' : 'Total Courses'}</p>
-            <p className="text-2xl font-bold">1,284</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalCourses)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Can duyet' : 'Pending Review'}</p>
-            <p className="text-2xl font-bold">37</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Mo-dun' : 'Modules'}</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalModules)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Bi danh dau' : 'Flagged'}</p>
-            <p className="text-2xl font-bold">9</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Quiz' : 'Quizzes'}</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalQuizzes)}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-container-low">
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Bo the' : 'Decks'}</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalFlashcardDecks)}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-container-low">
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Video' : 'Videos'}</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalVideos)}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-container-low">
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Tai lieu' : 'Documents'}</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalDocuments)}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-container-low">
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Luot thi' : 'Quiz Attempts'}</p>
+            <p className="text-2xl font-bold">{stat(data.content?.totalQuizAttempts)}</p>
+          </div>
+          <div className="p-4 rounded-lg bg-surface-container-low">
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Tong to chuc' : 'Organizations'}</p>
+            <p className="text-2xl font-bold">{stat(data.orgs?.totalOrgs)}</p>
           </div>
         </div>
       </Card>
@@ -77,7 +107,6 @@ interface UserItem {
   username: string;
   email: string;
   role: string;
-  isSystemAdmin: boolean;
   createdAt: string;
 }
 
@@ -150,8 +179,8 @@ export const GlobalUserManagementPage: React.FC = () => {
                 <div>
                   <span className="font-medium text-on-surface">{user.username}</span>
                   <span className="ml-2 text-sm text-on-surface-variant">{user.email}</span>
-                  <Badge variant={user.isSystemAdmin ? 'warning' : 'secondary'} size="sm" className="ml-2">
-                    {user.isSystemAdmin ? 'SysAdmin' : user.role}
+                  <Badge variant={user.role === 'SysAdmin' ? 'warning' : 'secondary'} size="sm" className="ml-2">
+                    {user.role}
                   </Badge>
                 </div>
                 <div className="flex gap-2">
@@ -269,13 +298,12 @@ export const OrgDetailsSystemadminPage: React.FC = () => {
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 p-6 space-y-4">
-          <h3 className="font-bold text-on-surface">Lumi Academy</h3>
-          <p className="text-on-surface-variant">{isVi ? 'To chuc tap trung vao AI/Cloud voi 8 khoa hoc premium.' : 'Organization focused on AI/Cloud with 8 premium tracks.'}</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {['Users: 2,431', 'Courses: 42', 'Completion: 71%'].map((i) => (
-              <div key={i} className="p-3 rounded-lg bg-surface-container-low">{i}</div>
-            ))}
-          </div>
+          <h3 className="font-bold text-on-surface">{isVi ? 'Chon mot to chuc' : 'Select an organization'}</h3>
+          <p className="text-on-surface-variant">
+            {isVi
+              ? 'Mo trang Danh ba to chuc va chon mot to chuc de xem chi tiet.'
+              : 'Open the Organizations directory and pick an organization to see its details here.'}
+          </p>
         </Card>
         <Card className="p-6">
           <h3 className="font-bold text-on-surface mb-3">{isVi ? 'Trang thai he thong' : 'System Status'}</h3>
@@ -331,25 +359,37 @@ export const PlatformSettingsLogsPage: React.FC = () => {
 }
 
 export const SystemadminOrganizationDirectoryAltPage: React.FC = () => {
+  const { organizations, isLoading, error, fetchOrganizations } = useOrganization()
+
+  useEffect(() => { void fetchOrganizations(0, 100) }, [fetchOrganizations])
+
   return (
     <SysShell
-      titleEn="Organization Directory (Light 2)"
-      titleVi="Danh ba to chuc (Light 2)"
-      subtitleEn="Alternate directory view with status tags"
-      subtitleVi="Giao dien danh ba thay the voi nhan trang thai"
+      titleEn="Organization Directory"
+      titleVi="Danh ba to chuc"
+      subtitleEn="Alternate directory view"
+      subtitleVi="Giao dien danh ba thay the"
     >
       <Card className="p-6 space-y-3">
-        {[
-          ['Lumi Academy', 'Premium'],
-          ['Delta Learning', 'Standard'],
-          ['Future Lab', 'Enterprise'],
-        ].map((item) => (
-          <div key={item[0]} className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+        {isLoading && (
+          <div className="flex justify-center py-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          </div>
+        )}
+        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+        {!isLoading && organizations.length === 0 && !error && (
+          <p className="text-sm text-on-surface-variant text-center py-2">No organizations.</p>
+        )}
+        {organizations.map((org) => (
+          <div key={org.id} className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
             <div className="flex items-center gap-3">
               <MaterialIcon icon="domain" className="text-primary" />
-              <span>{item[0]}</span>
+              <div>
+                <span className="font-medium">{org.name}</span>
+                <p className="text-xs text-on-surface-variant">{org.memberCount} members</p>
+              </div>
             </div>
-            <Badge variant="secondary" size="sm">{item[1]}</Badge>
+            <Badge variant="secondary" size="sm">{new Date(org.createdAt).toLocaleDateString()}</Badge>
           </div>
         ))}
       </Card>

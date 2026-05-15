@@ -27,6 +27,8 @@ export const USER_NAV_ITEMS: NavItem[] = [
   // Resources
   { id: 'documents', labelKey: 'user.documents', icon: 'description', path: '/user/documents' },
   { id: 'library', labelKey: 'user.library', icon: 'library_books', path: '/user/library' },
+  { id: 'collections', labelKey: 'user.collections', icon: 'folder', path: '/user/collections' },
+  { id: 'browse', labelKey: 'user.browse', icon: 'explore', path: '/user/browse' },
   { id: 'messages', labelKey: 'common.notifications', icon: 'mail', path: '/user/messages' },
   { id: 'profile', labelKey: 'common.profile', icon: 'person', path: '/user/profile' },
 ]
@@ -61,10 +63,13 @@ export const SYSADMIN_NAV_ITEMS: NavItem[] = [
   
   // Content Oversight
   { id: 'courses', labelKey: 'sysadmin.courses', icon: 'school', path: '/sysadmin/courses' },
-  
+
   // System Monitoring & Logs
   { id: 'logs', labelKey: 'sysadmin.logs', icon: 'receipt_long', path: '/sysadmin/logs' },
-  
+
+  // AI configuration (spec §1: SysAdmin "Configure AI API Keys")
+  { id: 'ai-keys', labelKey: 'sysadmin.aiKeys', icon: 'vpn_key', path: '/sysadmin/ai-keys' },
+
   // Settings & Configuration
   { id: 'settings', labelKey: 'sysadmin.settings', icon: 'settings', path: '/sysadmin/settings' },
 ]
@@ -72,5 +77,5 @@ export const SYSADMIN_NAV_ITEMS: NavItem[] = [
 // Branding
 export const APP_BRAND = {
   name: 'Lumina',
-  tagline: 'Quantum Learning',
+  tagline: 'Learning Platform',
 }
