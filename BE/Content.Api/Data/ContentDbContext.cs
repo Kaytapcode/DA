@@ -32,6 +32,7 @@ namespace Content.Api.Data
 
         // Users and Organizations
         public DbSet<CourseModel> Courses { get; set; }
+        public DbSet<CourseEnrollmentModel> CourseEnrollments { get; set; }
         public DbSet<ModuleModel> Modules { get; set; }
         public DbSet<CourseModuleModel> CourseModules { get; set; }
 
@@ -78,6 +79,17 @@ namespace Content.Api.Data
             modelBuilder.Entity<CourseModuleModel>()
                 .HasIndex(cm => new { cm.CourseId, cm.ModuleId })
                 .IsUnique();
+
+            // CourseEnrollment - per-course Teacher/Student role (spec §4.1)
+            modelBuilder.Entity<CourseEnrollmentModel>()
+                .HasIndex(ce => new { ce.CourseId, ce.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<CourseEnrollmentModel>()
+                .HasOne(ce => ce.Course)
+                .WithMany()
+                .HasForeignKey(ce => ce.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Content relationships
             modelBuilder.Entity<VideoModel>()

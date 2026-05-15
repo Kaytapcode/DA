@@ -4,18 +4,17 @@ BEGIN;
 -- Users (password for all test users: "password")
 -- bcrypt hash: $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.
 -- ---------------------------------------------------------------------------
-INSERT INTO users (id, username, email, password_hash, role, is_system_admin, created_at, updated_at)
+INSERT INTO users (id, username, email, password_hash, role, created_at, updated_at)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'student01',  'student01@example.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'Student',  FALSE, NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000002', 'teacher01',  'teacher01@example.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'Teacher',  FALSE, NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000003', 'orgadmin01', 'orgadmin01@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'OrgAdmin', FALSE, NOW(), NOW()),
-  ('00000000-0000-0000-0000-000000000004', 'sysadmin01', 'sysadmin01@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'SysAdmin', TRUE,  NOW(), NOW())
+  ('00000000-0000-0000-0000-000000000001', 'student01',  'student01@example.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'Student',  NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000002', 'teacher01',  'teacher01@example.com',  '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'Teacher',  NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000003', 'orgadmin01', 'orgadmin01@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'OrgAdmin', NOW(), NOW()),
+  ('00000000-0000-0000-0000-000000000004', 'sysadmin01', 'sysadmin01@example.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZagG5rXxR4rWuHf4iG8xM8/5jY6e.', 'SysAdmin', NOW(), NOW())
 ON CONFLICT (id) DO UPDATE SET
   username = EXCLUDED.username,
   email = EXCLUDED.email,
   password_hash = EXCLUDED.password_hash,
   role = EXCLUDED.role,
-  is_system_admin = EXCLUDED.is_system_admin,
   updated_at = NOW();
 
 -- ---------------------------------------------------------------------------

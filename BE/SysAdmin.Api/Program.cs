@@ -26,6 +26,9 @@ try
 
     builder.Services.AddHttpContextAccessor();
 
+    // Encrypt AI provider keys at rest (spec §1: SysAdmin "Configure AI API Keys").
+    builder.Services.AddDataProtection().SetApplicationName("Lumina.SysAdmin");
+
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<SysAdminDbContext>(options =>
         options.UseNpgsql(connectionString)

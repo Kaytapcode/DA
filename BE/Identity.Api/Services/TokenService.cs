@@ -32,8 +32,7 @@ namespace Identity.Api.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Role, user.IsSystemAdmin ? "SysAdmin" : user.Role),
-                new Claim("is_system_admin", user.IsSystemAdmin.ToString().ToLower()),
+                new Claim(ClaimTypes.Role, user.Role),
             };
 
             if (orgId.HasValue)

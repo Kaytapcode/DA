@@ -30,9 +30,6 @@ namespace Identity.Api.Models
         [StringLength(50)]
         public string Role { get; set; } = "Student"; // Student, Teacher, OrgAdmin, SysAdmin
 
-        [Column("is_system_admin")]
-        public bool IsSystemAdmin { get; set; } = false;
-
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

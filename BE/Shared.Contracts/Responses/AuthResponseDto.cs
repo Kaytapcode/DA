@@ -22,7 +22,6 @@ namespace Shared.Contracts.Responses
         Guid Id,
         string Username,
         string Email,
-        string Role,
-        bool IsSystemAdmin
+        string Role
     );
 }

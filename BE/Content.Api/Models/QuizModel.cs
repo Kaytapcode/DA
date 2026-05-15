@@ -21,6 +21,9 @@ namespace Content.Api.Models
         [Column("passing_score")]
         public int PassingScore { get; set; } = 70; // Percentage
 
+        [Column("is_ai_generated")]
+        public bool IsAiGenerated { get; set; } = false;
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

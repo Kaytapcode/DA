@@ -24,6 +24,16 @@ namespace Content.Api.Models
         [StringLength(50)]
         public string Status { get; set; } = "DRAFT"; // 'DRAFT', 'PUBLISHED'
 
+        // Owner of personal resources (null when content is course-scoped only).
+        // Spec §1: resources created by a User must be public — enforced in repositories/controllers.
+        [Column("created_by_user_id")]
+        public Guid? CreatedByUserId { get; set; }
+
+        // Personal resources are always public (spec §1). Course resources default to public
+        // and may be restricted to course members via the CourseEnrollment table.
+        [Column("is_public")]
+        public bool IsPublic { get; set; } = true;
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -30,8 +30,11 @@ namespace SysAdmin.Api.Data
         private bool IsSysAdmin =>
             _httpContextAccessor?.HttpContext?.User?.IsInRole("SysAdmin") == true;
 
-        // Banners - Only table this service manages
+        // Banners - announcements managed by SysAdmin / OrgAdmin
         public DbSet<BannerModel> Banners { get; set; }
+
+        // AI provider keys managed by SysAdmin (spec §1)
+        public DbSet<AiKeyModel> AiKeys { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -46,6 +49,10 @@ namespace SysAdmin.Api.Data
             // System banners (OrgId == null) are visible to all; org banners filtered by org_id
             modelBuilder.Entity<BannerModel>()
                 .HasQueryFilter(b => IsSysAdmin || b.OrgId == null || CurrentOrgId == null || b.OrgId == CurrentOrgId);
+
+            // Active key lookup is hot-path for AI.Api — index on (provider, is_active).
+            modelBuilder.Entity<AiKeyModel>()
+                .HasIndex(k => new { k.Provider, k.IsActive });
         }
     }
 }

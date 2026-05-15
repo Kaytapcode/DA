@@ -69,7 +69,7 @@ namespace Identity.Api.Controllers
             if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
                 && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
             {
-                if (user.IsSystemAdmin || await _orgClient.IsUserMemberAsync(user.Id, parsedOrgId))
+                if (user.Role == "SysAdmin" || await _orgClient.IsUserMemberAsync(user.Id, parsedOrgId))
                     orgId = parsedOrgId;
             }
 
@@ -79,7 +79,7 @@ namespace Identity.Api.Controllers
                 Data: new LoginResponseDto(
                     Token: token,
                     Message: "Login successful.",
-                    User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.IsSystemAdmin),
+                    User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role),
                     OrgId: orgId?.ToString()
                 ),
                 Message: "Login successful."
@@ -99,7 +99,7 @@ namespace Identity.Api.Controllers
 
             return Ok(new ApiResponse<UserInfoDto>(
                 Success: true,
-                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.IsSystemAdmin),
+                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role),
                 Message: null
             ));
         }
