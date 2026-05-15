@@ -21,4 +21,14 @@ namespace Shared.Contracts.Responses
         int MasteredCount,
         DateTime CreatedAt
     );
+
+    public record FlashcardDeckSummaryDto(
+        Guid DeckId,
+        Guid ContentId,
+        string Title,
+        string Status,
+        int CardCount,
+        int MasteredCount,
+        DateTime CreatedAt
+    );
 }

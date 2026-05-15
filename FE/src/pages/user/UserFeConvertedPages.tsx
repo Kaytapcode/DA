@@ -8,12 +8,13 @@ import { UserShell, useUserLanguage } from './UserShell'
 import { useQuiz } from '@/hooks/useQuiz'
 import { useFlashcard } from '@/hooks/useFlashcard'
 import { useDocument } from '@/hooks/useDocument'
+import { apiClient } from '@/utils/apiClient'
 
 const useLang = useUserLanguage
 
-export { UserHomePageLightPage } from './UserHomePageLightPage'
+// UserHomePage imported from wrapper
 
-export const UserLearningDashboardLightPage: React.FC = () => {
+export const UserLearningDashboardPage: React.FC = () => {
   const isVi = useLang()
 
   return (
@@ -66,7 +67,7 @@ export const UserLearningDashboardLightPage: React.FC = () => {
   )
 }
 
-export const DocumentViewerLightPage: React.FC = () => {
+export const DocumentViewerPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams, setSearchParams] = useSearchParams()
   const documentId = searchParams.get('docId')
@@ -208,7 +209,7 @@ export const DocumentViewerLightPage: React.FC = () => {
   )
 }
 
-export const InteractiveFlashcardsLightPage: React.FC = () => {
+export const InteractiveFlashcardsPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams] = useSearchParams()
   const deckId = searchParams.get('deckId')
@@ -290,7 +291,7 @@ export const InteractiveFlashcardsLightPage: React.FC = () => {
   )
 }
 
-export const LearningHistoryLightPage: React.FC = () => {
+export const LearningHistoryPage: React.FC = () => {
   const isVi = useLang()
   const rows = [
     { action: 'Completed module: Async JS', time: '2026-04-02 20:15', score: '92%' },
@@ -365,7 +366,7 @@ export const LuminaQuantumPage: React.FC = () => {
   )
 }
 
-export const OrganizationListLightPage: React.FC = () => {
+export const OrganizationListPage: React.FC = () => {
   const isVi = useLang()
   const orgs = ['Lumina Research Hub', 'AI Innovators Guild', 'Quantum Labs Network']
 
@@ -392,7 +393,7 @@ export const OrganizationListLightPage: React.FC = () => {
   )
 }
 
-export const SpecificCoursePageLightPage: React.FC = () => {
+export const SpecificCoursePage: React.FC = () => {
   const { courseId } = useParams()
 
   const course = {
@@ -547,9 +548,9 @@ export const SpecificCoursePageLightPage: React.FC = () => {
   )
 }
 
-export { UserContentLibraryLightPage } from './UserContentLibraryLightPage'
+// UserContentLibrary exported separately
 
-export const UserQuizInterfaceLightPage: React.FC = () => {
+export const UserQuizInterfacePage: React.FC = () => {
   const isVi = useLang()
   const [searchParams] = useSearchParams()
   const quizId = searchParams.get('quizId')
@@ -566,10 +567,11 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
     result,
     selectAnswer,
     submitQuiz,
+    quizId: activeQuizId,
   } = useQuiz(quizId)
 
   const currentQuestion = questions[currentQuestionIndex] ?? null
-  const selectedIndex = currentQuestion ? answers[currentQuestion.id] : undefined
+  const selectedOptionId = currentQuestion ? answers[currentQuestion.id] : undefined
 
   React.useEffect(() => {
     setCurrentQuestionIndex(0)
@@ -588,6 +590,13 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
 
   const remainingSeconds = timeLimitSeconds !== null ? Math.max(0, timeLimitSeconds - elapsedSeconds) : null
   const canGoNext = currentQuestionIndex < questions.length - 1
+  const questionsById = React.useMemo(() => new Map(questions.map((question) => [question.id, question])), [questions])
+
+  const getOptionText = (questionId: string, optionId: string) => {
+    const question = questionsById.get(questionId)
+    const option = question?.options.find((item) => item.id === optionId)
+    return option?.text || optionId.slice(0, 8)
+  }
 
   return (
     <UserShell
@@ -597,7 +606,9 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
       subtitleVi="Tra loi cau hoi tinh gio va nop ket qua"
     >
       <Card className="p-8">
-        {!quizId && <p className="text-sm text-on-surface-variant">{isVi ? 'Them ?quizId=... vao URL de bat dau quiz.' : 'Add ?quizId=... to URL to start the quiz.'}</p>}
+        {!activeQuizId && !isLoading && !error && (
+          <p className="text-sm text-on-surface-variant">{isVi ? 'Khong tim thay bai quiz nao de lam.' : 'No quiz available for this account yet.'}</p>
+        )}
 
         {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
 
@@ -622,7 +633,8 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
                     </Badge>
                   </div>
                   <p className="text-sm text-on-surface-variant">
-                    {isVi ? 'Ban chon' : 'Selected'}: {item.selectedIndex + 1} • {isVi ? 'Dap an dung' : 'Correct'}: {item.correctIndex + 1}
+                    {isVi ? 'Ban chon' : 'Selected'}: {getOptionText(item.questionId, item.selectedOptionId)} • {isVi ? 'Dap an dung' : 'Correct'}:{' '}
+                    {getOptionText(item.questionId, item.correctOptionId)}
                   </p>
                   {item.explanation && <p className="mt-2 text-sm text-on-surface">{item.explanation}</p>}
                 </div>
@@ -647,17 +659,17 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
             <h3 className="mb-6 text-xl font-bold text-on-surface">{currentQuestion.questionText}</h3>
 
             <div className="space-y-3">
-              {currentQuestion.options.map((option, optionIndex) => (
+              {currentQuestion.options.map((option) => (
                 <button
-                  key={option}
-                  onClick={() => selectAnswer(currentQuestion.id, optionIndex)}
+                  key={option.id}
+                  onClick={() => selectAnswer(currentQuestion.id, option.id)}
                   className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                    selectedIndex === optionIndex
+                    selectedOptionId === option.id
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-outline-variant text-on-surface hover:bg-surface-container-low'
                   }`}
                 >
-                  {option}
+                  {option.text}
                 </button>
               ))}
             </div>
@@ -694,9 +706,122 @@ export const UserQuizInterfaceLightPage: React.FC = () => {
   )
 }
 
-export const VideoLessonLightPage: React.FC = () => {
+export const VideoLessonPage: React.FC = () => {
   const isVi = useLang()
-  const lessons = ['Intro', 'State Management', 'Routing', 'Performance', 'Deployment']
+  const [searchParams, setSearchParams] = useSearchParams()
+  const videoIdFromUrl = searchParams.get('videoId')
+  const moduleId = searchParams.get('moduleId')
+  const contentId = searchParams.get('contentId')
+  const [videos, setVideos] = useState<Array<{ id: string; title?: string; description?: string; embeddableUrl: string }>>([])
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(videoIdFromUrl)
+  const [youtubeUrl, setYoutubeUrl] = useState('')
+  const [videoTitle, setVideoTitle] = useState('')
+  const [videoDescription, setVideoDescription] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const role = React.useMemo(() => {
+    try {
+      const raw = localStorage.getItem('auth_user')
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { role?: string; isSystemAdmin?: boolean }
+      if (parsed.isSystemAdmin) return 'SysAdmin'
+      return parsed.role || null
+    } catch {
+      return null
+    }
+  }, [])
+  const canManageVideo = role === 'Teacher' || role === 'OrgAdmin' || role === 'SysAdmin'
+
+  const selectedVideo = React.useMemo(
+    () => videos.find((video) => video.id === selectedVideoId) ?? null,
+    [selectedVideoId, videos]
+  )
+
+  const fetchVideoById = React.useCallback(
+    async (id: string) => {
+      const response = await apiClient.get<{ id: string; title?: string; description?: string; embeddableUrl: string }>(`/videos/${id}`)
+      if (!response.success || !response.data) throw new Error(response.message || 'Unable to load video')
+      return response.data
+    },
+    []
+  )
+
+  const fetchVideos = React.useCallback(async () => {
+    if (!moduleId && !videoIdFromUrl) {
+      setVideos([])
+      setSelectedVideoId(null)
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+    try {
+      if (moduleId) {
+        const response = await apiClient.get<Array<{ id: string; title?: string; description?: string; embeddableUrl: string }>>(`/videos/modules/${moduleId}`)
+        if (!response.success || !response.data) throw new Error(response.message || 'Unable to load videos')
+        setVideos(response.data)
+
+        const initialVideoId = videoIdFromUrl || response.data[0]?.id || null
+        setSelectedVideoId(initialVideoId)
+        if (initialVideoId && initialVideoId !== videoIdFromUrl) {
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            next.set('videoId', initialVideoId)
+            return next
+          })
+        }
+      } else if (videoIdFromUrl) {
+        const video = await fetchVideoById(videoIdFromUrl)
+        setVideos([video])
+        setSelectedVideoId(video.id)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to load videos'
+      setError(message)
+      setVideos([])
+      setSelectedVideoId(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [fetchVideoById, moduleId, setSearchParams, videoIdFromUrl])
+
+  React.useEffect(() => {
+    void fetchVideos()
+  }, [fetchVideos])
+
+  const handleCreateVideo = async () => {
+    if (!contentId || !youtubeUrl.trim()) return
+
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      const response = await apiClient.post<{ id: string; title?: string; description?: string; embeddableUrl: string }>('/videos', {
+        contentId,
+        youtubeUrl: youtubeUrl.trim(),
+        title: videoTitle.trim() || null,
+        description: videoDescription.trim() || null,
+      })
+      if (!response.success || !response.data) throw new Error(response.message || 'Unable to create video')
+
+      setYoutubeUrl('')
+      setVideoTitle('')
+      setVideoDescription('')
+      await fetchVideos()
+      setSelectedVideoId(response.data.id)
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current)
+        next.set('videoId', response.data!.id)
+        return next
+      })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to create video'
+      setError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <UserShell
@@ -707,26 +832,104 @@ export const VideoLessonLightPage: React.FC = () => {
     >
       <div className="grid gap-6 lg:grid-cols-12">
         <Card className="p-6 lg:col-span-8">
-          <div className="mb-4 flex h-[380px] items-center justify-center rounded-xl bg-slate-900 text-white">
-            <div className="text-center">
-              <MaterialIcon icon="play_circle" className="text-6xl" />
-              <p className="mt-2 text-slate-300">{isVi ? 'Trinh phat video' : 'Video player'}</p>
+          {isLoading && <div className="mx-auto my-10 h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
+
+          {!isLoading && selectedVideo?.embeddableUrl && (
+            <>
+              <iframe
+                title={selectedVideo.title || 'Video player'}
+                src={selectedVideo.embeddableUrl}
+                className="mb-4 h-[380px] w-full rounded-xl border border-outline-variant bg-slate-900"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+              />
+              <h3 className="font-bold text-on-surface">{selectedVideo.title || (isVi ? 'Bai hoc video' : 'Video lesson')}</h3>
+              {selectedVideo.description && <p className="mt-2 text-sm text-on-surface-variant">{selectedVideo.description}</p>}
+            </>
+          )}
+
+          {!isLoading && !selectedVideo && (
+            <div className="mb-4 flex h-[380px] items-center justify-center rounded-xl bg-slate-900 text-white">
+              <div className="text-center">
+                <MaterialIcon icon="play_circle" className="text-6xl" />
+                <p className="mt-2 text-slate-300">
+                  {isVi
+                    ? 'Chon video bang ?videoId=... hoac ?moduleId=...'
+                    : 'Load a video with ?videoId=... or list videos with ?moduleId=...'}
+                </p>
+              </div>
             </div>
-          </div>
-          <h3 className="font-bold text-on-surface">React Performance Deep Dive</h3>
-          <p className="mt-2 text-sm text-on-surface-variant">{isVi ? 'Bai hoc video don giai ve toan bo hieu nang giao dien.' : 'A focused lesson on frontend performance fundamentals.'}</p>
+          )}
         </Card>
 
         <Card className="p-6 lg:col-span-4">
-          <h4 className="mb-4 font-bold text-on-surface">{isVi ? 'Danh sach bai hoc' : 'Lesson list'}</h4>
+          <h4 className="mb-4 font-bold text-on-surface">{isVi ? 'Danh sach video' : 'Video list'}</h4>
+          {error && <p className="mb-3 text-sm text-error">{error}</p>}
+
           <div className="space-y-3">
-            {lessons.map((lesson, index) => (
-              <div key={lesson} className={`flex items-center justify-between rounded-lg border p-3 ${index === 0 ? 'border-primary bg-primary/10' : 'border-outline-variant'}`}>
-                <span className="text-sm">{lesson}</span>
-                <MaterialIcon icon={index === 0 ? 'check_circle' : 'play_arrow'} className={index === 0 ? 'text-primary' : 'text-on-surface-variant'} />
-              </div>
+            {videos.map((video) => (
+              <button
+                key={video.id}
+                onClick={() => {
+                  setSelectedVideoId(video.id)
+                  setSearchParams((current) => {
+                    const next = new URLSearchParams(current)
+                    next.set('videoId', video.id)
+                    return next
+                  })
+                }}
+                className={`flex w-full items-center justify-between rounded-lg border p-3 text-left ${
+                  selectedVideoId === video.id ? 'border-primary bg-primary/10' : 'border-outline-variant'
+                }`}
+              >
+                <span className="text-sm">{video.title || `Video ${video.id.slice(0, 8)}`}</span>
+                <MaterialIcon icon={selectedVideoId === video.id ? 'check_circle' : 'play_arrow'} className={selectedVideoId === video.id ? 'text-primary' : 'text-on-surface-variant'} />
+              </button>
             ))}
+
+            {!isLoading && videos.length === 0 && (
+              <p className="text-sm text-on-surface-variant">{isVi ? 'Chua co video nao.' : 'No videos available yet.'}</p>
+            )}
           </div>
+
+          {canManageVideo && contentId && (
+            <div className="mt-6 space-y-3 border-t border-outline-variant pt-4">
+              <h5 className="text-sm font-semibold text-on-surface">{isVi ? 'Them video YouTube' : 'Add YouTube video'}</h5>
+              <input
+                value={youtubeUrl}
+                onChange={(event) => setYoutubeUrl(event.target.value)}
+                placeholder="https://www.youtube.com/watch?v=..."
+                className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
+              />
+              <input
+                value={videoTitle}
+                onChange={(event) => setVideoTitle(event.target.value)}
+                placeholder={isVi ? 'Tieu de (tuy chon)' : 'Title (optional)'}
+                className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
+              />
+              <textarea
+                value={videoDescription}
+                onChange={(event) => setVideoDescription(event.target.value)}
+                placeholder={isVi ? 'Mo ta (tuy chon)' : 'Description (optional)'}
+                className="min-h-[80px] w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
+              />
+              <Button onClick={() => void handleCreateVideo()} disabled={isSubmitting || !youtubeUrl.trim()}>
+                {isSubmitting ? (isVi ? 'Dang tao...' : 'Creating...') : (isVi ? 'Tao video' : 'Create Video')}
+              </Button>
+            </div>
+          )}
+
+          {canManageVideo && !contentId && (
+            <p className="mt-4 text-xs text-on-surface-variant">
+              {isVi ? 'Can ?contentId=... de tao video moi.' : 'Provide ?contentId=... in URL to create a new video.'}
+            </p>
+          )}
+          {!canManageVideo && (
+            <p className="mt-4 text-xs text-on-surface-variant">
+              {isVi ? 'Chi Teacher/OrgAdmin/SysAdmin moi co the tao video.' : 'Only Teacher/OrgAdmin/SysAdmin can create videos.'}
+            </p>
+          )}
         </Card>
       </div>
     </UserShell>

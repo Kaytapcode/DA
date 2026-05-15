@@ -6,10 +6,12 @@ namespace Content.Api.Data
 {
     public interface IQuestionRepository
     {
+        Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
         Task<List<QuestionModel>> GetByQuizIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuestionModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<Guid?> GetQuizOrgIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default);
+        Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, CancellationToken ct = default);
         Task<QuestionModel> CreateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
         Task<List<QuestionModel>> CreateBulkAsync(Guid quizId, List<(string QuestionText, List<string> Options, int CorrectIndex, string? Explanation)> questions, CancellationToken ct = default);
         Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
@@ -23,6 +25,27 @@ namespace Content.Api.Data
         private readonly ContentDbContext _db;
 
         public QuestionRepository(ContentDbContext db) => _db = db;
+
+        public async Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default)
+        {
+            var query = _db.Quizzes
+                .Include(q => q.Content)
+                    .ThenInclude(c => c!.ModuleContents)
+                        .ThenInclude(mc => mc.Module)
+                .AsQueryable();
+
+            if (!isSysAdmin)
+            {
+                if (!orgId.HasValue) return [];
+                query = query.Where(q =>
+                    q.Content != null &&
+                    q.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value));
+            }
+
+            return await query
+                .OrderByDescending(q => q.CreatedAt)
+                .ToListAsync(ct);
+        }
 
         public async Task<List<QuestionModel>> GetByQuizIdAsync(Guid quizId, CancellationToken ct = default)
             => await _db.Questions
@@ -43,6 +66,33 @@ namespace Content.Api.Data
                 .SelectMany(q => q.Content!.ModuleContents)
                 .Select(mc => (Guid?)mc.Module!.OrgId)
                 .FirstOrDefaultAsync(ct);
+
+        public async Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var content = new ContentModel
+            {
+                Id = Guid.NewGuid(),
+                Title = title,
+                ContentType = "QUIZ",
+                Status = "DRAFT",
+                CreatedAt = now
+            };
+            var quiz = new QuizModel
+            {
+                Id = Guid.NewGuid(),
+                ContentId = content.Id,
+                TimeLimit = timeLimit,
+                PassingScore = passingScore ?? 70,
+                CreatedAt = now
+            };
+
+            _db.Contents.Add(content);
+            _db.Quizzes.Add(quiz);
+            await _db.SaveChangesAsync(ct);
+            quiz.Content = content;
+            return quiz;
+        }
 
         public async Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default)
             => await _db.Quizzes

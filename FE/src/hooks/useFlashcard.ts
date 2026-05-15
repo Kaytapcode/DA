@@ -24,7 +24,13 @@ const shuffled = <T,>(items: T[]): T[] => {
   return result
 }
 
+interface DeckSummary {
+  deckId?: string
+  id?: string
+}
+
 export const useFlashcard = (deckId: string | null) => {
+  const [resolvedDeckId, setResolvedDeckId] = useState<string | null>(deckId)
   const [cards, setCards] = useState<FlashcardItem[]>([])
   const [order, setOrder] = useState<string[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -34,18 +40,37 @@ export const useFlashcard = (deckId: string | null) => {
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
-    if (!deckId) {
-      setCards([])
-      setOrder([])
-      return
-    }
+  useEffect(() => {
+    setResolvedDeckId(deckId)
+  }, [deckId])
 
+  const refresh = useCallback(async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await apiClient.get<FlashcardItem[]>(`/decks/${deckId}/flashcards`)
+      let activeDeckId = deckId ?? resolvedDeckId
+
+      if (!activeDeckId) {
+        const deckResponse = await apiClient.get<DeckSummary[]>('/decks')
+        if (!deckResponse.success || !deckResponse.data || deckResponse.data.length === 0) {
+          setCards([])
+          setOrder([])
+          setCurrentIndex(0)
+          setIsFlipped(false)
+          setShuffleMode(false)
+          return
+        }
+
+        const firstDeck = deckResponse.data[0]
+        activeDeckId = firstDeck.deckId ?? firstDeck.id ?? null
+        if (!activeDeckId) {
+          throw new Error('Unable to resolve deck id')
+        }
+        setResolvedDeckId(activeDeckId)
+      }
+
+      const response = await apiClient.get<FlashcardItem[]>(`/decks/${activeDeckId}/flashcards`)
       if (!response.success || !response.data) throw new Error(response.message || 'Unable to load flashcards')
 
       const normalizedCards = response.data.map(normalizeFlashcard)
@@ -64,7 +89,7 @@ export const useFlashcard = (deckId: string | null) => {
     } finally {
       setIsLoading(false)
     }
-  }, [deckId])
+  }, [deckId, resolvedDeckId])
 
   useEffect(() => {
     void refresh()
@@ -105,13 +130,14 @@ export const useFlashcard = (deckId: string | null) => {
   }, [])
 
   const markCurrentAsMastered = useCallback(async () => {
-    if (!deckId || !currentCard) return false
+    const activeDeckId = deckId ?? resolvedDeckId
+    if (!activeDeckId || !currentCard) return false
 
     setIsUpdating(true)
     setError(null)
 
     try {
-      const response = await apiClient.put(`/decks/${deckId}/flashcards/${currentCard.id}`, { isMastered: true })
+      const response = await apiClient.put(`/decks/${activeDeckId}/flashcards/${currentCard.id}/master`)
       if (!response.success) throw new Error(response.message || 'Unable to update flashcard')
 
       setCards((existing) => existing.filter((card) => card.id !== currentCard.id))
@@ -130,11 +156,12 @@ export const useFlashcard = (deckId: string | null) => {
     } finally {
       setIsUpdating(false)
     }
-  }, [currentCard, deckId, orderedCards.length])
+  }, [currentCard, deckId, orderedCards.length, resolvedDeckId])
 
   return {
     cards: orderedCards,
     currentCard,
+    deckId: deckId ?? resolvedDeckId,
     currentIndex,
     totalCards: orderedCards.length,
     isFlipped,

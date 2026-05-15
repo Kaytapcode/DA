@@ -34,7 +34,6 @@ namespace AI.Api.Controllers
         /// Optionally auto-save to Content.Api if quizId is provided
         /// </summary>
         [HttpPost("generate")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> GenerateQuiz([FromBody] GenerateQuizRequest request, [FromQuery] Guid? quizId = null)
         {
             if (string.IsNullOrWhiteSpace(request?.DocumentContent))

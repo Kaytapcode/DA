@@ -26,7 +26,9 @@ namespace Content.Api.Controllers
         private async Task<bool> VerifyQuizAccessAsync(Guid quizId)
         {
             var orgId = await _repo.GetQuizOrgIdAsync(quizId);
-            if (orgId == null) return _orgCtx.IsSysAdmin();
+            // Personal/draft quiz (not attached to any module/course): allow any authenticated user.
+            // Per spec section 1, personal resources are public and accessible to all users.
+            if (orgId == null) return _orgCtx.GetCurrentUserId().HasValue;
             return _orgCtx.IsSysAdmin() || orgId == _orgCtx.GetCurrentOrgId();
         }
 
@@ -45,6 +47,41 @@ namespace Content.Api.Controllers
             q.Id, q.QuizId, q.QuestionText, q.Explanation, q.OrderIndex,
             q.Options.Select(o => new QuestionOptionTeacherDto(o.Id, o.OptionText, o.IsCorrect, o.OrderIndex)).ToList()
         );
+
+        // GET /api/quizzes
+        [HttpGet("/api/quizzes")]
+        public async Task<IActionResult> GetQuizzes(CancellationToken ct)
+        {
+            var quizzes = await _repo.GetQuizzesAsync(_orgCtx.GetCurrentOrgId(), _orgCtx.IsSysAdmin(), ct);
+            var result = quizzes.Select(q => new QuizSummaryDto(
+                q.Id,
+                q.ContentId,
+                q.Content?.Title ?? "Untitled Quiz",
+                q.Content?.Status ?? "DRAFT",
+                q.CreatedAt
+            ));
+
+            return Ok(new ApiResponse<IEnumerable<QuizSummaryDto>>(true, result, null));
+        }
+
+        // POST /api/quizzes - create new draft quiz (any authenticated user; personal/public per spec)
+        [HttpPost("/api/quizzes")]
+        public async Task<IActionResult> CreateQuiz([FromBody] CreateQuizRequestDto request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+                return BadRequest(new ApiResponse(false, "Title is required."));
+
+            var quiz = await _repo.CreateQuizAsync(request.Title.Trim(), request.TimeLimit, request.PassingScore, ct);
+
+            var summary = new QuizSummaryDto(
+                quiz.Id,
+                quiz.ContentId,
+                quiz.Content?.Title ?? request.Title,
+                quiz.Content?.Status ?? "DRAFT",
+                quiz.CreatedAt
+            );
+            return Ok(new ApiResponse<QuizSummaryDto>(true, summary, "Quiz created."));
+        }
 
         // GET /api/quizzes/{quizId}/questions
         [HttpGet("questions")]
@@ -78,9 +115,8 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionDto>(true, ToStudentDto(question), null));
         }
 
-        // POST /api/quizzes/{quizId}/questions
+        // POST /api/quizzes/{quizId}/questions - parent quiz access is verified inside
         [HttpPost("questions")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> CreateQuestion(Guid quizId, [FromBody] CreateQuestionRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
@@ -111,9 +147,8 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionTeacherDto>(true, ToTeacherDto(created), "Question created."));
         }
 
-        // POST /api/quizzes/{quizId}/generate
+        // POST /api/quizzes/{quizId}/generate - parent quiz access is verified inside
         [HttpPost("generate")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> ImportAiQuestions(Guid quizId, [FromBody] ImportAiQuestionsRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
@@ -132,9 +167,8 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<List<QuestionTeacherDto>>(true, dtos, $"Successfully imported {created.Count} questions."));
         }
 
-        // PUT /api/quizzes/{quizId}/questions/{questionId}
+        // PUT /api/quizzes/{quizId}/questions/{questionId} - parent quiz access is verified inside
         [HttpPut("questions/{questionId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> UpdateQuestion(Guid quizId, Guid questionId, [FromBody] UpdateQuestionRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
@@ -164,9 +198,8 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionTeacherDto>(true, ToTeacherDto(updated), "Question updated."));
         }
 
-        // DELETE /api/quizzes/{quizId}/questions/{questionId}
+        // DELETE /api/quizzes/{quizId}/questions/{questionId} - parent quiz access is verified inside
         [HttpDelete("questions/{questionId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> DeleteQuestion(Guid quizId, Guid questionId, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
@@ -180,9 +213,8 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse(true, "Question deleted."));
         }
 
-        // PATCH /api/quizzes/{quizId}/questions/{questionId}/reorder
+        // PATCH /api/quizzes/{quizId}/questions/{questionId}/reorder - parent quiz access is verified inside
         [HttpPatch("questions/{questionId:guid}/reorder")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> ReorderQuestion(Guid quizId, Guid questionId, [FromBody] ReorderQuestionRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))

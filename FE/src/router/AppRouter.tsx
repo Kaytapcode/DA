@@ -15,16 +15,20 @@ import {
   UserDashboardPage,
   UserProfilePage,
   UserHomePageLightPage,
-  UserLearningDashboardLightPage,
-  DocumentViewerLightPage,
-  InteractiveFlashcardsLightPage,
-  LearningHistoryLightPage,
+  UserLearningDashboardPage,
+  DocumentViewerPage,
+  InteractiveFlashcardsPage,
+  LearningHistoryPage,
   LuminaQuantumPage,
-  OrganizationListLightPage,
-  SpecificCoursePageLightPage,
-  UserContentLibraryLightPage,
-  UserQuizInterfaceLightPage,
-  VideoLessonLightPage,
+  OrganizationListPage,
+  SpecificCoursePage,
+  UserContentLibraryPage,
+  UserQuizInterfacePage,
+  VideoLessonPage,
+  QuizCreatePage,
+  DeckEditorPage,
+  VideoCreatePage,
+  VideoWatchPage,
 } from '@pages/user'
 import {
   OrgAdminDashboardPage,
@@ -32,7 +36,7 @@ import {
   CourseManagementPage,
   CourseEditorCurriculumTabPage,
   CourseEditorMemberRolesTabPage,
-  SystemadminOrganizationDirectoryLight1Page,
+  SystemadminOrganizationDirectoryPage,
   UnifiedSettingsOrganizationsPage,
 } from '@pages/orgadmin'
 import GuestHomePage from '@pages/public/GuestHomePage'
@@ -43,7 +47,7 @@ import {
   OrganizationDirectoryPage,
   OrgDetailsSystemadminPage,
   PlatformSettingsLogsPage,
-  SystemadminOrganizationDirectoryLight2Page,
+  SystemadminOrganizationDirectoryAltPage,
   UserDetailsSystemadminPage,
 } from '@pages/sysadmin'
 import { NotificationPage } from '@pages/notification'
@@ -77,7 +81,7 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/user/dashboard" element={
             <ProtectedRoute>
-              <UserLearningDashboardLightPage />
+              <UserLearningDashboardPage />
             </ProtectedRoute>
           } />
           <Route path="/user/dashboard-legacy" element={
@@ -93,22 +97,37 @@ export const AppRouter: React.FC = () => {
             <ProtectedRoute><UserProfilePage /></ProtectedRoute>
           } />
           <Route path="/user/learning" element={
-            <ProtectedRoute><LearningHistoryLightPage /></ProtectedRoute>
+            <ProtectedRoute><LearningHistoryPage /></ProtectedRoute>
           } />
           <Route path="/user/library" element={
-            <ProtectedRoute><UserContentLibraryLightPage /></ProtectedRoute>
+            <ProtectedRoute><UserContentLibraryPage /></ProtectedRoute>
+          } />
+          <Route path="/user/quizzes/new" element={
+            <ProtectedRoute><QuizCreatePage /></ProtectedRoute>
+          } />
+          <Route path="/user/decks/new" element={
+            <ProtectedRoute><DeckEditorPage /></ProtectedRoute>
+          } />
+          <Route path="/user/decks/:deckId/edit" element={
+            <ProtectedRoute><DeckEditorPage /></ProtectedRoute>
+          } />
+          <Route path="/user/videos/new" element={
+            <ProtectedRoute><VideoCreatePage /></ProtectedRoute>
+          } />
+          <Route path="/user/videos/watch/:videoId" element={
+            <ProtectedRoute><VideoWatchPage /></ProtectedRoute>
           } />
           <Route path="/user/quiz" element={
-            <ProtectedRoute><UserQuizInterfaceLightPage /></ProtectedRoute>
+            <ProtectedRoute><UserQuizInterfacePage /></ProtectedRoute>
           } />
           <Route path="/user/lesson" element={
-            <ProtectedRoute><VideoLessonLightPage /></ProtectedRoute>
+            <ProtectedRoute><VideoLessonPage /></ProtectedRoute>
           } />
           <Route path="/user/flashcards" element={
-            <ProtectedRoute><InteractiveFlashcardsLightPage /></ProtectedRoute>
+            <ProtectedRoute><InteractiveFlashcardsPage /></ProtectedRoute>
           } />
           <Route path="/user/documents" element={
-            <ProtectedRoute><DocumentViewerLightPage /></ProtectedRoute>
+            <ProtectedRoute><DocumentViewerPage /></ProtectedRoute>
           } />
           <Route path="/user/messages" element={
             <ProtectedRoute><NotificationPage /></ProtectedRoute>
@@ -117,10 +136,10 @@ export const AppRouter: React.FC = () => {
             <ProtectedRoute><LuminaQuantumPage /></ProtectedRoute>
           } />
           <Route path="/user/organizations" element={
-            <ProtectedRoute><OrganizationListLightPage /></ProtectedRoute>
+            <ProtectedRoute><OrganizationListPage /></ProtectedRoute>
           } />
           <Route path="/user/course/:courseId" element={
-            <ProtectedRoute><SpecificCoursePageLightPage /></ProtectedRoute>
+            <ProtectedRoute><SpecificCoursePage /></ProtectedRoute>
           } />
 
           {/* ── OrgAdmin Routes (OrgAdmin, Teacher, SysAdmin) ─── */}
@@ -166,7 +185,7 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/admin/system-organization-directory-light-1" element={
             <ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}>
-              <SystemadminOrganizationDirectoryLight1Page />
+              <SystemadminOrganizationDirectoryPage />
             </ProtectedRoute>
           } />
 
@@ -213,7 +232,7 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/sysadmin/orgs-light-2" element={
             <ProtectedRoute roles={['SysAdmin']}>
-              <SystemadminOrganizationDirectoryLight2Page />
+              <SystemadminOrganizationDirectoryAltPage />
             </ProtectedRoute>
           } />
           <Route path="/sysadmin/user-details" element={
@@ -236,24 +255,24 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/auth/guest_homepage_light_mode" element={<HomePage />} />
           <Route path="/fe/auth/user_login_light_mode" element={<LoginPage />} />
           <Route path="/fe/user/course_list_light" element={<CourseListPage />} />
-          <Route path="/fe/user/document_viewer_light" element={<DocumentViewerLightPage />} />
-          <Route path="/fe/user/interactive_flashcards_light" element={<InteractiveFlashcardsLightPage />} />
-          <Route path="/fe/user/learning_history_light" element={<LearningHistoryLightPage />} />
+          <Route path="/fe/user/document_viewer_light" element={<DocumentViewerPage />} />
+          <Route path="/fe/user/interactive_flashcards_light" element={<InteractiveFlashcardsPage />} />
+          <Route path="/fe/user/learning_history_light" element={<LearningHistoryPage />} />
           <Route path="/fe/user/lumina_quantum" element={<LuminaQuantumPage />} />
-          <Route path="/fe/user/organization_list_light" element={<OrganizationListLightPage />} />
-          <Route path="/fe/user/specific_course_page_light" element={<SpecificCoursePageLightPage />} />
-          <Route path="/fe/user/user_content_library_light" element={<UserContentLibraryLightPage />} />
+          <Route path="/fe/user/organization_list_light" element={<OrganizationListPage />} />
+          <Route path="/fe/user/specific_course_page_light" element={<SpecificCoursePage />} />
+          <Route path="/fe/user/user_content_library_light" element={<UserContentLibraryPage />} />
           <Route path="/fe/user/user_home_page_light" element={<UserHomePageLightPage />} />
-          <Route path="/fe/user/user_learning_dashboard_light" element={<UserLearningDashboardLightPage />} />
+          <Route path="/fe/user/user_learning_dashboard_light" element={<UserLearningDashboardPage />} />
           <Route path="/fe/user/user_profile_settings_light" element={<UserProfilePage />} />
-          <Route path="/fe/user/user_quiz_interface_light" element={<UserQuizInterfaceLightPage />} />
-          <Route path="/fe/user/video_lesson_light" element={<VideoLessonLightPage />} />
+          <Route path="/fe/user/user_quiz_interface_light" element={<UserQuizInterfacePage />} />
+          <Route path="/fe/user/video_lesson_light" element={<VideoLessonPage />} />
           <Route path="/fe/orgadmin/course_editor_curriculum_tab" element={<CourseEditorCurriculumTabPage />} />
           <Route path="/fe/orgadmin/course_editor_member_roles_tab" element={<CourseEditorMemberRolesTabPage />} />
           <Route path="/fe/orgadmin/course_management" element={<CourseManagementPage />} />
           <Route path="/fe/orgadmin/member_management" element={<MemberManagementPage />} />
           <Route path="/fe/orgadmin/orgadmin_dashboard_reports" element={<OrgAdminDashboardPage />} />
-          <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<SystemadminOrganizationDirectoryLight1Page />} />
+          <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<SystemadminOrganizationDirectoryPage />} />
           <Route path="/fe/orgadmin/unified_settings_organizations" element={<UnifiedSettingsOrganizationsPage />} />
           <Route path="/fe/sysadmin/global_content_courses" element={<GlobalContentCoursesPage />} />
           <Route path="/fe/sysadmin/global_user_management" element={<GlobalUserManagementPage />} />
@@ -261,7 +280,7 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/sysadmin/org_details_systemadmin" element={<OrgDetailsSystemadminPage />} />
           <Route path="/fe/sysadmin/platform_settings_logs" element={<PlatformSettingsLogsPage />} />
           <Route path="/fe/sysadmin/systemadmin_dashboard_overview" element={<SysAdminDashboardPage />} />
-          <Route path="/fe/sysadmin/systemadmin_organization_directory_light_2" element={<SystemadminOrganizationDirectoryLight2Page />} />
+          <Route path="/fe/sysadmin/systemadmin_organization_directory_light_2" element={<SystemadminOrganizationDirectoryAltPage />} />
           <Route path="/fe/sysadmin/user_details_systemadmin" element={<UserDetailsSystemadminPage />} />
           <Route path="/fe/notification/system_notifications_success_error_states" element={<NotificationPage />} />
 
@@ -274,8 +293,8 @@ export const AppRouter: React.FC = () => {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard" element={<UserHomePageLightPage />} />
             <Route path="courses" element={<CourseListPage />} />
-            <Route path="course/:courseId" element={<SpecificCoursePageLightPage />} />
-            <Route path="quiz" element={<UserQuizInterfaceLightPage />} />
+            <Route path="course/:courseId" element={<SpecificCoursePage />} />
+            <Route path="quiz" element={<UserQuizInterfacePage />} />
             <Route path="admin/courses" element={
               <ProtectedRoute roles={['OrgAdmin', 'Teacher', 'SysAdmin']}>
                 <CourseManagementPage />

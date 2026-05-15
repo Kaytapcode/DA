@@ -16,6 +16,10 @@ namespace Shared.Contracts.Responses
         string ContentType,
         string Status,
         int OrderIndex,
-        DateTime CreatedAt
+        DateTime CreatedAt,
+        Guid? QuizId = null,
+        Guid? DeckId = null,
+        Guid? DocumentId = null,
+        Guid? VideoId = null
     );
 }

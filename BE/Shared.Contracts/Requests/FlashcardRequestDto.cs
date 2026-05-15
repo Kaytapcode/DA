@@ -10,4 +10,9 @@ namespace Shared.Contracts.Requests
         string FrontText,
         string BackText
     );
+
+    public record CreateDeckRequestDto(
+        string Title,
+        string? Theme
+    );
 }

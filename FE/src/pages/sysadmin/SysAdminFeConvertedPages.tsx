@@ -330,7 +330,7 @@ export const PlatformSettingsLogsPage: React.FC = () => {
   )
 }
 
-export const SystemadminOrganizationDirectoryLight2Page: React.FC = () => {
+export const SystemadminOrganizationDirectoryAltPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Organization Directory (Light 2)"

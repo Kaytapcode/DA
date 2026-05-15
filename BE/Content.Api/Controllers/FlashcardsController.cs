@@ -25,7 +25,9 @@ namespace Content.Api.Controllers
         private async Task<bool> VerifyDeckAccessAsync(Guid deckId)
         {
             var orgId = await _repo.GetDeckOrgIdAsync(deckId);
-            if (orgId == null) return _orgCtx.IsSysAdmin();
+            // Personal/draft deck (not attached to any module/course): allow any authenticated user.
+            // Per spec section 1, personal resources are public and accessible to all users.
+            if (orgId == null) return _orgCtx.GetCurrentUserId().HasValue;
             return _orgCtx.IsSysAdmin() || orgId == _orgCtx.GetCurrentOrgId();
         }
 
@@ -33,6 +35,45 @@ namespace Content.Api.Controllers
             f.Id, f.DeckId, f.FrontText, f.BackText,
             f.IsMastered, f.MasteredAt, f.OrderIndex, f.CreatedAt
         );
+
+        // GET /api/decks
+        [HttpGet("/api/decks")]
+        public async Task<IActionResult> GetDecks(CancellationToken ct)
+        {
+            var decks = await _repo.GetDecksAsync(_orgCtx.GetCurrentOrgId(), _orgCtx.IsSysAdmin(), ct);
+            var result = decks.Select(d => new FlashcardDeckSummaryDto(
+                DeckId: d.Id,
+                ContentId: d.ContentId,
+                Title: d.Content?.Title ?? "Untitled Deck",
+                Status: d.Content?.Status ?? "DRAFT",
+                CardCount: d.Flashcards.Count,
+                MasteredCount: d.Flashcards.Count(f => f.IsMastered),
+                CreatedAt: d.CreatedAt
+            ));
+
+            return Ok(new ApiResponse<IEnumerable<FlashcardDeckSummaryDto>>(true, result, null));
+        }
+
+        // POST /api/decks - create new draft deck (any authenticated user; personal/public per spec)
+        [HttpPost("/api/decks")]
+        public async Task<IActionResult> CreateDeck([FromBody] CreateDeckRequestDto request, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(request.Title))
+                return BadRequest(new ApiResponse(false, "Title is required."));
+
+            var deck = await _repo.CreateDeckAsync(request.Title.Trim(), request.Theme, ct);
+
+            var summary = new FlashcardDeckSummaryDto(
+                DeckId: deck.Id,
+                ContentId: deck.ContentId,
+                Title: deck.Content?.Title ?? request.Title,
+                Status: deck.Content?.Status ?? "DRAFT",
+                CardCount: 0,
+                MasteredCount: 0,
+                CreatedAt: deck.CreatedAt
+            );
+            return Ok(new ApiResponse<FlashcardDeckSummaryDto>(true, summary, "Deck created."));
+        }
 
         // GET /api/decks/{deckId}/flashcards
         [HttpGet]
@@ -63,9 +104,8 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<FlashcardDto>(true, ToDto(card), null));
         }
 
-        // POST /api/decks/{deckId}/flashcards
+        // POST /api/decks/{deckId}/flashcards - parent deck access is verified inside
         [HttpPost]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> CreateFlashcard(Guid deckId, [FromBody] CreateFlashcardRequestDto request, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))

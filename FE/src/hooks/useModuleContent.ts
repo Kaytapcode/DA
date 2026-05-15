@@ -8,6 +8,10 @@ export interface ContentItem {
   status: string;
   orderIndex: number;
   createdAt: string;
+  quizId?: string | null;
+  deckId?: string | null;
+  documentId?: string | null;
+  videoId?: string | null;
 }
 
 export interface ModuleItem {

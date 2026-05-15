@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { MainLayout } from '@layouts/MainLayout'
 import { OrgAdminNavbar } from '@components/layout/orgadmin/OrgAdminNavbar'
 import { OrgAdminSidebar } from '@components/layout/orgadmin/OrgAdminSidebar'
@@ -93,6 +93,7 @@ export const CourseManagementPage: React.FC = () => {
 // ── Content row inside a module ───────────────────────────────────────────────
 interface ContentRowProps {
   content: ContentItem;
+  moduleId: string;
   index: number;
   total: number;
   onMove: (contentId: string, newIndex: number) => void;
@@ -101,10 +102,21 @@ interface ContentRowProps {
 }
 
 const ContentRow: React.FC<ContentRowProps> = ({
-  content, index, total, onMove, onDelete, onToggleStatus,
+  content, moduleId, index, total, onMove, onDelete, onToggleStatus,
 }) => {
   const isVi = useLang()
   const isPublished = content.status === 'PUBLISHED'
+  const type = content.contentType.toUpperCase()
+  const openPath =
+    type === 'QUIZ' && content.quizId
+      ? `/user/quiz?quizId=${content.quizId}`
+      : type === 'FLASHCARD' && content.deckId
+        ? `/user/flashcards?deckId=${content.deckId}`
+        : type === 'PDF' && content.documentId
+          ? `/user/documents?docId=${content.documentId}`
+          : type === 'VIDEO'
+            ? `/user/lesson?contentId=${content.id}${content.videoId ? `&videoId=${content.videoId}` : ''}${moduleId ? `&moduleId=${moduleId}` : ''}`
+            : null
 
   return (
     <div className="ml-6 p-3 rounded-lg bg-surface-container flex items-center justify-between group">
@@ -117,6 +129,15 @@ const ContentRow: React.FC<ContentRowProps> = ({
         <Badge variant="secondary" size="sm">{content.contentType}</Badge>
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {openPath && (
+          <Link
+            to={openPath}
+            className="inline-flex items-center rounded px-2 text-xs text-primary hover:bg-surface-container-high"
+            title={isVi ? 'Mo noi dung' : 'Open content'}
+          >
+            {isVi ? 'Mo' : 'Open'}
+          </Link>
+        )}
         <button
           disabled={index === 0}
           onClick={() => onMove(content.id, index - 1)}
@@ -228,14 +249,15 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
           {module.contents?.length === 0 && (
             <p className="text-sm text-on-surface-variant ml-6">{isVi ? 'Chua co bai hoc' : 'No content yet.'}</p>
           )}
-          {module.contents?.map((content, ci) => (
-            <ContentRow
-              key={content.id}
-              content={content}
-              index={ci}
-              total={module.contents!.length}
-              onMove={(contentId, newIdx) => onMoveContent(module.id, contentId, newIdx)}
-              onDelete={(contentId) => onDeleteContent(module.id, contentId)}
+            {module.contents?.map((content, ci) => (
+              <ContentRow
+                key={content.id}
+                content={content}
+                moduleId={module.id}
+                index={ci}
+                total={module.contents!.length}
+                onMove={(contentId, newIdx) => onMoveContent(module.id, contentId, newIdx)}
+                onDelete={(contentId) => onDeleteContent(module.id, contentId)}
               onToggleStatus={(contentId, status) => onToggleContentStatus(module.id, contentId, status)}
             />
           ))}
@@ -437,7 +459,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   )
 }
 
-export const SystemadminOrganizationDirectoryLight1Page: React.FC = () => {
+export const SystemadminOrganizationDirectoryPage: React.FC = () => {
   const isVi = useLang()
   const [search, setSearch] = useState('')
   const items = ['Lumi Academy', 'Quantum College', 'Future Skills Hub', 'Delta Learning']

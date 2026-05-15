@@ -1,2 +1,0 @@
-﻿export { OrganizationListLightPage } from './UserFeConvertedPages'
-

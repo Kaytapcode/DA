@@ -45,4 +45,10 @@ namespace Shared.Contracts.Requests
     public record ImportAiQuestionsRequestDto(
         List<GeneratedQuestionDto> Questions
     );
+
+    public record CreateQuizRequestDto(
+        string Title,
+        int? TimeLimit,
+        int? PassingScore
+    );
 }

@@ -1,2 +1,0 @@
-﻿export { DocumentViewerLightPage } from './UserFeConvertedPages'
-

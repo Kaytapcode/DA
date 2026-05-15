@@ -9,6 +9,8 @@ namespace Content.Api.Data
         Task<List<VideoModel>> GetByModuleIdAsync(Guid moduleId, CancellationToken ct = default);
         Task<Guid?> GetModuleOrgIdAsync(Guid moduleId, CancellationToken ct = default);
         Task<VideoModel> CreateAsync(VideoModel video, CancellationToken ct = default);
+        Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, CancellationToken ct = default);
+        Task<List<VideoModel>> GetPersonalAsync(CancellationToken ct = default);
         Task<VideoModel> UpdateAsync(VideoModel video, CancellationToken ct = default);
         Task SoftDeleteAsync(Guid id, CancellationToken ct = default);
     }
@@ -55,6 +57,45 @@ namespace Content.Api.Data
             _context.Videos.Add(video);
             await _context.SaveChangesAsync(ct);
             return video;
+        }
+
+        public async Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var content = new ContentModel
+            {
+                Id = Guid.NewGuid(),
+                Title = string.IsNullOrWhiteSpace(title) ? "YouTube Video" : title!,
+                ContentType = "VIDEO",
+                Status = "PUBLISHED",
+                CreatedAt = now
+            };
+            var video = new VideoModel
+            {
+                Id = Guid.NewGuid(),
+                ContentId = content.Id,
+                YouTubeVideoId = youTubeVideoId,
+                Title = title,
+                Description = description,
+                ThumbnailUrl = thumbnailUrl,
+                CreatedAt = now
+            };
+
+            _context.Contents.Add(content);
+            _context.Videos.Add(video);
+            await _context.SaveChangesAsync(ct);
+            return video;
+        }
+
+        public async Task<List<VideoModel>> GetPersonalAsync(CancellationToken ct = default)
+        {
+            // Videos whose Content has no ModuleContent attachment (personal/unaffiliated).
+            return await _context.Videos
+                .Where(v => v.DeletedAt == null &&
+                            v.Content != null &&
+                            !v.Content.ModuleContents.Any())
+                .OrderByDescending(v => v.CreatedAt)
+                .ToListAsync(ct);
         }
 
         public async Task<VideoModel> UpdateAsync(VideoModel video, CancellationToken ct = default)

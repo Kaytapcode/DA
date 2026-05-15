@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import axios from 'axios'
 import { apiClient } from '@/utils/apiClient'
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 export interface DocumentItem {
   id: string
+  contentId?: string
   fileName: string
   fileType: string
   filePath?: string
@@ -13,6 +17,7 @@ export interface DocumentItem {
 
 const normalizeDocument = (document: any): DocumentItem => ({
   id: document.id,
+  contentId: document.contentId ?? document.content_id,
   fileName: document.fileName ?? document.file_name ?? 'Document',
   fileType: (document.fileType ?? document.file_type ?? 'text').toLowerCase(),
   filePath: document.filePath ?? document.file_path,
@@ -27,6 +32,14 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const blobUrlRef = useRef<string | null>(null)
+
+  const clearBlobUrl = useCallback(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current)
+      blobUrlRef.current = null
+    }
+  }, [])
 
   const loadDocumentList = useCallback(async () => {
     try {
@@ -41,6 +54,7 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
 
   const loadDocument = useCallback(async (documentId: string | null) => {
     if (!documentId) {
+      clearBlobUrl()
       setSelectedDocument(null)
       return
     }
@@ -49,18 +63,45 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
     setError(null)
 
     try {
-      const response = await apiClient.get<DocumentItem>(`/documents/${documentId}`)
-      if (!response.success || !response.data) throw new Error(response.message || 'Unable to load document')
-      setSelectedDocument(normalizeDocument(response.data))
+      const listEntry = documents.find((document) => document.id === documentId) ?? null
+
+      const token = localStorage.getItem('auth_token')
+      const orgId = localStorage.getItem('org_id')
+      const orgSlug = localStorage.getItem('org_slug')
+
+      const response = await axios.get(`${API_BASE_URL}/documents/${documentId}`, {
+        responseType: 'blob',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(orgId ? { 'X-Org-Id': orgId } : {}),
+          ...(orgSlug ? { 'X-Org-Slug': orgSlug } : {}),
+        },
+      })
+
+      const blob = response.data as Blob
+      clearBlobUrl()
+      const blobUrl = URL.createObjectURL(blob)
+      blobUrlRef.current = blobUrl
+
+      const fileType = String(response.headers['content-type'] || listEntry?.fileType || '').toLowerCase()
+      const contentText = fileType.includes('text') ? await blob.text() : undefined
+
+      setSelectedDocument({
+        ...(listEntry ?? { id: documentId, fileName: 'Document', fileType }),
+        fileType,
+        fileUrl: blobUrl,
+        contentText,
+      })
       setCurrentPage(1)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to load document'
       setError(message)
+      clearBlobUrl()
       setSelectedDocument(null)
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [clearBlobUrl, documents])
 
   useEffect(() => {
     void loadDocumentList()
@@ -81,11 +122,11 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
   }, [])
 
   const trackProgress = useCallback(async () => {
-    if (!selectedDocument || !courseId) return
+    if (!selectedDocument || !courseId || !selectedDocument.contentId) return
 
     try {
       await apiClient.post(`/courses/${courseId}/progress`, {
-        contentId: selectedDocument.id,
+        contentId: selectedDocument.contentId,
         isCompleted: currentPage >= totalPages,
         timeSpentSeconds: 30,
       })
@@ -97,6 +138,12 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
   useEffect(() => {
     void trackProgress()
   }, [trackProgress])
+
+  useEffect(() => {
+    return () => {
+      clearBlobUrl()
+    }
+  }, [clearBlobUrl])
 
   return {
     documents,

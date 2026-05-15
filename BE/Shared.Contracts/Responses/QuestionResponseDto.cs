@@ -43,4 +43,12 @@ namespace Shared.Contracts.Responses
         Guid CorrectOptionId,
         string? Explanation
     );
+
+    public record QuizSummaryDto(
+        Guid QuizId,
+        Guid ContentId,
+        string Title,
+        string Status,
+        DateTime CreatedAt
+    );
 }

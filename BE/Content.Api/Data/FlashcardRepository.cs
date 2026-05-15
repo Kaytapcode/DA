@@ -5,8 +5,10 @@ namespace Content.Api.Data
 {
     public interface IFlashcardRepository
     {
+        Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
         Task<FlashcardDeckModel?> GetDeckByIdAsync(Guid deckId, CancellationToken ct = default);
         Task<Guid?> GetDeckOrgIdAsync(Guid deckId, CancellationToken ct = default);
+        Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, CancellationToken ct = default);
         Task<List<FlashcardModel>> GetByDeckIdAsync(Guid deckId, CancellationToken ct = default);
         Task<FlashcardModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<FlashcardModel> CreateAsync(FlashcardModel card, CancellationToken ct = default);
@@ -21,6 +23,28 @@ namespace Content.Api.Data
 
         public FlashcardRepository(ContentDbContext db) => _db = db;
 
+        public async Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default)
+        {
+            var query = _db.FlashcardDecks
+                .Include(d => d.Content)
+                    .ThenInclude(c => c!.ModuleContents)
+                        .ThenInclude(mc => mc.Module)
+                .Include(d => d.Flashcards)
+                .AsQueryable();
+
+            if (!isSysAdmin)
+            {
+                if (!orgId.HasValue) return [];
+                query = query.Where(d =>
+                    d.Content != null &&
+                    d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value));
+            }
+
+            return await query
+                .OrderByDescending(d => d.CreatedAt)
+                .ToListAsync(ct);
+        }
+
         public async Task<FlashcardDeckModel?> GetDeckByIdAsync(Guid deckId, CancellationToken ct = default)
             => await _db.FlashcardDecks.FirstOrDefaultAsync(d => d.Id == deckId, ct);
 
@@ -30,6 +54,32 @@ namespace Content.Api.Data
                 .SelectMany(d => d.Content!.ModuleContents)
                 .Select(mc => (Guid?)mc.Module!.OrgId)
                 .FirstOrDefaultAsync(ct);
+
+        public async Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, CancellationToken ct = default)
+        {
+            var now = DateTime.UtcNow;
+            var content = new ContentModel
+            {
+                Id = Guid.NewGuid(),
+                Title = title,
+                ContentType = "FLASHCARD",
+                Status = "DRAFT",
+                CreatedAt = now
+            };
+            var deck = new FlashcardDeckModel
+            {
+                Id = Guid.NewGuid(),
+                ContentId = content.Id,
+                Theme = string.IsNullOrWhiteSpace(theme) ? "Default" : theme!,
+                CreatedAt = now
+            };
+
+            _db.Contents.Add(content);
+            _db.FlashcardDecks.Add(deck);
+            await _db.SaveChangesAsync(ct);
+            deck.Content = content;
+            return deck;
+        }
 
         public async Task<List<FlashcardModel>> GetByDeckIdAsync(Guid deckId, CancellationToken ct = default)
             => await _db.Flashcards

@@ -154,6 +154,52 @@ namespace Content.Api.Controllers
             ));
         }
 
+        // POST /api/videos/personal - Create a personal video from a YouTube URL (any authenticated user)
+        [HttpPost("personal")]
+        public async Task<IActionResult> CreatePersonalVideo([FromBody] CreatePersonalVideoRequestDto request, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.YouTubeUrl))
+                return BadRequest(new ApiResponse(Success: false, Message: "YouTube URL is required."));
+
+            var videoId = ExtractYouTubeVideoId(request.YouTubeUrl);
+            if (string.IsNullOrEmpty(videoId))
+                return BadRequest(new ApiResponse(Success: false, Message: "Invalid YouTube URL format."));
+
+            var thumbnailUrl = $"https://i.ytimg.com/vi/{videoId}/maxresdefault.jpg";
+
+            var created = await _videoRepository.CreatePersonalAsync(
+                videoId, request.Title, request.Description, thumbnailUrl, ct);
+
+            return Ok(new ApiResponse<VideoDto>(
+                Success: true,
+                Data: new VideoDto(
+                    Id: created.Id,
+                    YouTubeVideoId: created.YouTubeVideoId,
+                    Title: created.Title,
+                    Description: created.Description,
+                    ThumbnailUrl: created.ThumbnailUrl,
+                    EmbeddableUrl: $"https://www.youtube.com/embed/{created.YouTubeVideoId}"
+                ),
+                Message: "Video saved."
+            ));
+        }
+
+        // GET /api/videos/personal - List videos not attached to any module (personal/public)
+        [HttpGet("personal")]
+        public async Task<IActionResult> GetPersonalVideos(CancellationToken ct = default)
+        {
+            var videos = await _videoRepository.GetPersonalAsync(ct);
+            var result = videos.Select(v => new VideoDto(
+                Id: v.Id,
+                YouTubeVideoId: v.YouTubeVideoId,
+                Title: v.Title,
+                Description: v.Description,
+                ThumbnailUrl: v.ThumbnailUrl,
+                EmbeddableUrl: $"https://www.youtube.com/embed/{v.YouTubeVideoId}"
+            ));
+            return Ok(new ApiResponse<IEnumerable<VideoDto>>(Success: true, Data: result, Message: null));
+        }
+
         // PUT /api/videos/{videoId} - Update video
         [HttpPut("{videoId:guid}")]
         [Authorize(Policy = "RequireTeacher")]
@@ -218,6 +264,12 @@ namespace Content.Api.Controllers
     // Request/Response DTOs
     public record CreateVideoRequestDto(
         Guid ContentId,
+        string YouTubeUrl,
+        string? Title = null,
+        string? Description = null
+    );
+
+    public record CreatePersonalVideoRequestDto(
         string YouTubeUrl,
         string? Title = null,
         string? Description = null

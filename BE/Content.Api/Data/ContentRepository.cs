@@ -32,7 +32,10 @@ namespace Content.Api.Data
             => await _context.ModuleContents
                 .Where(mc => mc.ModuleId == moduleId)
                 .OrderBy(mc => mc.OrderIndex)
-                .Include(mc => mc.Content)
+                .Include(mc => mc.Content).ThenInclude(c => c!.Quiz)
+                .Include(mc => mc.Content).ThenInclude(c => c!.FlashcardDeck)
+                .Include(mc => mc.Content).ThenInclude(c => c!.Document)
+                .Include(mc => mc.Content).ThenInclude(c => c!.Video)
                 .Select(mc => mc.Content!)
                 .ToListAsync(ct);
 
@@ -54,6 +57,29 @@ namespace Content.Api.Data
                 ContentId = content.Id,
                 OrderIndex = maxOrder + 1
             });
+
+            switch (content.ContentType.ToUpperInvariant())
+            {
+                case "QUIZ":
+                    _context.Quizzes.Add(new QuizModel
+                    {
+                        Id = Guid.NewGuid(),
+                        ContentId = content.Id,
+                        TimeLimit = null,
+                        PassingScore = 70,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    break;
+                case "FLASHCARD":
+                    _context.FlashcardDecks.Add(new FlashcardDeckModel
+                    {
+                        Id = Guid.NewGuid(),
+                        ContentId = content.Id,
+                        Theme = "Default",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    break;
+            }
 
             await _context.SaveChangesAsync(ct);
             return content;

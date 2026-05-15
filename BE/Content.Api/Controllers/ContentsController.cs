@@ -37,6 +37,19 @@ namespace Content.Api.Controllers
             return _orgCtx.IsSysAdmin() || course.OrgId == _orgCtx.GetCurrentOrgId();
         }
 
+        private static ContentResponseDto ToContentDto(ContentModel content, int orderIndex) => new(
+            content.Id,
+            content.Title,
+            content.ContentType,
+            content.Status,
+            orderIndex,
+            content.CreatedAt,
+            content.Quiz?.Id,
+            content.FlashcardDeck?.Id,
+            content.Document?.Id,
+            content.Video?.Id
+        );
+
         // GET /api/courses/{courseId}/modules/{moduleId}/contents
         [HttpGet]
         public async Task<IActionResult> GetContents(Guid courseId, Guid moduleId)
@@ -45,7 +58,7 @@ namespace Content.Api.Controllers
                 return NotFound(new ApiResponse(false, "Course not found."));
 
             var contents = await _contentRepo.GetByModuleAsync(moduleId);
-            var result = contents.Select((c, i) => new ContentResponseDto(c.Id, c.Title, c.ContentType, c.Status, i, c.CreatedAt));
+            var result = contents.Select((content, index) => ToContentDto(content, index));
             return Ok(new ApiResponse<IEnumerable<ContentResponseDto>>(true, result, null));
         }
 
@@ -59,8 +72,7 @@ namespace Content.Api.Controllers
             var content = await _contentRepo.GetByIdAsync(contentId);
             if (content == null) return NotFound(new ApiResponse(false, "Content not found."));
 
-            return Ok(new ApiResponse<ContentResponseDto>(true,
-                new ContentResponseDto(content.Id, content.Title, content.ContentType, content.Status, 0, content.CreatedAt), null));
+            return Ok(new ApiResponse<ContentResponseDto>(true, ToContentDto(content, 0), null));
         }
 
         // POST /api/courses/{courseId}/modules/{moduleId}/contents
@@ -83,9 +95,8 @@ namespace Content.Api.Controllers
             };
 
             var created = await _contentRepo.CreateAsync(content, moduleId);
-            return Ok(new ApiResponse<ContentResponseDto>(true,
-                new ContentResponseDto(created.Id, created.Title, created.ContentType, created.Status, 0, created.CreatedAt),
-                "Content created."));
+            var hydrated = await _contentRepo.GetByIdAsync(created.Id, CancellationToken.None) ?? created;
+            return Ok(new ApiResponse<ContentResponseDto>(true, ToContentDto(hydrated, 0), "Content created."));
         }
 
         // PUT /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}
@@ -101,9 +112,8 @@ namespace Content.Api.Controllers
 
             content.Title = request.Title;
             var updated = await _contentRepo.UpdateAsync(content);
-            return Ok(new ApiResponse<ContentResponseDto>(true,
-                new ContentResponseDto(updated.Id, updated.Title, updated.ContentType, updated.Status, 0, updated.CreatedAt),
-                "Content updated."));
+            var hydrated = await _contentRepo.GetByIdAsync(updated.Id, CancellationToken.None) ?? updated;
+            return Ok(new ApiResponse<ContentResponseDto>(true, ToContentDto(hydrated, 0), "Content updated."));
         }
 
         // DELETE /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}

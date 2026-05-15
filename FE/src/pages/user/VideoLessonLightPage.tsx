@@ -1,2 +1,0 @@
-﻿export { VideoLessonLightPage } from './UserFeConvertedPages'
-
