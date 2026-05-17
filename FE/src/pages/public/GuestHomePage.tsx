@@ -97,12 +97,7 @@ export default function GuestHomePage() {
             >
               {t.startJourney}
             </button>
-            <button
-              onClick={() => navigate('/login')}
-              className="px-8 py-3 border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-medium rounded-lg transition-colors"
-            >
-              {t.viewCourses}
-            </button>
+            
           </div>
         </div>
       </section>

@@ -141,7 +141,7 @@ export const CourseManagementPage: React.FC = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           </div>
         )}
-        {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>}
+        {/* {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>} */}
         {!isLoading && courses.length === 0 && !error && (
           <p className="py-4 text-center text-sm text-on-surface-variant">
             {isVi ? 'Chua co khoa hoc nao.' : 'No courses yet.'}
@@ -702,7 +702,7 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
         </div>
       )}
-      {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+      {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
       {!isLoading && filtered.length === 0 && !error && (
         <p className="text-sm text-on-surface-variant text-center py-4">
           {isVi ? 'Khong tim thay to chuc nao.' : 'No organizations found.'}

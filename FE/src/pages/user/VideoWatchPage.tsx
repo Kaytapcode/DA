@@ -11,6 +11,7 @@ import { useUserLanguage } from './UserShell'
 
 interface VideoDetail {
 	id: string
+	contentId: string
 	youTubeVideoId: string
 	title?: string | null
 	description?: string | null
@@ -37,6 +38,12 @@ export const VideoWatchPage: React.FC = () => {
 			const res = await apiClient.get<VideoDetail>(`/videos/${videoId}`)
 			if (!res.success || !res.data) throw new Error(res.message || 'Video not found')
 			setVideo(res.data)
+			void apiClient.post('/student-progress/activity', {
+				contentId: res.data.contentId,
+				isCompleted: false,
+				progressPercentage: 0,
+				timeSpentSeconds: 0,
+			})
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to load video')
 		} finally {
@@ -49,7 +56,7 @@ export const VideoWatchPage: React.FC = () => {
 	}, [fetchVideo])
 
 	return (
-		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[1000px] space-y-6">
 					<div className="flex items-center justify-between">

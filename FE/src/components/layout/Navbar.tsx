@@ -19,7 +19,6 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({
   title = 'Dashboard',
   profilePath = '/profile',
-  settingsPath = '/settings',
   notificationsPath = '/notifications',
   logoutPath = '/login',
   userDisplayName = 'User',
@@ -42,7 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="rounded px-3 py-1 text-sm text-black focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
           />
         )}
-        {showThemeToggle && (
+        {/* {showThemeToggle && (
           <button
             type="button"
             onClick={toggleDarkMode}
@@ -52,17 +51,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <MaterialIcon icon={isDarkMode ? 'light_mode' : 'dark_mode'} size="sm" />
           </button>
-        )}
+        )} */}
         {notificationCount > 0 && (
           <a href={notificationsPath} className="relative inline-block">
             <span className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold">{notificationCount}</span>
           </a>
         )}
         {showUserMenu && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm">{userDisplayName} ({userRole})</span>
-            <a href={profilePath} className="text-sm font-medium hover:text-gray-200 transition">Profile</a>
-            <a href={settingsPath} className="text-sm font-medium hover:text-gray-200 transition">Settings</a>
+          <div className="flex items-center gap-10">
+            {/* <a href={profilePath} className="text-sm font-medium hover:text-gray-200 transition">Profile</a> */}
             <a href={logoutPath} className="text-sm font-medium bg-white text-[#1890ff] px-3 py-1 rounded hover:bg-gray-100 transition dark:bg-slate-100 dark:text-slate-900">Logout</a>
           </div>
         )}

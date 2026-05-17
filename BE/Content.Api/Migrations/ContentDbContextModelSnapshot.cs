@@ -571,7 +571,7 @@ namespace Content.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("content_id");
 
-                    b.Property<Guid>("CourseId")
+                    b.Property<Guid?>("CourseId")
                         .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
@@ -814,8 +814,7 @@ namespace Content.Api.Migrations
                     b.HasOne("Content.Api.Models.CourseModel", "Course")
                         .WithMany()
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Content.Api.Models.ModuleModel", "Module")
                         .WithMany()

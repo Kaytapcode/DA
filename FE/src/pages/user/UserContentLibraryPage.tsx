@@ -8,11 +8,14 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { DocumentUploadModal } from '@components/DocumentUploadModal'
 import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
+import type { Collection } from '@/hooks/useCollections'
 
 type FilterKey = 'ALL' | 'VIDEO' | 'QUIZ' | 'DOC' | 'CARDS'
 
 interface MaterialItem {
 	id: string
+	rawId: string
+	contentId?: string
 	type: Exclude<FilterKey, 'ALL'>
 	title: string
 	subtitle: string
@@ -24,6 +27,7 @@ interface MaterialItem {
 
 interface UploadedDocument {
 	id: string
+	contentId?: string
 	fileName: string
 	fileType?: string
 	fileSizeBytes?: number
@@ -50,6 +54,7 @@ interface DeckSummary {
 
 interface VideoSummary {
 	id: string
+	contentId: string
 	youTubeVideoId: string
 	title?: string | null
 	description?: string | null
@@ -83,6 +88,12 @@ export const UserContentLibraryPage: React.FC = () => {
 	const [videos, setVideos] = useState<VideoSummary[]>([])
 	const [loading, setLoading] = useState(true)
 	const [errors, setErrors] = useState<string[]>([])
+	const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+	const [isDeleting, setIsDeleting] = useState(false)
+	const [addPickerItemId, setAddPickerItemId] = useState<string | null>(null)
+	const [pickerCollections, setPickerCollections] = useState<Collection[] | null>(null)
+	const [pickerLoading, setPickerLoading] = useState(false)
+	const [addingToCollectionId, setAddingToCollectionId] = useState<string | null>(null)
 
 	const fetchAll = useCallback(async () => {
 		setLoading(true)
@@ -131,9 +142,64 @@ export const UserContentLibraryPage: React.FC = () => {
 		void fetchAll()
 	}, [fetchAll])
 
+	const handleDeleteItem = useCallback(async (item: MaterialItem) => {
+		const endpointMap: Record<Exclude<FilterKey, 'ALL'>, string> = {
+			DOC: `/documents/${item.rawId}`,
+			QUIZ: `/quizzes/${item.rawId}`,
+			CARDS: `/decks/${item.rawId}`,
+			VIDEO: `/videos/${item.rawId}`,
+		}
+		const endpoint = endpointMap[item.type]
+		setIsDeleting(true)
+		try {
+			await apiClient.delete(endpoint)
+			if (item.type === 'DOC') setDocuments((prev) => prev.filter((d) => d.id !== item.rawId))
+			else if (item.type === 'QUIZ') setQuizzes((prev) => prev.filter((q) => q.quizId !== item.rawId))
+			else if (item.type === 'CARDS') setDecks((prev) => prev.filter((d) => d.deckId !== item.rawId))
+			else if (item.type === 'VIDEO') setVideos((prev) => prev.filter((v) => v.id !== item.rawId))
+			setConfirmDeleteId(null)
+		} catch {
+			// silent — card stays visible so the user can retry
+		} finally {
+			setIsDeleting(false)
+		}
+	}, [])
+
+	const handleOpenPicker = useCallback(async (item: MaterialItem, e: React.MouseEvent) => {
+		e.preventDefault()
+		e.stopPropagation()
+		setConfirmDeleteId(null)
+		setAddPickerItemId(item.id)
+		if (pickerCollections !== null) return
+		setPickerLoading(true)
+		try {
+			const res = await apiClient.get<Collection[]>('/collections')
+			setPickerCollections(res.success && res.data ? res.data : [])
+		} catch {
+			setPickerCollections([])
+		} finally {
+			setPickerLoading(false)
+		}
+	}, [pickerCollections])
+
+	const handleAddToCollection = useCallback(async (item: MaterialItem, collectionId: string) => {
+		if (!item.contentId) return
+		setAddingToCollectionId(collectionId)
+		try {
+			await apiClient.post(`/collections/${collectionId}/items`, { contentId: item.contentId })
+			setAddPickerItemId(null)
+		} catch {
+			// silent
+		} finally {
+			setAddingToCollectionId(null)
+		}
+	}, [])
+
 	const allMaterials = useMemo<MaterialItem[]>(() => {
 		const docItems: MaterialItem[] = documents.map((d) => ({
 			id: `doc-${d.id}`,
+			rawId: d.id,
+			contentId: d.contentId,
 			type: 'DOC',
 			title: d.fileName,
 			subtitle: (d.fileType ?? 'FILE').toUpperCase(),
@@ -145,29 +211,38 @@ export const UserContentLibraryPage: React.FC = () => {
 
 		const quizItems: MaterialItem[] = quizzes.map((q) => ({
 			id: `quiz-${q.quizId}`,
+			rawId: q.quizId,
+			contentId: q.contentId,
 			type: 'QUIZ',
 			title: q.title,
-			subtitle: q.status,
-			statusLabel: q.status,
+			subtitle: q.status.charAt(0) + q.status.slice(1).toLowerCase(),
+			statusLabel: isVi ? 'Làm bài' : 'Take Quiz',
 			href: `/user/quiz?quizId=${q.quizId}`,
 			createdAt: q.createdAt,
 		}))
 
 		const deckItems: MaterialItem[] = decks.map((d) => ({
 			id: `deck-${d.deckId}`,
+			rawId: d.deckId,
+			contentId: d.contentId,
 			type: 'CARDS',
 			title: d.title,
 			subtitle: `${d.cardCount} ${isVi ? 'the' : 'cards'}`,
 			statusLabel: d.cardCount > 0
 				? `${d.masteredCount}/${d.cardCount} ${isVi ? 'da nam' : 'mastered'}`
 				: (isVi ? 'Chua co the' : 'No cards yet'),
-			href: `/user/decks/${d.deckId}/edit`,
+			// Card opens the study/review page; empty decks land in the editor so the user can add cards.
+			href: d.cardCount > 0
+				? `/user/flashcards?deckId=${d.deckId}&contentId=${d.contentId}`
+				: `/user/decks/${d.deckId}/edit`,
 			trailing: `${d.cardCount}`,
 			createdAt: d.createdAt,
 		}))
 
 		const videoItems: MaterialItem[] = videos.map((v) => ({
 			id: `video-${v.id}`,
+			rawId: v.id,
+			contentId: v.contentId,
 			type: 'VIDEO',
 			title: v.title || (isVi ? 'Video YouTube' : 'YouTube Video'),
 			subtitle: v.youTubeVideoId,
@@ -195,7 +270,7 @@ export const UserContentLibraryPage: React.FC = () => {
 	}), [quizzes.length, decks.length, documents.length, videos.length])
 
 	return (
-		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<DocumentUploadModal
 				isOpen={isUploadModalOpen}
 				onClose={() => setIsUploadModalOpen(false)}
@@ -339,26 +414,25 @@ export const UserContentLibraryPage: React.FC = () => {
 						{!loading && visibleMaterials.length > 0 && (
 							<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 								{visibleMaterials.map((item) => {
-									const card = (
-										<Card key={item.id} className="overflow-hidden rounded-2xl border border-[#dce3ed] p-0 shadow-none transition hover:border-[#1463ff] hover:shadow-md">
+									const headerGradient =
+										item.type === 'QUIZ'
+											? 'linear-gradient(140deg,#0f172a,#1e3a8a,#a78bfa)'
+											: item.type === 'CARDS'
+											? 'linear-gradient(140deg,#d4dbe3,#e5eaef,#f59e0b)'
+											: item.type === 'VIDEO'
+											? 'linear-gradient(140deg,#0f766e,#155e75,#111827)'
+											: 'linear-gradient(140deg,#f1ede7,#ded1c8,#d7d2de)'
+
+									const cardInner = (
+										<Card className="overflow-hidden rounded-2xl border border-[#dce3ed] p-0 shadow-none transition hover:border-[#1463ff] hover:shadow-md">
 											<div
-												className="relative h-32"
-												style={{
-													background:
-														item.type === 'QUIZ'
-															? 'linear-gradient(140deg,#0f172a,#1e3a8a,#a78bfa)'
-															: item.type === 'CARDS'
-															? 'linear-gradient(140deg,#d4dbe3,#e5eaef,#f59e0b)'
-															: item.type === 'VIDEO'
-															? 'linear-gradient(140deg,#0f766e,#155e75,#111827)'
-															: 'linear-gradient(140deg,#f1ede7,#ded1c8,#d7d2de)',
-												}}
+												className="relative h-32 rounded-t-2xl overflow-hidden"
+												style={{ background: headerGradient }}
 											>
 												<span className="absolute left-2 top-2 rounded-full bg-[#111b2d]/70 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
 													{item.type}
 												</span>
 											</div>
-
 											<div className="space-y-2 p-5">
 												<h4 className="line-clamp-2 min-h-[44px] text-base font-bold text-[#111b2d]">{item.title}</h4>
 												<p className="text-xs text-[#6d7f98]">{item.subtitle}</p>
@@ -366,10 +440,115 @@ export const UserContentLibraryPage: React.FC = () => {
 											</div>
 										</Card>
 									)
-									return item.href ? (
-										<Link key={item.id} to={item.href} className="block">{card}</Link>
-									) : (
-										<div key={item.id}>{card}</div>
+
+									return (
+										<div key={item.id} className="relative">
+											{confirmDeleteId === item.id ? (
+												<div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
+													<p className="mb-4 text-center text-sm font-semibold text-red-700">
+														{isVi ? 'Xoa vinh vien muc nay?' : 'Permanently delete this item?'}
+													</p>
+													<div className="flex gap-2">
+														<button
+															type="button"
+															onClick={() => void handleDeleteItem(item)}
+															disabled={isDeleting}
+															className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
+														>
+															{isDeleting ? (isVi ? 'Dang xoa...' : 'Deleting…') : (isVi ? 'Xac nhan xoa' : 'Confirm Delete')}
+														</button>
+														<button
+															type="button"
+															onClick={() => setConfirmDeleteId(null)}
+															disabled={isDeleting}
+															className="rounded-lg border border-[#d5dde9] bg-white px-4 py-2 text-sm font-semibold text-[#5e6f88] transition hover:bg-[#f0f4f9]"
+														>
+															{isVi ? 'Huy' : 'Cancel'}
+														</button>
+													</div>
+												</div>
+											) : addPickerItemId === item.id ? (
+												<div className="flex min-h-[220px] flex-col rounded-2xl border border-[#dde3ec] bg-white p-4 shadow-sm">
+													<div className="mb-3 flex items-center justify-between">
+														<p className="text-sm font-semibold text-[#111b2d]">
+															{isVi ? 'Them vao bo suu tap' : 'Add to collection'}
+														</p>
+														<button
+															type="button"
+															onClick={() => setAddPickerItemId(null)}
+															className="rounded-full p-1 text-[#8a98b0] hover:bg-[#f0f4f9] hover:text-[#111b2d] transition"
+														>
+															<MaterialIcon icon="close" size="xs" />
+														</button>
+													</div>
+													{pickerLoading ? (
+														<div className="flex flex-1 items-center justify-center">
+															<div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+														</div>
+													) : pickerCollections === null || pickerCollections.length === 0 ? (
+														<div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+															<MaterialIcon icon="folder_off" size="sm" className="text-[#9aa5b5]" />
+															<p className="text-xs text-[#60708a]">
+																{isVi ? 'Chua co bo suu tap nao.' : 'No collections yet.'}
+															</p>
+															<Link
+																to="/user/collections"
+																className="text-xs font-semibold text-[#1463ff] hover:underline"
+																onClick={() => setAddPickerItemId(null)}
+															>
+																{isVi ? 'Tao bo suu tap' : 'Create one'}
+															</Link>
+														</div>
+													) : (
+														<div className="flex-1 space-y-1 overflow-y-auto">
+															{pickerCollections.map((c) => (
+																<button
+																	key={c.id}
+																	type="button"
+																	onClick={() => void handleAddToCollection(item, c.id)}
+																	disabled={addingToCollectionId === c.id}
+																	className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-[#f0f4f9] disabled:opacity-50"
+																>
+																	<MaterialIcon icon="folder" size="xs" className="shrink-0 text-[#1463ff]" />
+																	<span className="truncate font-medium text-[#111b2d]">{c.title}</span>
+																	{addingToCollectionId === c.id && (
+																		<div className="ml-auto h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+																	)}
+																</button>
+															))}
+														</div>
+													)}
+												</div>
+											) : (
+												<>
+													{item.href ? (
+														<Link to={item.href} className="block">{cardInner}</Link>
+													) : (
+														cardInner
+													)}
+													<div className="absolute right-2 top-2 z-10 flex flex-col gap-1">
+														{item.contentId && (
+															<button
+																type="button"
+																onClick={(e) => void handleOpenPicker(item, e)}
+																className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-[#1463ff] hover:text-white"
+																title={isVi ? 'Them vao bo suu tap' : 'Add to collection'}
+															>
+																<MaterialIcon icon="bookmark_add" size="xs" />
+															</button>
+														)}
+														<button
+															type="button"
+															onClick={(e) => { e.preventDefault(); setAddPickerItemId(null); setConfirmDeleteId(item.id) }}
+															className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
+															title={isVi ? 'Xoa' : 'Delete'}
+														>
+															<MaterialIcon icon="delete" size="xs" />
+														</button>
+													</div>
+												</>
+											)}
+										</div>
 									)
 								})}
 							</div>

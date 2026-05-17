@@ -62,7 +62,7 @@ export const GlobalContentCoursesPage: React.FC = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           </div>
         )}
-        {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>}
+        {/* {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>} */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 rounded-lg bg-surface-container-low">
             <p className="text-sm text-on-surface-variant">{isVi ? 'Tong khoa hoc' : 'Total Courses'}</p>
@@ -376,7 +376,7 @@ export const SystemadminOrganizationDirectoryAltPage: React.FC = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           </div>
         )}
-        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+        {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
         {!isLoading && organizations.length === 0 && !error && (
           <p className="text-sm text-on-surface-variant text-center py-2">No organizations.</p>
         )}

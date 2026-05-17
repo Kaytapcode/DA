@@ -141,6 +141,55 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse(true, "Item added to collection."));
         }
 
+        public record CollectionItemDto(
+            Guid ContentId,
+            string Title,
+            string ContentType,
+            Guid? VideoId,
+            Guid? QuizId,
+            Guid? DeckId,
+            Guid? DocumentId,
+            int OrderIndex
+        );
+
+        // GET /api/collections/{id}/items
+        [HttpGet("{id:guid}/items")]
+        public async Task<IActionResult> GetItems(Guid id, CancellationToken ct)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var owned = await _db.Modules.IgnoreQueryFilters()
+                .AnyAsync(m => m.Id == id && m.OrgId == null && m.CreatedBy == userId, ct);
+            if (!owned) return NotFound(new ApiResponse(false, "Collection not found."));
+
+            var links = await _db.ModuleContents
+                .Where(mc => mc.ModuleId == id)
+                .Include(mc => mc.Content)
+                    .ThenInclude(c => c!.Video)
+                .Include(mc => mc.Content)
+                    .ThenInclude(c => c!.Quiz)
+                .Include(mc => mc.Content)
+                    .ThenInclude(c => c!.FlashcardDeck)
+                .Include(mc => mc.Content)
+                    .ThenInclude(c => c!.Document)
+                .OrderBy(mc => mc.OrderIndex)
+                .ToListAsync(ct);
+
+            var dtos = links.Select(mc => new CollectionItemDto(
+                mc.ContentId,
+                mc.Content?.Title ?? "Untitled",
+                mc.Content?.ContentType ?? "UNKNOWN",
+                mc.Content?.Video?.Id,
+                mc.Content?.Quiz?.Id,
+                mc.Content?.FlashcardDeck?.Id,
+                mc.Content?.Document?.Id,
+                mc.OrderIndex
+            ));
+
+            return Ok(new ApiResponse<IEnumerable<CollectionItemDto>>(true, dtos, null));
+        }
+
         // DELETE /api/collections/{id}/items/{contentId}
         [HttpDelete("{id:guid}/items/{contentId:guid}")]
         public async Task<IActionResult> RemoveItem(Guid id, Guid contentId, CancellationToken ct)

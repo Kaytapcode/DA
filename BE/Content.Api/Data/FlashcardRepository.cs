@@ -5,7 +5,7 @@ namespace Content.Api.Data
 {
     public interface IFlashcardRepository
     {
-        Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
+        Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default);
         Task<FlashcardDeckModel?> GetDeckByIdAsync(Guid deckId, CancellationToken ct = default);
         Task<Guid?> GetDeckOrgIdAsync(Guid deckId, CancellationToken ct = default);
         Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, Guid? createdByUserId, CancellationToken ct = default);
@@ -24,7 +24,7 @@ namespace Content.Api.Data
 
         public FlashcardRepository(ContentDbContext db) => _db = db;
 
-        public async Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default)
+        public async Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default)
         {
             var query = _db.FlashcardDecks
                 .Include(d => d.Content)
@@ -35,10 +35,15 @@ namespace Content.Api.Data
 
             if (!isSysAdmin)
             {
-                if (!orgId.HasValue) return [];
+                if (!orgId.HasValue && !userId.HasValue) return [];
+                // Show decks belonging to the user's org (via module) OR personal decks
+                // owned by the current user (Content.CreatedByUserId, no module attachment).
                 query = query.Where(d =>
                     d.Content != null &&
-                    d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value));
+                    (
+                        (orgId.HasValue && d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
+                        || (userId.HasValue && d.Content.CreatedByUserId == userId.Value)
+                    ));
             }
 
             return await query

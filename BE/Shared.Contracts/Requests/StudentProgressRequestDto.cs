@@ -8,4 +8,11 @@ namespace Shared.Contracts.Requests
         bool IsCompleted,
         int TimeSpentSeconds
     );
+
+    public record RecordActivityRequestDto(
+        Guid ContentId,
+        bool IsCompleted,
+        int ProgressPercentage,
+        int TimeSpentSeconds
+    );
 }

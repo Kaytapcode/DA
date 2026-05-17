@@ -4,10 +4,11 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
+import { DocumentInlineViewer } from '@components/ui/DocumentInlineViewer'
 import { UserShell, useUserLanguage } from './UserShell'
 import { useQuiz } from '@/hooks/useQuiz'
 import { useFlashcard } from '@/hooks/useFlashcard'
-import { useDocument } from '@/hooks/useDocument'
+import { useDocumentViewer } from '@/hooks/useDocumentViewer'
 import { useOrganization, type OrganizationList } from '@/hooks/useOrganization'
 import { useModuleContent, type ModuleItem, type ContentItem } from '@/hooks/useModuleContent'
 import { apiClient } from '@/utils/apiClient'
@@ -17,7 +18,7 @@ const useLang = useUserLanguage
 // UserHomePage imported from wrapper
 
 interface DashboardHistoryEntry {
-  courseId: string
+  courseId: string | null
   courseTitle: string | null
   moduleId: string | null
   moduleTitle: string | null
@@ -56,7 +57,7 @@ export const UserLearningDashboardPage: React.FC = () => {
 
   const featured = rows[0] ?? null
   const completedItems = rows.filter((r) => r.isCompleted).length
-  const distinctCourses = new Set(rows.map((r) => r.courseId)).size
+  const distinctCourses = new Set(rows.map((r) => r.courseId).filter(Boolean)).size
   const avgProgress = rows.length === 0
     ? 0
     : Math.round(rows.reduce((sum, r) => sum + r.progressPercentage, 0) / rows.length)
@@ -68,7 +69,7 @@ export const UserLearningDashboardPage: React.FC = () => {
       subtitleEn="Track progress and resume your courses"
       subtitleVi="Theo doi tien do va tiep tuc khoa hoc"
     >
-      {error && !isLoading && <p className="mb-4 text-sm text-error">{error}</p>}
+      {/* {error && !isLoading && <p className="mb-4 text-sm text-error">{error}</p>} */}
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
@@ -99,7 +100,7 @@ export const UserLearningDashboardPage: React.FC = () => {
           </div>
           <div className="mt-6 flex gap-3">
             <Link
-              to={featured ? `/user/course/${featured.courseId}` : '/user/courses'}
+              to={featured?.courseId ? `/user/course/${featured.courseId}` : '/user/courses'}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary"
             >
               {isVi ? 'Mo khoa hoc' : 'Open Course'}
@@ -136,85 +137,89 @@ export const UserLearningDashboardPage: React.FC = () => {
 export const DocumentViewerPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams, setSearchParams] = useSearchParams()
-  const documentId = searchParams.get('docId')
-  const courseId = searchParams.get('courseId')
+  const requestedId = searchParams.get('docId')
+  const contentIdFromUrl = searchParams.get('contentId')
+  const collectionTitle = searchParams.get('collectionTitle')
   const {
     documents,
-    selectedDocument,
-    currentPage,
-    totalPages,
-    isLoading,
+    loaded,
+    isDocLoading,
     error,
-    selectDocument,
-    nextPage,
-    previousPage,
-  } = useDocument(documentId, courseId)
+    fetchList,
+    openDocument,
+  } = useDocumentViewer()
+  const [saved, setSaved] = useState(false)
+  const [shareToast, setShareToast] = useState(false)
+  const docActivityRef = React.useRef<string | null>(null)
+  // Always-current snapshot of the document list — updated synchronously before effects run.
+  const documentsRef = React.useRef(documents)
+  React.useEffect(() => { documentsRef.current = documents }, [documents])
 
   React.useEffect(() => {
-    if (documentId || documents.length === 0) return
-    const firstDocumentId = documents[0].id
-    void selectDocument(firstDocumentId)
+    void fetchList()
+  }, [fetchList])
+
+  // Open the document when the requested ID changes. We intentionally do NOT include
+  // `documents` in the dep array — the list loading should not trigger a second blob fetch.
+  // We read the latest list value via documentsRef to pass filename hints when available.
+  React.useEffect(() => {
+    if (!requestedId) return
+    const entry = documentsRef.current.find((d) => d.id === requestedId)
+    void openDocument(requestedId, entry?.fileName, entry?.fileType)
+  }, [requestedId, openDocument])
+
+  React.useEffect(() => {
+    if (requestedId || documents.length === 0) return
+    const first = documents[0]
     setSearchParams((current) => {
       const next = new URLSearchParams(current)
-      next.set('docId', firstDocumentId)
+      next.set('docId', first.id)
       return next
     })
-  }, [documentId, documents, selectDocument, setSearchParams])
+  }, [requestedId, documents, setSearchParams])
 
-  const openDocument = (id: string) => {
-    void selectDocument(id)
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current)
-      next.set('docId', id)
-      return next
+  React.useEffect(() => {
+    if (!loaded) return
+    const cId = contentIdFromUrl ?? documents.find((d) => d.id === loaded.id)?.contentId ?? null
+    if (!cId || docActivityRef.current === loaded.id) return
+    docActivityRef.current = loaded.id
+    void apiClient.post('/student-progress/activity', {
+      contentId: cId,
+      isCompleted: false,
+      progressPercentage: 0,
+      timeSpentSeconds: 0,
     })
+  }, [loaded, contentIdFromUrl, documents])
+
+  const currentEntry = loaded ? documents.find((d) => d.id === loaded.id) : null
+  const docYear = currentEntry?.createdAt
+    ? new Date(currentEntry.createdAt).getFullYear()
+    : null
+  // Prefer the real filename from the document list over the placeholder in `loaded.fileName`
+  const baseTitle = ((currentEntry?.fileName || loaded?.fileName) || '').replace(/\.[^/.]+$/, '') || (isVi ? 'Tai lieu' : 'Document')
+
+  const handleDownload = () => {
+    if (!loaded) return
+    const link = document.createElement('a')
+    link.href = loaded.blobUrl
+    link.download = loaded.fileName || 'document'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
-  const documentType = selectedDocument?.fileType || ''
-  const documentUrl = selectedDocument?.fileUrl || selectedDocument?.filePath
-
-  const renderDocumentPreview = () => {
-    if (!selectedDocument) {
-      return (
-        <div className="text-center text-on-surface-variant">
-          <MaterialIcon icon="menu_book" className="mb-3 text-5xl" />
-          <p>{isVi ? 'Chon mot tai lieu de xem' : 'Select a document to preview'}</p>
-        </div>
-      )
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setShareToast(true)
+      setTimeout(() => setShareToast(false), 1800)
+    } catch {
+      // clipboard blocked — silent
     }
-
-    if (documentType.includes('pdf') && documentUrl) {
-      return (
-        <iframe
-          title={selectedDocument.fileName}
-          src={`${documentUrl}#page=${currentPage}`}
-          className="h-full w-full rounded-xl border border-outline-variant bg-white"
-        />
-      )
-    }
-
-    if ((documentType.includes('image') || /\.(png|jpe?g)$/i.test(selectedDocument.fileName)) && documentUrl) {
-      return <img src={documentUrl} alt={selectedDocument.fileName} className="max-h-full max-w-full rounded-xl object-contain" />
-    }
-
-    if ((documentType.includes('text') || /\.txt$/i.test(selectedDocument.fileName)) && selectedDocument.contentText) {
-      return (
-        <pre className="h-full w-full overflow-auto rounded-xl bg-white p-4 text-left text-sm text-on-surface">
-          {selectedDocument.contentText}
-        </pre>
-      )
-    }
-
-    if (documentUrl) {
-      return (
-        <a href={documentUrl} target="_blank" rel="noreferrer" className="text-primary underline">
-          {isVi ? 'Mo tai lieu trong tab moi' : 'Open document in a new tab'}
-        </a>
-      )
-    }
-
-    return <p className="text-on-surface-variant">{isVi ? 'Khong the hien thi tai lieu nay.' : 'Preview is unavailable for this file.'}</p>
   }
+
+  const chipBase = 'inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-4 py-2 text-sm font-medium text-on-surface shadow-sm hover:bg-surface-container-low transition-colors'
+  const iconBtn = 'inline-flex items-center gap-1.5 rounded-full border border-outline-variant px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors'
 
   return (
     <UserShell
@@ -223,54 +228,117 @@ export const DocumentViewerPage: React.FC = () => {
       subtitleEn="Open and review course documents"
       subtitleVi="Mo va xem lai tai lieu khoa hoc"
     >
-      <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-        <Card className="p-6">
-          <h3 className="mb-4 text-lg font-bold text-on-surface">{isVi ? 'Danh sach tai lieu' : 'Documents'}</h3>
-          <div className="space-y-3">
-            {documents.map((document) => (
-              <button
-                key={document.id}
-                onClick={() => openDocument(document.id)}
-                className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
-                  selectedDocument?.id === document.id
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-outline-variant hover:bg-surface-container-low'
-                }`}
-              >
-                <MaterialIcon icon="description" className="text-primary" />
-                <span className="text-sm text-on-surface">{document.fileName}</span>
-              </button>
-            ))}
-            {!isLoading && documents.length === 0 && (
-              <p className="text-sm text-on-surface-variant">{isVi ? 'Chua co tai lieu nao.' : 'No documents available.'}</p>
+      <div className="space-y-6">
+        
+          {/* <h2 className="text-2xl font-bold text-on-surface">{baseTitle}</h2> */}
+          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-on-surface-variant">
+            <span className="inline-flex items-center gap-2">
+              <MaterialIcon icon="folder" size="xs" />
+              <span>{collectionTitle ?? (isVi ? 'Tai lieu ca nhan' : 'Personal documents')}</span>
+              <span className="text-on-surface-variant/80">| {documents.length} {isVi ? 'tai lieu' : 'documents'}</span>
+            </span>
+            {docYear && (
+              <span className="inline-flex items-center gap-2">
+                <MaterialIcon icon="calendar_today" size="xs" />
+                <span>{docYear}</span>
+              </span>
+            )}
+            {loaded?.mimeType && (
+              <span className="inline-flex items-center gap-2 uppercase tracking-wide">
+                <MaterialIcon icon="description" size="xs" />
+                <span>{loaded.mimeType.split('/').pop()}</span>
+              </span>
             )}
           </div>
-        </Card>
-
-        <Card className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h4 className="text-lg font-bold text-on-surface">{selectedDocument?.fileName || (isVi ? 'Xem truoc' : 'Preview')}</h4>
-            <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-              <Button size="sm" variant="secondary" onClick={previousPage} disabled={currentPage <= 1 || isLoading}>
-                <MaterialIcon icon="chevron_left" size="xs" />
-              </Button>
-              <span>{isVi ? `Trang ${currentPage} / ${totalPages}` : `Page ${currentPage} of ${totalPages}`}</span>
-              <Button size="sm" variant="secondary" onClick={nextPage} disabled={currentPage >= totalPages || isLoading}>
-                <MaterialIcon icon="chevron_right" size="xs" />
-              </Button>
-            </div>
-          </div>
-          <div className="flex h-[360px] items-center justify-center rounded-2xl bg-surface-container-low text-center text-on-surface-variant">
-            {isLoading ? (
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+          {/* <div className="mt-5 flex flex-wrap items-center gap-3">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={handleDownload}
+              disabled={!loaded || isDocLoading}
+            >
+              <MaterialIcon icon="download" size="xs" className="mr-1.5" />
+              {isVi ? 'Tai xuong' : 'Download'}
+            </Button>
+            <button type="button" className={iconBtn} disabled>
+              <MaterialIcon icon="thumb_up" size="xs" />
+              <span>0</span>
+            </button>
+            <button type="button" className={iconBtn} disabled>
+              <MaterialIcon icon="thumb_down" size="xs" />
+              <span>0</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSaved((s) => !s)}
+              className={`${iconBtn} ${saved ? 'border-primary text-primary' : ''}`}
+            >
+              <MaterialIcon icon={saved ? 'bookmark' : 'bookmark_border'} size="xs" />
+              <span>{isVi ? 'Luu' : 'Save'}</span>
+            </button>
+            <button type="button" onClick={handleShare} className={iconBtn}>
+              <MaterialIcon icon="share" size="xs" />
+              <span>{shareToast ? (isVi ? 'Da sao chep' : 'Copied') : (isVi ? 'Chia se' : 'Share')}</span>
+            </button>
+          </div> */}
+          <div className="min-h-[90vh] rounded-2xl bg-surface-container-low">
+            {isDocLoading ? (
+              <div className="flex h-[90vh] items-center justify-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+              </div>
             ) : error ? (
-              <p className="text-error">{error}</p>
+              <div className="flex h-[90vh] items-center justify-center">
+                <p className="text-error">{error}</p>
+              </div>
             ) : (
-              renderDocumentPreview()
+              <div className="h-[90vh]">
+                <DocumentInlineViewer
+                  blobUrl={loaded?.blobUrl ?? null}
+                  mimeType={loaded?.mimeType ?? null}
+                  fileName={loaded?.fileName ?? ''}
+                  emptyLabel={isVi ? 'Chon mot tai lieu de xem' : 'Select a document to preview'}
+                />
+              </div>
             )}
           </div>
-        </Card>
+        
       </div>
+
+      {/* <div className="pointer-events-none fixed inset-x-0 bottom-6 z-30 flex justify-center px-4">
+        <div className="pointer-events-auto w-full max-w-2xl rounded-3xl border border-outline-variant bg-surface/95 p-3 shadow-xl backdrop-blur">
+          <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
+            <Link to="/user/quiz" className={chipBase}>
+              <MaterialIcon icon="quiz" size="xs" />
+              {isVi ? 'Thi thu' : 'Mock exam'}
+            </Link>
+            <Link to="/user/decks/new" className={chipBase}>
+              <MaterialIcon icon="edit_note" size="xs" />
+              {isVi ? 'Tom tat' : 'Summary'}
+            </Link>
+            <Link to="/user/quizzes/new" className={chipBase}>
+              <MaterialIcon icon="psychology" size="xs" />
+              {isVi ? 'Tao Quiz' : 'Quiz'}
+            </Link>
+          </div>
+          <div className="flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-low px-4 py-2">
+            <input
+              type="text"
+              disabled
+              placeholder={isVi ? 'Hoi mot cau ve tai lieu nay... (sap ra mat)' : 'Ask a question about this document... (coming soon)'}
+              className="flex-1 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none disabled:cursor-not-allowed"
+              title={isVi ? 'Sap ra mat' : 'Coming soon'}
+            />
+            <button
+              type="button"
+              disabled
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/30 text-on-primary disabled:cursor-not-allowed"
+              title={isVi ? 'Sap ra mat' : 'Coming soon'}
+            >
+              <MaterialIcon icon="arrow_forward" size="xs" />
+            </button>
+          </div>
+        </div>
+      </div> */}
     </UserShell>
   )
 }
@@ -279,6 +347,8 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams] = useSearchParams()
   const deckId = searchParams.get('deckId')
+  const contentId = searchParams.get('contentId')
+  const activitySentRef = React.useRef(false)
   const {
     currentCard,
     currentIndex,
@@ -296,6 +366,17 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     resetMastered,
   } = useFlashcard(deckId)
 
+  React.useEffect(() => {
+    if (!contentId || isLoading || activitySentRef.current) return
+    activitySentRef.current = true
+    void apiClient.post('/student-progress/activity', {
+      contentId,
+      isCompleted: false,
+      progressPercentage: 0,
+      timeSpentSeconds: 0,
+    })
+  }, [contentId, isLoading])
+
   return (
     <UserShell
       titleEn="Interactive Flashcards"
@@ -308,7 +389,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 
         {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
 
-        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+        {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
 
         {!isLoading && !error && currentCard && (
           <>
@@ -364,7 +445,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 }
 
 interface LearningHistoryEntry {
-  courseId: string
+  courseId: string | null
   courseTitle: string | null
   moduleTitle: string | null
   contentTitle: string | null
@@ -372,39 +453,104 @@ interface LearningHistoryEntry {
   progressPercentage: number
   isCompleted: boolean
   activityAt: string
+  attemptId?: string | null
+}
+
+interface AttemptAnswerItem {
+  questionId: string
+  questionText: string
+  selectedOptionId: string
+  selectedOptionText: string
+  correctOptionId: string
+  correctOptionText: string
+  isCorrect: boolean
+  explanation?: string | null
+}
+
+interface AttemptReviewDto {
+  attemptId: string
+  quizId: string
+  quizTitle: string
+  scorePercentage: number
+  attemptedAt: string
+  answers: AttemptAnswerItem[]
+}
+
+const typeIcon = (contentType: string | null): string => {
+  switch (contentType) {
+    case 'QUIZ': return 'quiz'
+    case 'VIDEO': return 'play_circle'
+    case 'FLASHCARD': return 'style'
+    case 'PDF': return 'description'
+    default: return 'article'
+  }
+}
+
+const fmtTime = (iso: string) => {
+  try { return new Date(iso).toLocaleString() } catch { return iso }
 }
 
 export const LearningHistoryPage: React.FC = () => {
   const isVi = useLang()
   const [rows, setRows] = useState<LearningHistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [expandedAttemptId, setExpandedAttemptId] = useState<string | null>(null)
+  const [reviews, setReviews] = useState<Record<string, AttemptReviewDto | null>>({})
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [showPurgeConfirm, setShowPurgeConfirm] = useState(false)
+  const [isPurging, setIsPurging] = useState(false)
 
-  useEffect(() => {
+  const loadHistory = React.useCallback(() => {
     let cancelled = false
     setIsLoading(true)
-    setError(null)
     apiClient.get<LearningHistoryEntry[]>('/student-progress/recent?limit=30')
       .then((res) => {
         if (cancelled) return
         if (res.success && res.data) setRows(res.data)
-        else throw new Error(res.message || 'Unable to load history')
       })
-      .catch((err) => {
-        if (cancelled) return
-        setError(err instanceof Error ? err.message : 'Unable to load history')
-      })
+      .catch(() => { /* non-critical */ })
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
   }, [])
 
-  const describe = (r: LearningHistoryEntry) => {
-    const parts = [r.contentTitle ?? r.moduleTitle ?? r.courseTitle ?? '—']
-    if (r.contentType) parts.push(`(${r.contentType.toLowerCase()})`)
-    return parts.join(' ')
+  useEffect(() => {
+    return loadHistory()
+  }, [loadHistory])
+
+  const toggleReview = async (attemptId: string) => {
+    if (expandedAttemptId === attemptId) { setExpandedAttemptId(null); return }
+    setExpandedAttemptId(attemptId)
+    if (reviews[attemptId] !== undefined) return
+    setReviewLoading(true)
+    try {
+      const res = await apiClient.get<AttemptReviewDto>(`/student-progress/quiz-attempts/${attemptId}`)
+      setReviews((prev) => ({ ...prev, [attemptId]: res.success && res.data ? res.data : null }))
+    } catch {
+      setReviews((prev) => ({ ...prev, [attemptId]: null }))
+    } finally {
+      setReviewLoading(false)
+    }
   }
-  const fmtTime = (iso: string) => {
-    try { return new Date(iso).toLocaleString() } catch { return iso }
+
+  const handlePurge = async () => {
+    setIsPurging(true)
+    try {
+      await apiClient.delete('/student-progress/purge')
+      setRows([])
+      setExpandedAttemptId(null)
+      setReviews({})
+    } catch { /* non-critical */ }
+    finally { setIsPurging(false); setShowPurgeConfirm(false) }
+  }
+
+  const getResult = (row: LearningHistoryEntry) => {
+    if (row.contentType === 'QUIZ')
+      return isVi ? `Diem: ${row.progressPercentage}%` : `Score: ${row.progressPercentage}%`
+    if (row.isCompleted)
+      return isVi ? 'Hoan thanh' : 'Completed'
+    if (row.progressPercentage > 0)
+      return `${row.progressPercentage}%`
+    return isVi ? 'Da xem' : 'Viewed'
   }
 
   return (
@@ -414,39 +560,145 @@ export const LearningHistoryPage: React.FC = () => {
       subtitleEn="Your timeline of completed activities"
       subtitleVi="Dong thoi gian cac hoat dong da hoan thanh"
     >
-      <Card className="p-6">
-        {isLoading && <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />}
-        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
-        {!isLoading && !error && rows.length === 0 && (
-          <p className="text-sm text-on-surface-variant text-center py-4">
-            {isVi ? 'Chua co hoat dong nao.' : 'No activity yet.'}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-on-surface-variant">
+            {isVi ? 'Cac hoat dong hoc tap gan day cua ban.' : 'Your recent learning activities.'}
           </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowPurgeConfirm(true)}
+            className="text-error hover:bg-error/10"
+          >
+            <MaterialIcon icon="delete_sweep" size="xs" className="mr-1" />
+            {isVi ? 'Xoa lich su' : 'Purge History'}
+          </Button>
+        </div>
+
+        {showPurgeConfirm && (
+          <Card className="border border-error/30 bg-error/5 p-4">
+            <p className="mb-3 text-sm font-medium text-error">
+              {isVi
+                ? 'Hanh dong nay se xoa vinh vien toan bo lich su hoc tap va ket qua quiz. Khong the hoan tac!'
+                : 'This will permanently delete all learning history and quiz results. This action cannot be undone!'}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                onClick={() => void handlePurge()}
+                disabled={isPurging}
+                className="bg-error text-white hover:bg-error/90"
+              >
+                {isPurging ? (isVi ? 'Dang xoa...' : 'Purging…') : (isVi ? 'Xac nhan xoa' : 'Confirm Purge')}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setShowPurgeConfirm(false)} disabled={isPurging}>
+                {isVi ? 'Huy' : 'Cancel'}
+              </Button>
+            </div>
+          </Card>
         )}
-        {!isLoading && !error && rows.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-outline-variant">
-                  <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Hoat dong' : 'Activity'}</th>
-                  <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Thoi gian' : 'Time'}</th>
-                  <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Ket qua' : 'Result'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, idx) => (
-                  <tr key={`${row.courseId}-${row.activityAt}-${idx}`} className="border-b border-outline-variant/40">
-                    <td className="py-3 text-on-surface">{describe(row)}</td>
-                    <td className="py-3 text-on-surface-variant">{fmtTime(row.activityAt)}</td>
-                    <td className="py-3 text-on-surface-variant">
-                      {row.isCompleted ? (isVi ? 'Hoan thanh' : 'Completed') : `${row.progressPercentage}%`}
-                    </td>
+
+        <Card className="p-6">
+          {isLoading && <div className="mx-auto h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />}
+
+          {!isLoading && rows.length === 0 && (
+            <p className="py-4 text-center text-sm text-on-surface-variant">
+              {isVi ? 'Chua co hoat dong nao.' : 'No activity yet.'}
+            </p>
+          )}
+
+          {!isLoading && rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-outline-variant">
+                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Hoat dong' : 'Activity'}</th>
+                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Thoi gian' : 'Time'}</th>
+                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Ket qua' : 'Result'}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
+                </thead>
+                <tbody>
+                  {rows.map((row, idx) => (
+                    <React.Fragment key={`${row.contentType}-${row.activityAt}-${idx}`}>
+                      <tr
+                        className={`border-b border-outline-variant/40 ${row.contentType === 'QUIZ' && row.attemptId ? 'cursor-pointer hover:bg-surface-container-low' : ''}`}
+                        onClick={row.contentType === 'QUIZ' && row.attemptId ? () => void toggleReview(row.attemptId!) : undefined}
+                      >
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <MaterialIcon icon={typeIcon(row.contentType)} size="xs" className="shrink-0 text-on-surface-variant" />
+                            <span className="text-on-surface">
+                              {row.contentTitle ?? row.moduleTitle ?? row.courseTitle ?? '—'}
+                            </span>
+                            {row.contentType === 'QUIZ' && row.attemptId && (
+                              <MaterialIcon
+                                icon={expandedAttemptId === row.attemptId ? 'expand_less' : 'expand_more'}
+                                size="xs"
+                                className="ml-auto text-on-surface-variant"
+                              />
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3 text-sm text-on-surface-variant">{fmtTime(row.activityAt)}</td>
+                        <td className="py-3 text-sm text-on-surface-variant">{getResult(row)}</td>
+                      </tr>
+
+                      {row.contentType === 'QUIZ' && row.attemptId && expandedAttemptId === row.attemptId && (
+                        <tr>
+                          <td colSpan={3} className="pb-4 pt-1">
+                            {reviewLoading && reviews[row.attemptId] === undefined && (
+                              <div className="flex justify-center py-4">
+                                <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+                              </div>
+                            )}
+                            {reviews[row.attemptId] === null && (
+                              <p className="py-2 text-center text-sm text-error">
+                                {isVi ? 'Khong tai duoc ket qua.' : 'Unable to load review.'}
+                              </p>
+                            )}
+                            {reviews[row.attemptId] && (
+                              <div className="space-y-3 rounded-xl bg-surface-container-low p-4">
+                                {reviews[row.attemptId]!.answers.map((answer, aIdx) => (
+                                  <div key={answer.questionId} className="rounded-lg border border-outline-variant/60 bg-surface p-3">
+                                    <p className="mb-2 text-sm font-semibold text-on-surface">
+                                      {`${aIdx + 1}. ${answer.questionText}`}
+                                    </p>
+                                    <p className={`text-sm ${answer.isCorrect ? 'text-[#22c55e]' : 'text-error'}`}>
+                                      {answer.isCorrect
+                                        ? (isVi ? '✓ Dung: ' : '✓ Correct: ')
+                                        : (isVi ? '✗ Ban chon: ' : '✗ Your answer: ')}
+                                      {answer.selectedOptionText}
+                                    </p>
+                                    {!answer.isCorrect && (
+                                      <p className="text-sm text-[#22c55e]">
+                                        {isVi ? '✓ Dap an dung: ' : '✓ Correct answer: '}
+                                        {answer.correctOptionText}
+                                      </p>
+                                    )}
+                                    {answer.explanation && (
+                                      <p className="mt-1 text-xs text-on-surface-variant italic">{answer.explanation}</p>
+                                    )}
+                                  </div>
+                                ))}
+                                {reviews[row.attemptId]!.answers.length === 0 && (
+                                  <p className="text-center text-sm text-on-surface-variant">
+                                    {isVi ? 'Khong co cau tra loi nao duoc luu.' : 'No answers recorded for this attempt.'}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      </div>
     </UserShell>
   )
 }
@@ -480,7 +732,7 @@ export const OrganizationListPage: React.FC = () => {
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
         </div>
       )}
-      {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+      {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
       {!isLoading && !error && organizations.length === 0 && (
         <p className="text-sm text-on-surface-variant text-center py-4">
           {isVi ? 'Chua co to chuc nao.' : 'No organizations yet.'}
@@ -537,8 +789,8 @@ const contentIcon = (type: string): string => {
 const contentHref = (c: { id: string; contentType: string; quizId?: string | null; deckId?: string | null; documentId?: string | null; videoId?: string | null }) => {
   switch (c.contentType) {
     case 'QUIZ': return c.quizId ? `/user/quiz?quizId=${c.quizId}` : null
-    case 'FLASHCARD': return c.deckId ? `/user/flashcards?deckId=${c.deckId}` : null
-    case 'PDF': return c.documentId ? `/user/documents?docId=${c.documentId}` : null
+    case 'FLASHCARD': return c.deckId ? `/user/flashcards?deckId=${c.deckId}&contentId=${c.id}` : null
+    case 'PDF': return c.documentId ? `/user/documents?docId=${c.documentId}&contentId=${c.id}` : null
     case 'VIDEO': return `/user/lesson?contentId=${c.id}${c.videoId ? `&videoId=${c.videoId}` : ''}`
     default: return null
   }
@@ -790,7 +1042,7 @@ export const UserQuizInterfacePage: React.FC = () => {
 
         {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
 
-        {error && !isLoading && <p className="text-sm text-error">{error}</p>}
+        {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
 
         {!isLoading && !error && result && (
           <div className="space-y-4">
@@ -805,7 +1057,9 @@ export const UserQuizInterfacePage: React.FC = () => {
               {result.results.map((item) => (
                 <div key={item.questionId} className="rounded-lg border border-outline-variant p-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm font-semibold text-on-surface">#{item.questionId.slice(0, 8)}</p>
+                    <p className="text-sm font-semibold text-on-surface">
+                      {questionsById.get(item.questionId)?.questionText ?? `#${item.questionId.slice(0, 8)}`}
+                    </p>
                     <Badge variant={item.isCorrect ? 'success' : 'warning'} size="sm">
                       {item.isCorrect ? (isVi ? 'Dung' : 'Correct') : (isVi ? 'Sai' : 'Incorrect')}
                     </Badge>
@@ -967,6 +1221,19 @@ export const VideoLessonPage: React.FC = () => {
   React.useEffect(() => {
     void fetchVideos()
   }, [fetchVideos])
+
+  const videoActivityRef = React.useRef<string | null>(null)
+  React.useEffect(() => {
+    if (!selectedVideo || !contentId) return
+    if (videoActivityRef.current === selectedVideo.id) return
+    videoActivityRef.current = selectedVideo.id
+    void apiClient.post('/student-progress/activity', {
+      contentId,
+      isCompleted: false,
+      progressPercentage: 0,
+      timeSpentSeconds: 0,
+    })
+  }, [selectedVideo, contentId])
 
   const handleCreateVideo = async () => {
     if (!contentId || !youtubeUrl.trim()) return

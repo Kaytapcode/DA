@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 using Content.Api.Data;
 using Content.Api.Models;
@@ -17,15 +18,18 @@ namespace Content.Api.Controllers
         private readonly IVideoRepository _videoRepository;
         private readonly IContentRepository _contentRepository;
         private readonly IOrgContextService _orgContext;
+        private readonly ContentDbContext _db;
 
         public VideosController(
             IVideoRepository videoRepository,
             IContentRepository contentRepository,
-            IOrgContextService orgContext)
+            IOrgContextService orgContext,
+            ContentDbContext db)
         {
             _videoRepository = videoRepository;
             _contentRepository = contentRepository;
             _orgContext = orgContext;
+            _db = db;
         }
 
         private string? ExtractYouTubeVideoId(string url)
@@ -54,8 +58,10 @@ namespace Content.Api.Controllers
                 return false;
 
             var moduleId = content.ModuleContents.FirstOrDefault()?.ModuleId;
+            // Personal/public video (not attached to any module/course): allow any authenticated
+            // user per spec §1 (User personal resources are public).
             if (moduleId == null)
-                return _orgContext.IsSysAdmin();
+                return _orgContext.GetCurrentUserId().HasValue;
 
             var orgId = await _videoRepository.GetModuleOrgIdAsync(moduleId.Value);
             return _orgContext.IsSysAdmin() || orgId == _orgContext.GetCurrentOrgId();
@@ -93,6 +99,7 @@ namespace Content.Api.Controllers
                 Success: true,
                 Data: new VideoDto(
                     Id: created.Id,
+                    ContentId: created.ContentId,
                     YouTubeVideoId: created.YouTubeVideoId,
                     Title: created.Title,
                     Description: created.Description,
@@ -118,6 +125,7 @@ namespace Content.Api.Controllers
                 Success: true,
                 Data: new VideoDto(
                     Id: video.Id,
+                    ContentId: video.ContentId,
                     YouTubeVideoId: video.YouTubeVideoId,
                     Title: video.Title,
                     Description: video.Description,
@@ -140,6 +148,7 @@ namespace Content.Api.Controllers
 
             var result = videos.Select(v => new VideoDto(
                 Id: v.Id,
+                ContentId: v.ContentId,
                 YouTubeVideoId: v.YouTubeVideoId,
                 Title: v.Title,
                 Description: v.Description,
@@ -174,6 +183,7 @@ namespace Content.Api.Controllers
                 Success: true,
                 Data: new VideoDto(
                     Id: created.Id,
+                    ContentId: created.ContentId,
                     YouTubeVideoId: created.YouTubeVideoId,
                     Title: created.Title,
                     Description: created.Description,
@@ -191,6 +201,7 @@ namespace Content.Api.Controllers
             var videos = await _videoRepository.GetPersonalAsync(ct);
             var result = videos.Select(v => new VideoDto(
                 Id: v.Id,
+                ContentId: v.ContentId,
                 YouTubeVideoId: v.YouTubeVideoId,
                 Title: v.Title,
                 Description: v.Description,
@@ -233,6 +244,7 @@ namespace Content.Api.Controllers
                 Success: true,
                 Data: new VideoDto(
                     Id: updated.Id,
+                    ContentId: updated.ContentId,
                     YouTubeVideoId: updated.YouTubeVideoId,
                     Title: updated.Title,
                     Description: updated.Description,
@@ -244,18 +256,45 @@ namespace Content.Api.Controllers
         }
 
         // DELETE /api/videos/{videoId} - Delete video
+        // Personal videos (no module attachment) can be deleted by their owner or a SysAdmin.
+        // Course-bound videos require Teacher-or-above within the same org.
         [HttpDelete("{videoId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> DeleteVideo(Guid videoId, CancellationToken ct = default)
         {
+            var userId = _orgContext.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(Success: false, Message: "Invalid user context."));
+
             var video = await _videoRepository.GetByIdAsync(videoId, ct);
             if (video == null)
                 return NotFound(new ApiResponse(Success: false, Message: "Video not found."));
 
-            if (!await VerifyContentAccessAsync(video.ContentId))
-                return Forbid();
+            var content = await _db.Contents
+                .Include(c => c.ModuleContents)
+                .FirstOrDefaultAsync(c => c.Id == video.ContentId, ct);
+            if (content == null)
+                return NotFound(new ApiResponse(Success: false, Message: "Content not found."));
 
-            await _videoRepository.SoftDeleteAsync(videoId, ct);
+            if (content.ModuleContents.Any())
+            {
+                // Course-bound: require teacher role and org membership
+                var role = _orgContext.GetCurrentRole();
+                if (role is not ("SysAdmin" or "OrgAdmin" or "Teacher"))
+                    return Forbid();
+                if (!await VerifyContentAccessAsync(video.ContentId))
+                    return Forbid();
+            }
+            else
+            {
+                // Personal video: owner or SysAdmin only
+                if (content.CreatedByUserId != userId && !_orgContext.IsSysAdmin())
+                    return Forbid();
+            }
+
+            // Deleting ContentModel cascades to VideoModel (OnDelete Cascade).
+            // StudentProgress.ContentId is set to null (OnDelete SetNull).
+            _db.Contents.Remove(content);
+            await _db.SaveChangesAsync(ct);
 
             return Ok(new ApiResponse(Success: true, Message: "Video deleted successfully."));
         }
@@ -283,6 +322,7 @@ namespace Content.Api.Controllers
 
     public record VideoDto(
         Guid Id,
+        Guid ContentId,
         string YouTubeVideoId,
         string? Title,
         string? Description,

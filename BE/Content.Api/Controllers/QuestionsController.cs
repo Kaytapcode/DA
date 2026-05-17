@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Content.Api.Data;
 using Content.Api.Models;
 using Content.Api.Services;
@@ -16,11 +17,13 @@ namespace Content.Api.Controllers
     {
         private readonly IQuestionRepository _repo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ContentDbContext _db;
 
-        public QuestionsController(IQuestionRepository repo, IOrgContextService orgCtx)
+        public QuestionsController(IQuestionRepository repo, IOrgContextService orgCtx, ContentDbContext db)
         {
             _repo = repo;
             _orgCtx = orgCtx;
+            _db = db;
         }
 
         private async Task<bool> VerifyQuizAccessAsync(Guid quizId)
@@ -52,7 +55,7 @@ namespace Content.Api.Controllers
         [HttpGet("/api/quizzes")]
         public async Task<IActionResult> GetQuizzes(CancellationToken ct)
         {
-            var quizzes = await _repo.GetQuizzesAsync(_orgCtx.GetCurrentOrgId(), _orgCtx.IsSysAdmin(), ct);
+            var quizzes = await _repo.GetQuizzesAsync(_orgCtx.GetCurrentOrgId(), _orgCtx.GetCurrentUserId(), _orgCtx.IsSysAdmin(), ct);
             var result = quizzes.Select(q => new QuizSummaryDto(
                 q.Id,
                 q.ContentId,
@@ -81,6 +84,38 @@ namespace Content.Api.Controllers
                 quiz.CreatedAt
             );
             return Ok(new ApiResponse<QuizSummaryDto>(true, summary, "Quiz created."));
+        }
+
+        // DELETE /api/quizzes/{quizId} — cascade-deletes the quiz, all questions, options, attempts, and the ContentModel.
+        // Only the owner (Content.CreatedByUserId) or a SysAdmin may delete a personal quiz.
+        // Course-bound quizzes (attached to a module) are rejected — use the course-management API instead.
+        [HttpDelete("/api/quizzes/{quizId:guid}")]
+        public async Task<IActionResult> DeleteQuiz(Guid quizId, CancellationToken ct)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            var quiz = await _db.Quizzes
+                .Include(q => q.Content)
+                    .ThenInclude(c => c!.ModuleContents)
+                .FirstOrDefaultAsync(q => q.Id == quizId, ct);
+
+            if (quiz == null)
+                return NotFound(new ApiResponse(false, "Quiz not found."));
+
+            if (quiz.Content?.CreatedByUserId != userId && !_orgCtx.IsSysAdmin())
+                return Forbid();
+
+            if (quiz.Content?.ModuleContents.Any() == true)
+                return BadRequest(new ApiResponse(false, "Cannot delete a quiz that is attached to a course module."));
+
+            // Deleting ContentModel cascades: QuizModel (OnDelete Cascade) → Questions (convention Cascade)
+            // → QuestionOptions (convention Cascade) and QuizAttempts (OnDelete Cascade).
+            // StudentProgress.ContentId is set to null (OnDelete SetNull) — history rows are preserved.
+            _db.Contents.Remove(quiz.Content!);
+            await _db.SaveChangesAsync(ct);
+            return Ok(new ApiResponse(true, "Quiz deleted."));
         }
 
         // GET /api/quizzes/{quizId}/questions

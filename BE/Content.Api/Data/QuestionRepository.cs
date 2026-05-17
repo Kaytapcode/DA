@@ -6,7 +6,7 @@ namespace Content.Api.Data
 {
     public interface IQuestionRepository
     {
-        Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
+        Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default);
         Task<List<QuestionModel>> GetByQuizIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuestionModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<Guid?> GetQuizOrgIdAsync(Guid quizId, CancellationToken ct = default);
@@ -27,7 +27,7 @@ namespace Content.Api.Data
 
         public QuestionRepository(ContentDbContext db) => _db = db;
 
-        public async Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default)
+        public async Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default)
         {
             var query = _db.Quizzes
                 .Include(q => q.Content)
@@ -37,10 +37,15 @@ namespace Content.Api.Data
 
             if (!isSysAdmin)
             {
-                if (!orgId.HasValue) return [];
+                if (!orgId.HasValue && !userId.HasValue) return [];
+                // Show quizzes belonging to the user's org (via module) OR personal quizzes
+                // owned by the current user (Content.CreatedByUserId, no module attachment).
                 query = query.Where(q =>
                     q.Content != null &&
-                    q.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value));
+                    (
+                        (orgId.HasValue && q.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
+                        || (userId.HasValue && q.Content.CreatedByUserId == userId.Value)
+                    ));
             }
 
             return await query
@@ -76,7 +81,7 @@ namespace Content.Api.Data
                 Id = Guid.NewGuid(),
                 Title = title,
                 ContentType = "QUIZ",
-                Status = "DRAFT",
+                Status = "PUBLISHED",
                 CreatedByUserId = createdByUserId,
                 IsPublic = true, // Spec §1: personal resources MUST be public.
                 CreatedAt = now

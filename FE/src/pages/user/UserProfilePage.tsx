@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+﻿import React, { useEffect, useState } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -9,9 +9,11 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { Badge } from '@components/ui/Badge'
 import { t } from '@/i18n/translations'
 import { useForm } from '@hooks/useForm'
+import { useAuthContext } from '@/contexts/AuthContext'
 
 interface ProfileFormData {
   fullName: string
+  userName: string
   email: string
   bio: string
   institution: string
@@ -27,14 +29,16 @@ type TabType = 'personal' | 'security' | 'wallet' | 'notifications'
 export const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('personal')
   const [isSaved, setIsSaved] = useState(false)
+  const { user } = useAuthContext()
 
-  const { values, handleChange, handleSubmit } = useForm<ProfileFormData>(
+  const { values, handleChange, handleSubmit, setValues } = useForm<ProfileFormData>(
     {
-      fullName: 'Alex Johnson',
-      email: 'alex.johnson@lumina-learning.edu',
+      fullName: '',
+      userName: '',
+      email: '',
       bio: '',
-      institution: 'Stanford University',
-      degree: 'M.S. Physics',
+      institution: '',
+      degree: '',
     },
     async (data) => {
       console.log('Saving profile:', data)
@@ -43,11 +47,18 @@ export const UserProfilePage: React.FC = () => {
     }
   )
 
+  useEffect(() => {
+    if (!user) return
+    setValues((prev) => ({
+      ...prev,
+      userName: user.username ?? '',
+      email: user.email ?? '',
+    }))
+  }, [user, setValues])
+
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal Details', icon: 'person' },
-    { id: 'security', label: 'Security', icon: 'lock' },
-    { id: 'wallet', label: 'Academic Wallet', icon: 'account_balance_wallet' },
-    { id: 'notifications', label: 'Notifications', icon: 'notifications' },
+    { id: 'security', label: 'Password', icon: 'lock' },
   ]
 
   const achievements = [
@@ -57,8 +68,6 @@ export const UserProfilePage: React.FC = () => {
   ]
 
   const learningStats = [
-    { label: 'Course Completion', value: '84%' },
-    { label: 'Cognitive Score', value: '1,240 XP' },
     { label: 'Study Streak', value: '23 days' },
     { label: 'Total Hours', value: '340 hrs' },
   ]
@@ -103,7 +112,7 @@ export const UserProfilePage: React.FC = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Main Content - 2/3 width */}
-            <div className="lg:col-span-8">
+            <div className="lg:col-span-12">
               {/* Personal Details Tab */}
               {activeTab === 'personal' && (
                 <Card className="p-10 glass-card space-y-8">
@@ -134,13 +143,21 @@ export const UserProfilePage: React.FC = () => {
                             onChange={handleChange}
                           />
                           <Input
+                            label="Username"
+                            name="userName"
+                            value={values.userName}
+                            readOnly
+                          />
+
+                        </div>
+
+                      <Input
                             label="Email Address"
                             type="email"
                             name="email"
                             value={values.email}
                             onChange={handleChange}
                           />
-                        </div>
                         <Input
                           label="Bio"
                           name="bio"
@@ -148,31 +165,6 @@ export const UserProfilePage: React.FC = () => {
                           onChange={handleChange}
                           placeholder="Tell us about yourself"
                         />
-                      </div>
-                    </div>
-
-                    {/* Academic Info */}
-                    <div className="pt-8 border-t border-outline-variant">
-                      <h3 className="text-xl font-bold mb-6">Academic Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Institution
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">{values.institution}</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Degree
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">{values.degree}</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Graduation Date
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">June 2025</p>
-                        </div>
                       </div>
                     </div>
 
@@ -211,122 +203,9 @@ export const UserProfilePage: React.FC = () => {
                   </div>
                 </Card>
               )}
-
-              {/* Wallet Tab */}
-              {activeTab === 'wallet' && (
-                <Card className="p-10 space-y-6">
-                  <p className="text-on-surface-variant">
-                    Your academic credentials and certifications are stored here
-                  </p>
-                  <div className="space-y-4">
-                    {achievements.map((achievement, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg"
-                      >
-                        <div className={`text-2xl ${achievement.color}`}>
-                          <MaterialIcon icon={achievement.icon} fill />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-on-surface">{achievement.title}</p>
-                          <p className="text-xs text-on-surface-variant">{achievement.date}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Notifications Tab */}
-              {activeTab === 'notifications' && (
-                <Card className="p-10 space-y-4">
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Email Notifications', enabled: true },
-                      { label: 'Course Updates', enabled: true },
-                      { label: 'Achievement Badges', enabled: false },
-                      { label: 'Weekly Digest', enabled: true },
-                    ].map((notif, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
-                        <label className="font-medium text-on-surface cursor-pointer">
-                          {notif.label}
-                        </label>
-                        <div className="relative inline-flex w-12 h-7 bg-slate-300 rounded-full transition-colors" >
-                          <input
-                            type="checkbox"
-                            defaultChecked={notif.enabled}
-                            className="w-full h-full opacity-0 cursor-pointer"
-                          />
-                          <div className={`absolute top-1 left-1 w-5 h-5 rounded-full transition-all ${
-                            notif.enabled ? 'bg-primary translate-x-5' : 'bg-white'
-                          }`} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
             </div>
-
-            {/* Sidebar - 1/3 width */}
-            <div className="lg:col-span-4 space-y-6">
-              {/* Learning Stats */}
-              <Card className="p-6">
-                <h3 className="font-headline text-lg font-bold mb-6">Learning Vitality</h3>
-                <div className="space-y-6">
-                  {learningStats.map((stat, idx) => (
-                    <div key={idx}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium text-on-surface-variant">{stat.label}</span>
-                        <span className="font-bold text-primary">{stat.value}</span>
-                      </div>
-                      <div className="h-2 bg-surface-container-low rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-tertiary"
-                          style={{ width: `${30 + idx * 15}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Upgrade Card */}
-              <Card className="bg-gradient-to-br from-primary/10 to-tertiary/10 p-6 border border-primary/20">
-                <div className="text-center">
-                  <MaterialIcon icon="workspace_premium" className="text-4xl text-primary mx-auto mb-4" />
-                  <h3 className="font-headline font-bold mb-2">Personalize Learning</h3>
-                  <p className="text-sm text-on-surface-variant mb-4">
-                    Tune recommendations and keep your study flow optimized
-                  </p>
-                  <Button variant="primary" size="sm" className="w-full">
-                    Open Preferences
-                  </Button>
-                </div>
-              </Card>
-
-              {/* Recent Activity */}
-              <Card className="p-6">
-                <h3 className="font-headline text-lg font-bold mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                  {[
-                    { action: 'Completed Quiz', time: '2 hours ago' },
-                    { action: 'Earned Badge', time: '1 day ago' },
-                    { action: 'Joined Course', time: '3 days ago' },
-                  ].map((activity, idx) => (
-                    <div key={idx} className="flex gap-3 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-on-surface">{activity.action}</p>
-                        <p className="text-xs text-on-surface-variant">{activity.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
             </div>
           </div>
-        </div>
       </div>
     </MainLayout>
   )

@@ -1,5 +1,5 @@
 import React from 'react'
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { USER_NAV_ITEMS, APP_BRAND } from '@constants/navigation'
 import { t } from '@/i18n/translations'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
@@ -15,11 +15,11 @@ import { useAuthContext } from '@/contexts/AuthContext'
 export const UserSidebar: React.FC = () => {
   const { user } = useAuthContext()
   const primaryIds = ['home', 'courses', 'dashboard', 'learning']
-  const toolIds = ['flashcards']
-  const resourceIds = ['documents', 'library', 'collections', 'browse', 'messages', 'profile']
+  // const toolIds = ['documents', 'flashcards', 'quiz']
+  const resourceIds = ['library', 'collections', 'browse']
 
   const primaryItems = USER_NAV_ITEMS.filter((item) => primaryIds.includes(item.id))
-  const toolItems = USER_NAV_ITEMS.filter((item) => toolIds.includes(item.id))
+  // const toolItems = USER_NAV_ITEMS.filter((item) => toolIds.includes(item.id))
   const resourceItems = USER_NAV_ITEMS.filter((item) => resourceIds.includes(item.id))
 
   const renderItem = (item: (typeof USER_NAV_ITEMS)[number]) => (
@@ -64,26 +64,17 @@ export const UserSidebar: React.FC = () => {
 
         <div className="my-3 h-px bg-[#e5ebf5]" />
 
-        {toolItems.map(renderItem)}
+        {/* {toolItems.map(renderItem)} */}
 
-        <div className="my-3 h-px bg-[#e5ebf5]" />
+        {/* <div className="my-3 h-px bg-[#e5ebf5]" /> */}
 
         {resourceItems.map(renderItem)}
       </div>
 
-      <div className="mt-4 rounded-[22px] border border-[#dde5ff] bg-gradient-to-br from-[#edf2ff] to-[#e0e8ff] p-4 shadow-[0_12px_30px_rgba(71,92,196,0.12)]">
-        <div className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-[#6d7a91]">
-          Learning Tips
-        </div>
-        <p className="text-sm leading-6 text-[#5d6b85]">
-          Explore recommendations, smart review plans, and focused study routines.
-        </p>
-        <button className="mt-4 w-full rounded-full bg-[#4d6df6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#335af0]">
-          Explore Resources
-        </button>
-      </div>
-
-      <div className="mt-4 flex items-center gap-3 rounded-[22px] bg-white px-3 py-3 shadow-sm ring-1 ring-[#eef2f8]">
+      <Link
+        to="/user/profile"
+        className="mt-4 flex items-center gap-3 rounded-[22px] bg-white px-3 py-3 shadow-sm ring-1 ring-[#eef2f8] transition hover:ring-[#c8d3f1] hover:shadow-md"
+      >
         <div className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-[#f0f4ff] text-[#4d6df6]">
           <MaterialIcon icon="person" size="sm" />
         </div>
@@ -91,7 +82,7 @@ export const UserSidebar: React.FC = () => {
           <div className="truncate text-sm font-bold text-[#243043]">{user?.username ?? 'Guest'}</div>
           <div className="truncate text-xs font-medium text-[#7a879e]">{user?.role ?? 'Student'}</div>
         </div>
-      </div>
+      </Link>
     </aside>
   )
 }

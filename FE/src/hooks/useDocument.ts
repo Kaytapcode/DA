@@ -78,13 +78,17 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
         },
       })
 
-      const blob = response.data as Blob
+      const contentType = String(response.headers['content-type'] || '').split(';')[0].trim()
+      // Re-wrap with explicit MIME so iframe/img render inline. Without an explicit
+      // type some browsers treat the blob URL as application/octet-stream and force a download.
+      const rawBlob = response.data as Blob
+      const typedBlob = contentType ? new Blob([rawBlob], { type: contentType }) : rawBlob
       clearBlobUrl()
-      const blobUrl = URL.createObjectURL(blob)
+      const blobUrl = URL.createObjectURL(typedBlob)
       blobUrlRef.current = blobUrl
 
-      const fileType = String(response.headers['content-type'] || listEntry?.fileType || '').toLowerCase()
-      const contentText = fileType.includes('text') ? await blob.text() : undefined
+      const fileType = (contentType || listEntry?.fileType || '').toLowerCase()
+      const contentText = fileType.includes('text') ? await typedBlob.text() : undefined
 
       setSelectedDocument({
         ...(listEntry ?? { id: documentId, fileName: 'Document', fileType }),

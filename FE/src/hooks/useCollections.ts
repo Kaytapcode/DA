@@ -10,6 +10,18 @@ export interface Collection {
   createdAt: string
 }
 
+// Mirrors CollectionsController.CollectionItemDto.
+export interface CollectionItem {
+  contentId: string
+  title: string
+  contentType: string
+  videoId: string | null
+  quizId: string | null
+  deckId: string | null
+  documentId: string | null
+  orderIndex: number
+}
+
 export const useCollections = () => {
   const [collections, setCollections] = useState<Collection[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -61,6 +73,15 @@ export const useCollections = () => {
     [refresh]
   )
 
+  const getItems = useCallback(async (collectionId: string): Promise<CollectionItem[]> => {
+    try {
+      const res = await apiClient.get<CollectionItem[]>(`/collections/${collectionId}/items`)
+      return res.success && res.data ? res.data : []
+    } catch {
+      return []
+    }
+  }, [])
+
   const addItem = useCallback(async (collectionId: string, contentId: string) => {
     try {
       const res = await apiClient.post(`/collections/${collectionId}/items`, { contentId })
@@ -83,5 +104,5 @@ export const useCollections = () => {
     }
   }, [])
 
-  return { collections, isLoading, error, refresh, create, remove, addItem, removeItem }
+  return { collections, isLoading, error, refresh, create, remove, getItems, addItem, removeItem }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Content.Api.Data;
 using Content.Api.Models;
 using Content.Api.Services;
@@ -15,11 +16,13 @@ namespace Content.Api.Controllers
     {
         private readonly IFlashcardRepository _repo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ContentDbContext _db;
 
-        public FlashcardsController(IFlashcardRepository repo, IOrgContextService orgCtx)
+        public FlashcardsController(IFlashcardRepository repo, IOrgContextService orgCtx, ContentDbContext db)
         {
             _repo = repo;
             _orgCtx = orgCtx;
+            _db = db;
         }
 
         private async Task<bool> VerifyDeckAccessAsync(Guid deckId)
@@ -40,7 +43,7 @@ namespace Content.Api.Controllers
         [HttpGet("/api/decks")]
         public async Task<IActionResult> GetDecks(CancellationToken ct)
         {
-            var decks = await _repo.GetDecksAsync(_orgCtx.GetCurrentOrgId(), _orgCtx.IsSysAdmin(), ct);
+            var decks = await _repo.GetDecksAsync(_orgCtx.GetCurrentOrgId(), _orgCtx.GetCurrentUserId(), _orgCtx.IsSysAdmin(), ct);
             var result = decks.Select(d => new FlashcardDeckSummaryDto(
                 DeckId: d.Id,
                 ContentId: d.ContentId,
@@ -169,6 +172,37 @@ namespace Content.Api.Controllers
 
             var resetCount = await _repo.ResetMasteredAsync(deckId, ct);
             return Ok(new ApiResponse<object>(true, new { resetCount }, $"Reset {resetCount} card(s) to unmastered."));
+        }
+
+        // DELETE /api/decks/{deckId} — cascade-deletes the deck, all its cards, and the ContentModel.
+        // Only the owner (Content.CreatedByUserId) or a SysAdmin may delete a personal deck.
+        // Course-bound decks (attached to a module) are rejected — use the course-management API instead.
+        [HttpDelete("/api/decks/{deckId:guid}")]
+        public async Task<IActionResult> DeleteDeck(Guid deckId, CancellationToken ct)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            var deck = await _db.FlashcardDecks
+                .Include(d => d.Content)
+                    .ThenInclude(c => c!.ModuleContents)
+                .FirstOrDefaultAsync(d => d.Id == deckId, ct);
+
+            if (deck == null)
+                return NotFound(new ApiResponse(false, "Deck not found."));
+
+            if (deck.Content?.CreatedByUserId != userId && !_orgCtx.IsSysAdmin())
+                return Forbid();
+
+            if (deck.Content?.ModuleContents.Any() == true)
+                return BadRequest(new ApiResponse(false, "Cannot delete a deck that is attached to a course module."));
+
+            // Deleting ContentModel cascades: FlashcardDeck (OnDelete Cascade) → Flashcards (convention Cascade).
+            // StudentProgress.ContentId is set to null (OnDelete SetNull) — history rows are preserved.
+            _db.Contents.Remove(deck.Content!);
+            await _db.SaveChangesAsync(ct);
+            return Ok(new ApiResponse(true, "Deck deleted."));
         }
 
         // DELETE /api/decks/{deckId}/flashcards/{cardId}

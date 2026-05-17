@@ -20,17 +20,17 @@ export const USER_NAV_ITEMS: NavItem[] = [
   { id: 'learning', labelKey: 'user.learning', icon: 'history', path: '/user/learning' },
   
   // Learning Tools (Divider)
-  { id: 'quiz', labelKey: 'user.quiz', icon: 'quiz', path: '/user/quiz' },
-  { id: 'flashcards', labelKey: 'user.flashcards', icon: 'collections_bookmark', path: '/user/flashcards' },
-  { id: 'lesson', labelKey: 'user.lesson', icon: 'video_library', path: '/user/lesson' },
+  // { id: 'quiz', labelKey: 'user.quiz', icon: 'quiz', path: '/user/quiz' },
+  // { id: 'flashcards', labelKey: 'user.flashcards', icon: 'collections_bookmark', path: '/user/flashcards' },
+  // { id: 'lesson', labelKey: 'user.lesson', icon: 'video_library', path: '/user/lesson' },
+  // { id: 'documents', labelKey: 'user.documents', icon: 'description', path: '/user/documents' },
   
   // Resources
-  { id: 'documents', labelKey: 'user.documents', icon: 'description', path: '/user/documents' },
   { id: 'library', labelKey: 'user.library', icon: 'library_books', path: '/user/library' },
   { id: 'collections', labelKey: 'user.collections', icon: 'folder', path: '/user/collections' },
   { id: 'browse', labelKey: 'user.browse', icon: 'explore', path: '/user/browse' },
-  { id: 'messages', labelKey: 'common.notifications', icon: 'mail', path: '/user/messages' },
-  { id: 'profile', labelKey: 'common.profile', icon: 'person', path: '/user/profile' },
+  // { id: 'messages', labelKey: 'common.notifications', icon: 'mail', path: '/user/messages' },
+  // { id: 'profile', labelKey: 'common.profile', icon: 'person', path: '/user/profile' },
 ]
 
 // Org Admin Navigation - organized by admin responsibility priority

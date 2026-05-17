@@ -194,7 +194,7 @@ export const QuizCreatePage: React.FC = () => {
 	}
 
 	return (
-		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[1100px] space-y-6">
 					<div className="flex items-center justify-between">

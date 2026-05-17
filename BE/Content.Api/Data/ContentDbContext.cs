@@ -129,6 +129,7 @@ namespace Content.Api.Data
                 .HasOne(sp => sp.Course)
                 .WithMany()
                 .HasForeignKey(sp => sp.CourseId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<StudentProgressModel>()

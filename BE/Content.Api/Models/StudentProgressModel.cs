@@ -11,9 +11,8 @@ namespace Content.Api.Models
         [Column("id")]
         public Guid Id { get; set; }
 
-        [Required]
         [Column("course_id")]
-        public Guid CourseId { get; set; }
+        public Guid? CourseId { get; set; }
 
         // Cross-service reference to Identity.Api users — no FK constraint
         [Required]
@@ -46,7 +45,7 @@ namespace Content.Api.Models
         public DateTime? UpdatedAt { get; set; }
 
         [ForeignKey(nameof(CourseId))]
-        public CourseModel? Course { get; set; }
+        public CourseModel? Course { get; set; }  // null for personal content activity
 
         [ForeignKey(nameof(ModuleId))]
         public ModuleModel? Module { get; set; }

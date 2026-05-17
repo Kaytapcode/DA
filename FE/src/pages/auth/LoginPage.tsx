@@ -1,15 +1,14 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ValidationRules } from '@/utils/validation';
 
 interface LoginFormData {
-  email: string;
+  identifier: string;
   password: string;
 }
 
 interface FormErrors {
-  email?: string;
+  identifier?: string;
   password?: string;
 }
 
@@ -18,7 +17,7 @@ export const LoginPage: React.FC = () => {
   const { login, isLoading } = useAuthContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
+    identifier: '',
     password: '',
   });
 
@@ -40,14 +39,10 @@ export const LoginPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Validate email
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!ValidationRules.email.pattern.test(formData.email)) {
-      newErrors.email = ValidationRules.email.message;
+    if (!formData.identifier.trim()) {
+      newErrors.identifier = 'Email or username is required';
     }
 
-    // Validate password
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
@@ -67,7 +62,7 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      await login(formData.email, formData.password, undefined);
+      await login(formData.identifier.trim(), formData.password, undefined);
 
       // Navigate to user home
       navigate('/user/home', { replace: true });
@@ -85,18 +80,18 @@ export const LoginPage: React.FC = () => {
       {/* Main Container */}
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* Left Section - Branding */}
-        <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#001a4d] via-[#0d2b7a] to-[#051535] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#001a4d] via-[#0d2b7a] to-[#051535] p-12 text-white lg:flex lg:flex-col lg:justify-center">
           {/* Decorative Blobs */}
           <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-[#0066ff]/20 blur-3xl" />
           <div className="absolute -bottom-20 right-0 h-96 w-96 rounded-full bg-[#0099ff]/10 blur-3xl" />
           <div className="absolute left-1/3 top-1/2 h-80 w-80 rounded-full bg-[#00ccff]/5 blur-3xl" />
 
           {/* Badge */}
-          <div className="relative">
+          {/* <div className="relative">
             <div className="inline-block rounded-full border border-[#0099ff]/40 bg-white/5 px-4 py-2 backdrop-blur-sm">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#99ccff]">+ THE ETHEREAL LABORATORY</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Heading and Description */}
           <div className="relative mt-8">
@@ -109,7 +104,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* Stats */}
-          <div className="relative space-y-4">
+          {/* <div className="relative space-y-4">
             <div className="flex items-baseline gap-4">
               <div>
                 <div className="text-4xl font-black text-white">14k+</div>
@@ -122,7 +117,7 @@ export const LoginPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-widest text-[#99ccff] mt-1">Success Rate</div>
               </div>
             </div>
-          </div>
+          </div> */}
         </section>
 
         {/* Right Section - Login Form */}
@@ -153,31 +148,31 @@ export const LoginPage: React.FC = () => {
 
             {/* Login Form */}
             <form onSubmit={handleLogin} className="mt-8 space-y-4">
-              {/* Email Field */}
+              {/* Email or Username Field */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
-                  Email Address
+                  Email or Username
                 </label>
                 <div className="relative">
                   <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="name@institution.edu"
-                    value={formData.email}
-                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    id="identifier"
+                    name="identifier"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="name@institution.edu or username"
+                    value={formData.identifier}
+                    onChange={(e) => handleFieldChange('identifier', e.target.value)}
                     className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
-                      errors.email
+                      errors.identifier
                         ? 'border-red-400'
                         : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'
                     }`}
                   />
                   <div className="absolute right-4 top-3 text-[#d1d5db]">
-                    <span className="material-symbols-outlined text-lg">alternate_email</span>
+                    <span className="material-symbols-outlined text-lg">person</span>
                   </div>
                 </div>
-                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+                {errors.identifier && <p className="mt-1 text-xs text-red-500">{errors.identifier}</p>}
               </div>
 
               {/* Password Field */}
@@ -238,7 +233,7 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3">
                 <button
                   type="button"
                   disabled={isLoading}
@@ -247,14 +242,14 @@ export const LoginPage: React.FC = () => {
                   <span className="material-symbols-outlined text-lg">tag</span>
                   SSO
                 </button>
-                <button
+                {/* <button
                   type="button"
                   disabled={isLoading}
                   className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-lg">fingerprint</span>
                   Passkey
-                </button>
+                </button> */}
               </div>
             </div>
 

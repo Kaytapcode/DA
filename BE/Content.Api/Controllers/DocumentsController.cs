@@ -16,6 +16,7 @@ namespace Content.Api.Controllers
         private readonly IStorageService _storage;
         private readonly IOrgContextService _orgCtx;
         private readonly IConfiguration _config;
+        private readonly ContentDbContext _db;
 
         private static readonly Dictionary<string, string> MimeToFileType = new()
         {
@@ -29,12 +30,14 @@ namespace Content.Api.Controllers
             IDocumentRepository repo,
             IStorageService storage,
             IOrgContextService orgCtx,
-            IConfiguration config)
+            IConfiguration config,
+            ContentDbContext db)
         {
             _repo = repo;
             _storage = storage;
             _orgCtx = orgCtx;
             _config = config;
+            _db = db;
         }
 
         private static DocumentDto ToDto(DocumentModel d) => new(
@@ -80,11 +83,24 @@ namespace Content.Api.Controllers
 
             MimeToFileType.TryGetValue(file.ContentType, out var fileType);
 
-            // Personal upload (no ContentId) → force public per spec §1; course-bound docs
-            // (ContentId set) respect the caller's preference.
+            // Create a ContentModel so this document appears in learning history tracking.
+            // The ContentModel and DocumentModel are saved atomically via the shared DbContext.
+            var content = new ContentModel
+            {
+                Id = Guid.NewGuid(),
+                Title = file.FileName,
+                ContentType = "PDF",
+                Status = "PUBLISHED",
+                CreatedByUserId = userId.Value,
+                IsPublic = true,
+                CreatedAt = DateTime.UtcNow,
+            };
+            _db.Contents.Add(content);
+
             var doc = new DocumentModel
             {
                 CreatedByUserId = userId.Value,
+                ContentId = content.Id,
                 FileName = file.FileName,
                 FilePath = filePath,
                 FileSize = fileSize,
@@ -105,6 +121,30 @@ namespace Content.Api.Controllers
                 return Unauthorized(new ApiResponse(false, "Invalid user context."));
 
             var docs = await _repo.GetByUserIdAsync(userId.Value, ct);
+
+            // Back-fill: documents uploaded before the ContentModel requirement was added
+            // have ContentId == null. Create ContentModels for them now so activity tracking works.
+            var unlinked = docs.Where(d => d.ContentId == null).ToList();
+            if (unlinked.Count > 0)
+            {
+                foreach (var doc in unlinked)
+                {
+                    var content = new ContentModel
+                    {
+                        Id = Guid.NewGuid(),
+                        Title = doc.FileName,
+                        ContentType = doc.FileType,
+                        Status = "PUBLISHED",
+                        CreatedByUserId = userId.Value,
+                        IsPublic = true,
+                        CreatedAt = DateTime.UtcNow,
+                    };
+                    _db.Contents.Add(content);
+                    doc.ContentId = content.Id;
+                }
+                await _db.SaveChangesAsync(ct);
+            }
+
             return Ok(new ApiResponse<IEnumerable<DocumentDto>>(true, docs.Select(ToDto), null));
         }
 
@@ -138,7 +178,11 @@ namespace Content.Api.Controllers
                 .FirstOrDefault(kvp => kvp.Value == doc.FileType).Key
                 ?? "application/octet-stream";
 
-            return File(stream, contentType, doc.FileName);
+            // Return inline so the FE viewer can embed the file (PDF in iframe, image in <img>,
+            // etc.) without the browser forcing a download. Passing a filename to File() emits
+            // Content-Disposition: attachment, which we explicitly do NOT want here.
+            Response.Headers.ContentDisposition = $"inline; filename=\"{Uri.EscapeDataString(doc.FileName)}\"";
+            return File(stream, contentType);
         }
 
         // DELETE /api/documents/{docId}
@@ -160,6 +204,19 @@ namespace Content.Api.Controllers
             // Soft delete DB record; also remove physical file
             await _repo.SoftDeleteAsync(docId, ct);
             _storage.Delete(doc.FilePath);
+
+            // Cascade: remove the ContentModel so learning-history tracking is cleaned up.
+            // DocumentModel.ContentId uses OnDelete(SetNull), so the document row remains
+            // (already soft-deleted) with ContentId = null after the Content row is removed.
+            if (doc.ContentId.HasValue)
+            {
+                var content = await _db.Contents.FindAsync(new object[] { doc.ContentId.Value }, ct);
+                if (content != null)
+                {
+                    _db.Contents.Remove(content);
+                    await _db.SaveChangesAsync(ct);
+                }
+            }
 
             return Ok(new ApiResponse(true, "Document deleted."));
         }
