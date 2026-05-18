@@ -66,4 +66,35 @@ namespace Content.Api.Models
         [ForeignKey(nameof(DeckId))]
         public FlashcardDeckModel? Deck { get; set; }
     }
+
+    [Table("flashcard_user_mastery")]
+    public class FlashcardUserMasteryModel
+    {
+        [Key]
+        [Column("id")]
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        [Required]
+        [Column("flashcard_id")]
+        public Guid FlashcardId { get; set; }
+
+        [Required]
+        [Column("user_id")]
+        public Guid UserId { get; set; }
+
+        [Column("is_mastered")]
+        public bool IsMastered { get; set; } = false;
+
+        [Column("mastered_at")]
+        public DateTime? MasteredAt { get; set; }
+
+        [Column("created_at")]
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        [Column("updated_at")]
+        public DateTime? UpdatedAt { get; set; }
+
+        [ForeignKey(nameof(FlashcardId))]
+        public FlashcardModel? Flashcard { get; set; }
+    }
 }

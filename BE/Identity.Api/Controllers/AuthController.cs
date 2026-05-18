@@ -73,17 +73,52 @@ namespace Identity.Api.Controllers
                     orgId = parsedOrgId;
             }
 
-            var token = _tokenService.CreateToken(user, orgId);
+            var access = _tokenService.CreateAccessToken(user, orgId);
+            var refresh = await _tokenService.IssueRefreshTokenAsync(user.Id);
+
             return Ok(new ApiResponse<LoginResponseDto>(
                 Success: true,
                 Data: new LoginResponseDto(
-                    Token: token,
+                    AccessToken: access.Token,
+                    RefreshToken: refresh.Token,
+                    AccessTokenExpiresInSeconds: access.ExpiresInSeconds,
+                    RefreshTokenExpiresAt: refresh.ExpiresAtUtc,
                     Message: "Login successful.",
                     User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role),
                     OrgId: orgId?.ToString()
                 ),
                 Message: "Login successful."
             ));
+        }
+
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequestDto request)
+        {
+            var result = await _tokenService.RotateAsync(request.RefreshToken);
+            if (result == null)
+                return Unauthorized(new ApiResponse(Success: false, Message: "Invalid or expired refresh token."));
+
+            return Ok(new ApiResponse<LoginResponseDto>(
+                Success: true,
+                Data: new LoginResponseDto(
+                    AccessToken: result.AccessToken.Token,
+                    RefreshToken: result.RefreshToken.Token,
+                    AccessTokenExpiresInSeconds: result.AccessToken.ExpiresInSeconds,
+                    RefreshTokenExpiresAt: result.RefreshToken.ExpiresAtUtc,
+                    Message: "Token refreshed.",
+                    User: new UserInfoDto(result.User.Id, result.User.Username, result.User.Email, result.User.Role),
+                    OrgId: result.OrgId?.ToString()
+                ),
+                Message: "Token refreshed."
+            ));
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] RefreshTokenRequestDto request)
+        {
+            // Silently succeed even if token is unknown/already-revoked — logout must be idempotent.
+            await _tokenService.RevokeAsync(request.RefreshToken);
+            return Ok(new ApiResponse(Success: true, Message: "Logged out."));
         }
 
         [HttpGet("me")]

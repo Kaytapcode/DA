@@ -411,13 +411,16 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         {!ownedByMe && !isLoading && (
           <p className="mb-4 text-xs text-on-surface-variant">
             {isVi
-              ? 'Dang xem bo the cua nguoi khac. Tien trinh hoc khong duoc luu tren bo the goc.'
-              : "Viewing someone else's deck. Mastery progress is not saved on the original."}
+              ? 'Dang xem bo the cua nguoi khac. Tien trinh hoc duoc luu rieng cho ban.'
+              : "Viewing someone else's deck. Your mastery progress is saved independently."}
           </p>
         )}
 
         {masteryError && (
           <p className="mb-3 text-xs text-error">{masteryError}</p>
+        )}
+        {error && !isLoading && (
+          <p className="mb-3 text-xs text-error">{error}</p>
         )}
 
         {!isLoading && !error && currentCard && (
@@ -435,7 +438,11 @@ export const InteractiveFlashcardsPage: React.FC = () => {
             <button
               type="button"
               onClick={toggleFlip}
-              className="flex min-h-[220px] w-full items-center justify-center rounded-xl bg-surface-container-low p-8 text-center transition-all duration-300 hover:bg-surface-container"
+              className={`flex min-h-[220px] w-full items-center justify-center rounded-xl p-8 text-center transition-all duration-300 ${
+                isFlipped
+                  ? 'bg-blue-50 hover:bg-blue-100'
+                  : 'bg-amber-50 hover:bg-amber-100'
+              }`}
               style={{ transform: `perspective(1000px) rotateY(${isFlipped ? 180 : 0}deg)` }}
             >
               <div style={{ transform: `rotateY(${isFlipped ? 180 : 0}deg)` }}>
@@ -453,11 +460,9 @@ export const InteractiveFlashcardsPage: React.FC = () => {
               <Button variant="secondary" onClick={nextCard} disabled={totalCards <= 1}>
                 {isVi ? 'The tiep theo' : 'Next Card'}
               </Button>
-              {ownedByMe && (
-                <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating}>
-                  {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
-                </Button>
-              )}
+              <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating}>
+                {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
+              </Button>
             </div>
           </>
         )}
@@ -465,11 +470,9 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         {!isLoading && !error && !currentCard && deckId && (
           <div className="space-y-3">
             <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
-            {ownedByMe && (
-              <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating}>
-                {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
-              </Button>
-            )}
+            <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating}>
+              {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
+            </Button>
           </div>
         )}
       </Card>

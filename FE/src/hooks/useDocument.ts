@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { apiClient } from '@/utils/apiClient'
+import { tokenStore } from '@/utils/tokenStore'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -65,7 +66,7 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
     try {
       const listEntry = documents.find((document) => document.id === documentId) ?? null
 
-      const token = localStorage.getItem('auth_token')
+      const token = tokenStore.getAccessToken()
       const orgId = localStorage.getItem('org_id')
       const orgSlug = localStorage.getItem('org_slug')
 

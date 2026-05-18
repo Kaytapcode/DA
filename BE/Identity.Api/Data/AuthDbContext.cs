@@ -16,6 +16,7 @@ namespace Identity.Api.Data
 
         // Users Only - Identity.Api is responsible for user management
         public DbSet<UserModel> Users { get; set; }
+        public DbSet<RefreshTokenModel> RefreshTokens { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -29,6 +30,13 @@ namespace Identity.Api.Data
             modelBuilder.Entity<UserModel>()
                 .HasIndex(u => u.Email)
                 .IsUnique();
+
+            modelBuilder.Entity<RefreshTokenModel>()
+                .HasIndex(t => t.TokenHash)
+                .IsUnique();
+
+            modelBuilder.Entity<RefreshTokenModel>()
+                .HasIndex(t => t.UserId);
         }
     }
 }

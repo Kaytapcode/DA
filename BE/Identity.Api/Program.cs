@@ -84,6 +84,7 @@ try
 
     // DI registrations
     builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
     builder.Services.AddScoped<ITokenService, TokenService>();
 
     // HTTP client for inter-service membership check (Identity → Organization)

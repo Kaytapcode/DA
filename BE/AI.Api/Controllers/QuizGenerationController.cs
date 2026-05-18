@@ -28,7 +28,9 @@ namespace AI.Api.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> GenerateQuiz(
             IFormFile file,
-            [FromForm] string? documentTitle = null)
+            [FromForm] string? documentTitle = null,
+            [FromForm] string? questionCount = "normal",
+            [FromForm] string? difficulty = "normal")
         {
             if (file == null || file.Length == 0)
                 return BadRequest(new ApiResponse(false, "A PDF or text file is required."));
@@ -57,7 +59,10 @@ namespace AI.Api.Controllers
             try
             {
                 _logger.LogInformation("Generating quiz for document: {Title}", title);
-                var response = await _openRouterService.GenerateQuizAsync(documentContent.Trim(), title);
+                var response = await _openRouterService.GenerateQuizAsync(
+                    documentContent.Trim(), title,
+                    questionCount ?? "normal",
+                    difficulty ?? "normal");
                 _logger.LogInformation("Quiz generated with {Count} questions", response.QuestionsCount);
                 return Ok(new ApiResponse<QuizGenerationResponse>(true, response, "Quiz generated successfully"));
             }

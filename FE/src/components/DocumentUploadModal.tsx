@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import axios from 'axios'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
+import { tokenStore } from '@/utils/tokenStore'
 
 interface DocumentUploadModalProps {
   isOpen: boolean
@@ -83,7 +84,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     const formData = new FormData()
     formData.append('file', file)
 
-    const token = localStorage.getItem('auth_token')
+    const token = tokenStore.getAccessToken()
     const orgId = localStorage.getItem('org_id')
     const orgSlug = localStorage.getItem('org_slug')
 

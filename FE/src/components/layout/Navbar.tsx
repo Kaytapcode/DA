@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MaterialIcon } from '@components/ui/MaterialIcon';
 import { useDarkMode } from '@hooks/useDarkMode';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface NavbarProps {
   title?: string
@@ -29,6 +31,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   showThemeToggle = true,
 }) => {
   const { isDarkMode, toggleDarkMode } = useDarkMode()
+  const { logout } = useAuthContext();
+  const navigate = useNavigate();
+
+  const handleLogout = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    logout();
+    navigate(logoutPath, { replace: true });
+  };
 
   return (
     <nav className="flex items-center justify-between border-b border-[#3a9cff] bg-[#1890ff] p-4 text-white shadow-md dark:border-slate-700 dark:bg-slate-900">
@@ -60,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {showUserMenu && (
           <div className="flex items-center gap-10">
             {/* <a href={profilePath} className="text-sm font-medium hover:text-gray-200 transition">Profile</a> */}
-            <a href={logoutPath} className="text-sm font-medium bg-white text-[#1890ff] px-3 py-1 rounded hover:bg-gray-100 transition dark:bg-slate-100 dark:text-slate-900">Logout</a>
+            <a href={logoutPath} onClick={handleLogout} className="text-sm font-medium bg-white text-[#1890ff] px-3 py-1 rounded hover:bg-gray-100 transition dark:bg-slate-100 dark:text-slate-900">Logout</a>
           </div>
         )}
       </div>

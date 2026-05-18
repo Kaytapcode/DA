@@ -1,4 +1,5 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
+import { tokenStore } from './tokenStore';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -19,6 +20,50 @@ interface PaginatedResponse<T = any> {
   errors?: string[];
 }
 
+interface LoginPayload {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresInSeconds: number;
+  refreshTokenExpiresAt?: string;
+  user?: { id: string; username: string; email: string; role: string };
+  orgId?: string;
+}
+
+// Dedupe concurrent refreshes: many 401s in flight share one /auth/refresh call.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function performRefresh(): Promise<string | null> {
+  const rt = tokenStore.getRefreshToken();
+  if (!rt) return null;
+
+  try {
+    // Use a bare axios call (not our instrumented instance) so we don't recurse
+    // through the 401 interceptor if the refresh itself returns 401.
+    const res = await axios.post<ApiResponse<LoginPayload>>(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken: rt },
+      { headers: { 'Content-Type': 'application/json' }, timeout: 15000 }
+    );
+    const body = res.data;
+    if (!body?.success || !body.data?.accessToken) return null;
+    tokenStore.setAccessToken(body.data.accessToken, body.data.accessTokenExpiresInSeconds);
+    tokenStore.setRefreshToken(body.data.refreshToken);
+    if (body.data.user) {
+      try { localStorage.setItem('auth_user', JSON.stringify(body.data.user)); } catch { /* ignore */ }
+    }
+    return body.data.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = performRefresh().finally(() => { refreshPromise = null; });
+  }
+  return refreshPromise;
+}
+
 class ApiClient {
   private axiosInstance: AxiosInstance;
 
@@ -26,47 +71,53 @@ class ApiClient {
     this.axiosInstance = axios.create({
       baseURL: API_BASE_URL,
       timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
-    // Request interceptor - Add auth token to headers
     this.axiosInstance.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+        const token = tokenStore.getAccessToken();
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+
+        // Let the browser set Content-Type (with multipart boundary) for FormData
+        if (config.data instanceof FormData) {
+          delete config.headers['Content-Type'];
         }
 
-        // Add org context headers from localStorage if available
         const orgId = localStorage.getItem('org_id');
         if (orgId) config.headers['X-Org-Id'] = orgId;
-
         const orgSlug = localStorage.getItem('org_slug');
         if (orgSlug) config.headers['X-Org-Slug'] = orgSlug;
 
         return config;
       },
-      (error) => {
-        return Promise.reject(error);
-      }
+      (error) => Promise.reject(error)
     );
 
-    // Response interceptor - Handle errors and expired tokens
     this.axiosInstance.interceptors.response.use(
       (response) => response.data,
-      (error: AxiosError<ApiResponse>) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('auth_user');
-          localStorage.removeItem('org_id');
-          localStorage.removeItem('org_slug');
-          localStorage.removeItem('current_org');
-          window.location.href = '/login';
+      async (error: AxiosError<ApiResponse> & { config?: AxiosRequestConfig & { _retry?: boolean; _skipAuthRefresh?: boolean } }) => {
+        const original = error.config;
+        const status = error.response?.status;
+        const url = original?.url ?? '';
+
+        const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout');
+
+        if (status === 401 && original && !original._retry && !original._skipAuthRefresh && !isAuthEndpoint) {
+          original._retry = true;
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            original.headers = original.headers ?? {};
+            (original.headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
+            return this.axiosInstance.request(original);
+          }
+          // Refresh failed — full session termination
+          tokenStore.clear();
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
 
-        // Return error response data if available
         return Promise.reject(error.response?.data || error);
       }
     );

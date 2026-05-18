@@ -99,6 +99,9 @@ export const QuizCreatePage: React.FC = () => {
 	const [aiDocTitle, setAiDocTitle] = useState('')
 	const [isGenerating, setIsGenerating] = useState(false)
 	const [editableQuestions, setEditableQuestions] = useState<EditableQ[]>([])
+	const [isDragging, setIsDragging] = useState(false)
+	const [questionCount, setQuestionCount] = useState<'normal' | 'many' | 'more'>('normal')
+	const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal')
 
 	// ---- Manual mode helpers ----
 	const updateQuestion = (idx: number, patch: Partial<QuestionDraft>) =>
@@ -187,6 +190,31 @@ export const QuizCreatePage: React.FC = () => {
 		setError(null)
 	}
 
+	const handleDragOver = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragging(true)
+	}
+
+	const handleDragLeave = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragging(false)
+	}
+
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragging(false)
+		const f = e.dataTransfer.files?.[0]
+		if (!f) return
+		const allowed = ['application/pdf', 'text/plain']
+		const ext = f.name.toLowerCase()
+		if (!allowed.includes(f.type) && !ext.endsWith('.pdf') && !ext.endsWith('.txt')) {
+			setError(t('Chỉ hỗ trợ file PDF hoặc TXT.', 'Only PDF and TXT files are supported.'))
+			return
+		}
+		setAiFile(f)
+		setError(null)
+	}
+
 	const generateWithAi = async () => {
 		if (!title.trim()) { setError(t('Vui lòng nhập tiêu đề quiz.', 'Quiz title is required.')); return }
 		if (!aiFile) { setError(t('Vui lòng chọn file PDF hoặc TXT.', 'Please select a PDF or TXT file.')); return }
@@ -197,9 +225,12 @@ export const QuizCreatePage: React.FC = () => {
 			const formData = new FormData()
 			formData.append('file', aiFile)
 			if (aiDocTitle.trim()) formData.append('documentTitle', aiDocTitle.trim())
+			formData.append('questionCount', questionCount)
+			formData.append('difficulty', difficulty)
 
 			// Pass FormData — axios auto-sets multipart/form-data with boundary
-			const genRes = await apiClient.post<QuizGenerationResponse>('/quiz/generate', formData)
+			// Large/hard sets can take 3-4 minutes; use a 5-minute timeout
+			const genRes = await apiClient.post<QuizGenerationResponse>('/quiz/generate', formData, { timeout: 480000 })
 
 			if (!genRes.success || !genRes.data) throw new Error(genRes.message || 'AI generation failed')
 
@@ -483,41 +514,109 @@ export const QuizCreatePage: React.FC = () => {
 											/>
 										</div>
 
-										<div>
-											<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-												{t('File tài liệu', 'Document File')} <span className="text-red-500">*</span>
-											</label>
-											<div
-												className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#d7dfeb] bg-[#f6f8fb] p-8 transition hover:border-[#1463ff] hover:bg-blue-50"
-												onClick={() => fileInputRef.current?.click()}
-											>
-												<MaterialIcon icon="upload_file" size="lg" className="text-[#1463ff]" />
-												{aiFile ? (
-													<>
-														<p className="text-sm font-semibold text-[#111b2d]">{aiFile.name}</p>
-														<p className="text-xs text-[#60708a]">
-															{(aiFile.size / 1024).toFixed(1)} KB — {t('Nhấn để thay đổi', 'Click to change')}
-														</p>
-													</>
-												) : (
-													<>
-														<p className="text-sm font-semibold text-[#111b2d]">
-															{t('Nhấn để chọn file', 'Click to select a file')}
-														</p>
-														<p className="text-xs text-[#60708a]">
-															{t('Hỗ trợ PDF và TXT, tối đa 10 MB', 'Supports PDF and TXT, max 10 MB')}
-														</p>
-													</>
-												)}
-											</div>
-											<input
-												ref={fileInputRef}
-												type="file"
-												accept=".pdf,.txt,application/pdf,text/plain"
-												className="hidden"
-												onChange={handleFileChange}
-											/>
+										{/* Question count */}
+									<div>
+										<label className="mb-2 block text-sm font-semibold text-[#111b2d]">
+											{t('Số lượng câu hỏi', 'Number of Questions')}
+										</label>
+										<div className="flex gap-2">
+											{(
+												[
+													{ value: 'normal', label: t('Thường', 'Normal'), desc: '10–12' },
+													{ value: 'many',   label: t('Nhiều',  'Many'),   desc: '15–18' },
+													{ value: 'more',   label: t('Nhiều hơn', 'More'), desc: '20–25' },
+												] as const
+											).map(({ value, label, desc }) => (
+												<button
+													key={value}
+													type="button"
+													onClick={() => setQuestionCount(value)}
+													className={`flex flex-1 flex-col items-center rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+														questionCount === value
+															? 'border-[#1463ff] bg-[#1463ff] text-white'
+															: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+													}`}
+												>
+													<span>{label}</span>
+													<span className={`text-xs font-normal ${questionCount === value ? 'text-blue-100' : 'text-[#9aa5b5]'}`}>{desc} {t('câu', 'Qs')}</span>
+												</button>
+											))}
 										</div>
+									</div>
+
+									{/* Difficulty */}
+									<div>
+										<label className="mb-2 block text-sm font-semibold text-[#111b2d]">
+											{t('Độ khó', 'Difficulty')}
+										</label>
+										<div className="flex gap-2">
+											{(
+												[
+													{ value: 'easy',   label: t('Dễ',    'Easy'),   icon: '🟢' },
+													{ value: 'normal', label: t('Thường','Normal'), icon: '🟡' },
+													{ value: 'hard',   label: t('Khó',   'Hard'),   icon: '🔴' },
+												] as const
+											).map(({ value, label, icon }) => (
+												<button
+													key={value}
+													type="button"
+													onClick={() => setDifficulty(value)}
+													className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+														difficulty === value
+															? 'border-[#1463ff] bg-[#1463ff] text-white'
+															: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+													}`}
+												>
+													<span>{icon}</span>
+													<span>{label}</span>
+												</button>
+											))}
+										</div>
+									</div>
+
+									{/* File upload */}
+									<div>
+										<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
+											{t('File tài liệu', 'Document File')} <span className="text-red-500">*</span>
+										</label>
+										<div
+											className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 transition ${
+												isDragging
+													? 'border-[#1463ff] bg-blue-100'
+													: 'border-[#d7dfeb] bg-[#f6f8fb] hover:border-[#1463ff] hover:bg-blue-50'
+											}`}
+											onClick={() => fileInputRef.current?.click()}
+											onDragOver={handleDragOver}
+											onDragLeave={handleDragLeave}
+											onDrop={handleDrop}
+										>
+											<MaterialIcon icon="upload_file" size="lg" className="text-[#1463ff]" />
+											{aiFile ? (
+												<>
+													<p className="text-sm font-semibold text-[#111b2d]">{aiFile.name}</p>
+													<p className="text-xs text-[#60708a]">
+														{(aiFile.size / 1024).toFixed(1)} KB — {t('Nhấn để thay đổi', 'Click to change')}
+													</p>
+												</>
+											) : (
+												<>
+													<p className="text-sm font-semibold text-[#111b2d]">
+														{t('Nhấn hoặc kéo thả file vào đây', 'Click or drag & drop a file here')}
+													</p>
+													<p className="text-xs text-[#60708a]">
+														{t('Hỗ trợ PDF và TXT, tối đa 10 MB', 'Supports PDF and TXT, max 10 MB')}
+													</p>
+												</>
+											)}
+										</div>
+										<input
+											ref={fileInputRef}
+											type="file"
+											accept=".pdf,.txt,application/pdf,text/plain"
+											className="hidden"
+											onChange={handleFileChange}
+										/>
+									</div>
 
 										<div className="flex justify-end">
 											<Button onClick={() => void generateWithAi()} disabled={isGenerating || !aiFile}>
@@ -640,7 +739,7 @@ export const QuizCreatePage: React.FC = () => {
 										<Button onClick={() => void saveAsDraft()} disabled={isSubmitting}>
 											<MaterialIcon icon="save" size="xs" />
 											<span className="ml-1">
-												{isSubmitting ? t('Đang lưu...', 'Saving...') : t('Lưu nháp', 'Save as Draft')}
+												{isSubmitting ? t('Đang lưu...', 'Saving...') : t('Lưu', 'Save')}
 											</span>
 										</Button>
 									</div>

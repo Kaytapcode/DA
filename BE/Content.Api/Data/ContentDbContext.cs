@@ -52,6 +52,7 @@ namespace Content.Api.Data
         // Flashcards
         public DbSet<FlashcardDeckModel> FlashcardDecks { get; set; }
         public DbSet<FlashcardModel> Flashcards { get; set; }
+        public DbSet<FlashcardUserMasteryModel> FlashcardUserMasteries { get; set; }
 
         // Progress & Attempts
         public DbSet<StudentProgressModel> StudentProgress { get; set; }
@@ -118,6 +119,17 @@ namespace Content.Api.Data
                 .HasOne(f => f.Content)
                 .WithOne(c => c.FlashcardDeck)
                 .HasForeignKey<FlashcardDeckModel>(f => f.ContentId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Flashcard user mastery - track per-user mastery progress
+            modelBuilder.Entity<FlashcardUserMasteryModel>()
+                .HasIndex(fum => new { fum.FlashcardId, fum.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<FlashcardUserMasteryModel>()
+                .HasOne(fum => fum.Flashcard)
+                .WithMany()
+                .HasForeignKey(fum => fum.FlashcardId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Student progress: unique per (course, user, module) combination

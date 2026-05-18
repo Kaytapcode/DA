@@ -27,11 +27,26 @@ namespace Content.Api.Controllers
 
         private async Task<bool> VerifyDeckAccessAsync(Guid deckId)
         {
-            var orgId = await _repo.GetDeckOrgIdAsync(deckId);
-            // Personal/draft deck (not attached to any module/course): allow any authenticated user.
-            // Per spec section 1, personal resources are public and accessible to all users.
-            if (orgId == null) return _orgCtx.GetCurrentUserId().HasValue;
-            return _orgCtx.IsSysAdmin() || orgId == _orgCtx.GetCurrentOrgId();
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue) return false;
+            if (_orgCtx.IsSysAdmin()) return true;
+
+            var deck = await _db.FlashcardDecks
+                .Include(d => d.Content)
+                    .ThenInclude(c => c!.ModuleContents)
+                        .ThenInclude(mc => mc.Module)
+                .FirstOrDefaultAsync(d => d.Id == deckId);
+            if (deck?.Content == null) return false;
+
+            // Public decks are readable by any authenticated user.
+            if (deck.Content.IsPublic) return true;
+
+            // Non-public decks are limited to same-org access.
+            var orgId = deck.Content.ModuleContents
+                .Where(mc => mc.Module != null)
+                .Select(mc => (Guid?)mc.Module!.OrgId)
+                .FirstOrDefault();
+            return orgId.HasValue && orgId == _orgCtx.GetCurrentOrgId();
         }
 
         // Mutation guard: only the deck owner or a SysAdmin may create/edit/delete cards.
@@ -101,8 +116,34 @@ namespace Content.Api.Controllers
             if (deck == null)
                 return NotFound(new ApiResponse(false, "Deck not found."));
 
+            var userId = _orgCtx.GetCurrentUserId();
+            var isOwner = userId.HasValue && deck.Content?.CreatedByUserId == userId.Value;
+
             var cards = await _repo.GetByDeckIdAsync(deckId, ct);
-            return Ok(new ApiResponse<IEnumerable<FlashcardDto>>(true, cards.Select(ToDto), null));
+            
+            // Load mastery data for current user
+            var userMasteryMap = new Dictionary<Guid, bool>();
+            if (userId.HasValue)
+            {
+                var userMasteries = await _db.FlashcardUserMasteries
+                    .Where(fum => cards.Select(c => c.Id).Contains(fum.FlashcardId) && fum.UserId == userId.Value)
+                    .ToListAsync(ct);
+                foreach (var mastery in userMasteries)
+                    userMasteryMap[mastery.FlashcardId] = mastery.IsMastered;
+            }
+
+            var result = cards.Select(card => new FlashcardDto(
+                card.Id,
+                card.DeckId,
+                card.FrontText,
+                card.BackText,
+                userMasteryMap.ContainsKey(card.Id) ? userMasteryMap[card.Id] : false,
+                null,
+                card.OrderIndex,
+                card.CreatedAt
+            ));
+
+            return Ok(new ApiResponse<IEnumerable<FlashcardDto>>(true, result, null));
         }
 
         // GET /api/decks/{deckId}/flashcards/{cardId}
@@ -112,11 +153,31 @@ namespace Content.Api.Controllers
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
 
+            var deck = await _repo.GetDeckByIdAsync(deckId, ct);
+            if (deck == null)
+                return NotFound(new ApiResponse(false, "Deck not found."));
+
             var card = await _repo.GetByIdAsync(cardId, ct);
             if (card == null || card.DeckId != deckId)
                 return NotFound(new ApiResponse(false, "Flashcard not found."));
 
-            return Ok(new ApiResponse<FlashcardDto>(true, ToDto(card), null));
+            var userId = _orgCtx.GetCurrentUserId();
+            var isOwner = userId.HasValue && deck.Content?.CreatedByUserId == userId.Value;
+
+            var dto = isOwner
+                ? ToDto(card)
+                : new FlashcardDto(
+                    card.Id,
+                    card.DeckId,
+                    card.FrontText,
+                    card.BackText,
+                    false,
+                    null,
+                    card.OrderIndex,
+                    card.CreatedAt
+                );
+
+            return Ok(new ApiResponse<FlashcardDto>(true, dto, null));
         }
 
         // POST /api/decks/{deckId}/flashcards - only the deck owner may add cards
@@ -161,37 +222,43 @@ namespace Content.Api.Controllers
         }
 
         // PUT /api/decks/{deckId}/flashcards/{cardId}/master
-        // IsMastered is stored per-card globally, so only the deck owner may change it.
-        // Non-owners can view cards but mastery state belongs to the creator's study session.
+        // Any authenticated user may mark cards as mastered. Mastery is tracked per-user.
         [HttpPut("{cardId:guid}/master")]
         public async Task<IActionResult> ToggleMastered(Guid deckId, Guid cardId, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
-            if (!await VerifyDeckWriteAsync(deckId, ct))
-                return StatusCode(403, new ApiResponse(false, "Only the deck owner may update mastery."));
+
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(false, "Invalid user context."));
 
             var card = await _repo.GetByIdAsync(cardId, ct);
             if (card == null || card.DeckId != deckId)
                 return NotFound(new ApiResponse(false, "Flashcard not found."));
 
-            await _repo.MarkMasteredAsync(cardId, !card.IsMastered, ct);
+            var isMastered = await _repo.IsCardMasteredByUserAsync(cardId, userId.Value, ct);
+            await _repo.MarkMasteredAsync(cardId, userId.Value, !isMastered, ct);
+            
             var updated = await _repo.GetByIdAsync(cardId, ct);
-            return Ok(new ApiResponse<FlashcardDto>(true, ToDto(updated!), $"Card marked as {(!card.IsMastered ? "mastered" : "unmastered")}."));
+            var newState = await _repo.IsCardMasteredByUserAsync(cardId, userId.Value, ct);
+            
+            return Ok(new ApiResponse<FlashcardDto>(true, ToDto(updated!), $"Card marked as {(newState ? "mastered" : "unmastered")}."));
         }
 
         // POST /api/decks/{deckId}/flashcards/reset-mastered
-        // Spec §2.3: "Allows Users to mark cards as 'Mastered'. The system will not display
-        // these cards in subsequent study sessions unless the User resets them."
+        // Any authenticated user may reset their own mastery progress.
         [HttpPost("reset-mastered")]
         public async Task<IActionResult> ResetMastered(Guid deckId, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
-            if (!await VerifyDeckWriteAsync(deckId, ct))
-                return StatusCode(403, new ApiResponse(false, "Only the deck owner may reset mastery."));
 
-            var resetCount = await _repo.ResetMasteredAsync(deckId, ct);
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            var resetCount = await _repo.ResetMasteredAsync(deckId, userId.Value, ct);
             return Ok(new ApiResponse<object>(true, new { resetCount }, $"Reset {resetCount} card(s) to unmastered."));
         }
 

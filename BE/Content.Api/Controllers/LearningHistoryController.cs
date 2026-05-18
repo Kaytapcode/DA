@@ -82,7 +82,9 @@ namespace Content.Api.Controllers
                     .ThenInclude(c => c!.FlashcardDeck)
                 .ToListAsync(ct);
 
-            var progressRows = rawProgress.Select(p =>
+            var progressRows = rawProgress
+                .Where(p => p.Content?.ContentType != "QUIZ")
+                .Select(p =>
             {
                 Guid? subEntityId = p.Content?.ContentType switch
                 {
