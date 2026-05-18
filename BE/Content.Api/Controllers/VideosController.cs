@@ -64,6 +64,8 @@ namespace Content.Api.Controllers
                 return _orgContext.GetCurrentUserId().HasValue;
 
             var orgId = await _videoRepository.GetModuleOrgIdAsync(moduleId.Value);
+            if (orgId == null)
+                return _orgContext.GetCurrentUserId().HasValue;
             return _orgContext.IsSysAdmin() || orgId == _orgContext.GetCurrentOrgId();
         }
 

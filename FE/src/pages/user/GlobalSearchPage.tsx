@@ -17,7 +17,6 @@ interface SearchResult {
 	createdAt: string
 }
 
-type ScopeFilter = 'all' | 'owned' | 'public'
 type TypeFilter = 'ALL' | 'VIDEO' | 'QUIZ' | 'FLASHCARD' | 'PDF' | 'COLLECTION'
 
 const TYPE_META: Record<Exclude<TypeFilter, 'ALL'>, {
@@ -67,7 +66,7 @@ function resultHref(r: SearchResult): string | null {
 		case 'VIDEO':
 			return `/user/videos/watch/${r.resourceId}`
 		case 'QUIZ':
-			return `/user/quiz?quizId=${r.resourceId}`
+			return `/user/quiz?quizId=${r.resourceId}&contentId=${r.contentId}`
 		case 'FLASHCARD':
 			return `/user/flashcards?deckId=${r.resourceId}&contentId=${r.contentId}&owned=${r.ownedByCaller}`
 		case 'PDF':
@@ -82,7 +81,6 @@ function resultHref(r: SearchResult): string | null {
 export const GlobalSearchPage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const [query, setQuery] = useState('')
-	const [scope, setScope] = useState<ScopeFilter>('all')
 	const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL')
 	const [results, setResults] = useState<SearchResult[]>([])
 	const [isLoading, setIsLoading] = useState(false)
@@ -92,12 +90,12 @@ export const GlobalSearchPage: React.FC = () => {
 	const [clonedIds, setClonedIds] = useState<Set<string>>(new Set())
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	const doSearch = useCallback(async (q: string, s: ScopeFilter, t: TypeFilter) => {
+	const doSearch = useCallback(async (q: string, t: TypeFilter) => {
 		setIsLoading(true)
 		setHasSearched(true)
 		setSearchError(null)
 		try {
-			const params = new URLSearchParams({ scope: s, limit: '100' })
+			const params = new URLSearchParams({ limit: '100' })
 			if (q.trim()) params.set('q', q.trim())
 			if (t !== 'ALL') params.set('type', t)
 			const res = await apiClient.get<SearchResult[]>(`/search?${params.toString()}`)
@@ -126,20 +124,14 @@ export const GlobalSearchPage: React.FC = () => {
 	useEffect(() => {
 		if (debounceRef.current) clearTimeout(debounceRef.current)
 		debounceRef.current = setTimeout(() => {
-			void doSearch(query, scope, typeFilter)
+			void doSearch(query, typeFilter)
 		}, 350)
 		return () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
-	}, [query, scope, typeFilter, doSearch])
+	}, [query, typeFilter, doSearch])
 
 	const t = (vi: string, en: string) => (isVi ? vi : en)
-
-	const scopeOptions: Array<[ScopeFilter, string]> = [
-		['all', t('Tat ca', 'All')],
-		['owned', t('Cua ban', 'Mine')],
-		['public', t('Cong khai', 'Public')],
-	]
 
 	const typeOptions: TypeFilter[] = ['ALL', 'VIDEO', 'QUIZ', 'FLASHCARD', 'PDF', 'COLLECTION']
 
@@ -185,24 +177,6 @@ export const GlobalSearchPage: React.FC = () => {
 
 					{/* Filter row */}
 					<div className="flex flex-wrap items-center gap-4">
-						{/* Scope toggle */}
-						<div className="flex items-center gap-1 rounded-xl border border-[#dfe5ef] bg-white p-1">
-							{scopeOptions.map(([s, label]) => (
-								<button
-									key={s}
-									type="button"
-									onClick={() => setScope(s)}
-									className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-										scope === s
-											? 'bg-[#1463ff] text-white'
-											: 'text-[#5e6f88] hover:bg-[#f0f4f9]'
-									}`}
-								>
-									{label}
-								</button>
-							))}
-						</div>
-
 						{/* Type chips */}
 						<div className="flex flex-wrap gap-2">
 							{typeOptions.map((tp) => {

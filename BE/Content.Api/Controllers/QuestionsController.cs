@@ -346,6 +346,41 @@ namespace Content.Api.Controllers
                 TimeTakenSeconds = request.TimeTakenSeconds
             }, ct);
 
+            // Record learning history activity
+            if (quiz.ContentId != Guid.Empty)
+            {
+                var existingProgress = await _db.StudentProgress
+                    .FirstOrDefaultAsync(p => p.CourseId == null && p.UserId == userId.Value && p.ContentId == quiz.ContentId, ct);
+
+                if (existingProgress != null)
+                {
+                    existingProgress.IsCompleted = true;
+                    existingProgress.ProgressPercentage = scorePercentage;
+                    existingProgress.TimeSpentSeconds += request.TimeTakenSeconds ?? 0;
+                    existingProgress.UpdatedAt = DateTime.UtcNow;
+                    existingProgress.CompletedAt = DateTime.UtcNow;
+                    _db.StudentProgress.Update(existingProgress);
+                }
+                else
+                {
+                    var progress = new StudentProgressModel
+                    {
+                        Id = Guid.NewGuid(),
+                        CourseId = null,
+                        UserId = userId.Value,
+                        ContentId = quiz.ContentId,
+                        IsCompleted = true,
+                        ProgressPercentage = scorePercentage,
+                        TimeSpentSeconds = request.TimeTakenSeconds ?? 0,
+                        CreatedAt = DateTime.UtcNow,
+                        CompletedAt = DateTime.UtcNow
+                    };
+                    _db.StudentProgress.Add(progress);
+                }
+
+                await _db.SaveChangesAsync(ct);
+            }
+
             return Ok(new ApiResponse<QuizSubmitResultDto>(true,
                 new QuizSubmitResultDto(quizId, scorePercentage, correctCount, questions.Count, results),
                 "Quiz submitted."));

@@ -15,8 +15,8 @@ const itemHref = (item: CollectionItem, collection?: Collection | null): string 
     ? `&collectionId=${collection.id}&collectionTitle=${encodeURIComponent(collection.title)}`
     : ''
   switch (item.contentType) {
-    case 'QUIZ': return item.quizId ? `/user/quiz?quizId=${item.quizId}${col}` : null
-    case 'FLASHCARD': return item.deckId ? `/user/flashcards?deckId=${item.deckId}&contentId=${item.contentId}${col}` : null
+    case 'QUIZ': return item.quizId ? `/user/quiz?quizId=${item.quizId}&contentId=${item.contentId}${col}` : null
+    case 'FLASHCARD': return item.deckId ? `/user/flashcards?deckId=${item.deckId}&contentId=${item.contentId}&owned=${collection?.ownedByCaller ?? true}${col}` : null
     case 'PDF': return item.documentId ? `/user/documents?docId=${item.documentId}&contentId=${item.contentId}${col}` : null
     case 'VIDEO': return item.videoId ? `/user/videos/watch/${item.videoId}${col}` : null
     default: return null
@@ -80,6 +80,8 @@ export const CollectionsPage: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
+    const target = collections.find((c) => c.id === id)
+    if (!target?.ownedByCaller) return
     setBusyId(id)
     await remove(id)
     setConfirmDeleteId(null)
@@ -87,7 +89,7 @@ export const CollectionsPage: React.FC = () => {
   }
 
   const handleRemoveItem = async (contentId: string) => {
-    if (!selectedCollection) return
+    if (!selectedCollection || !selectedCollection.ownedByCaller) return
     setBusyContentId(contentId)
     await removeItem(selectedCollection.id, contentId)
     setItems((prev) => prev.filter((i) => i.contentId !== contentId))
@@ -128,6 +130,9 @@ export const CollectionsPage: React.FC = () => {
                 <p className="mt-1 text-xs text-[#8a98b0]">
                   {items.length} {isVi ? 'muc' : 'items'}
                 </p>
+                <p className="mt-1 text-xs font-semibold text-[#1463ff]">
+                  {selectedCollection.ownedByCaller ? (isVi ? 'Bo suu tap cua ban' : 'Your collection') : (isVi ? 'Bo suu tap cong khai' : 'Public collection')}
+                </p>
               </div>
             </div>
 
@@ -146,21 +151,31 @@ export const CollectionsPage: React.FC = () => {
                   <p className="text-sm text-[#60708a]">
                     {isVi ? 'Chua co muc nao trong bo suu tap nay.' : 'No items in this collection yet.'}
                   </p>
-                  <p className="text-xs text-[#8a98b0]">
-                    {isVi
-                      ? 'Vao Thu Vien va bam nut them vao bo suu tap tren moi the tai lieu.'
-                      : 'Go to your Library and tap the bookmark icon on any content card.'}
-                  </p>
-                  <Link
-                    to="/user/library"
-                    className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
-                  >
-                    <MaterialIcon icon="library_books" size="xs" />
-                    {isVi ? 'Mo Thu Vien' : 'Go to Library'}
-                  </Link>
-                </div>
-              </Card>
-            )}
+                   {selectedCollection.ownedByCaller ? (
+                     <>
+                       <p className="text-xs text-[#8a98b0]">
+                         {isVi
+                           ? 'Vao Thu Vien va bam nut them vao bo suu tap tren moi the tai lieu.'
+                           : 'Go to your Library and tap the bookmark icon on any content card.'}
+                       </p>
+                       <Link
+                         to="/user/library"
+                         className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
+                       >
+                         <MaterialIcon icon="library_books" size="xs" />
+                         {isVi ? 'Mo Thu Vien' : 'Go to Library'}
+                       </Link>
+                     </>
+                   ) : (
+                     <p className="text-xs text-[#8a98b0]">
+                       {isVi
+                         ? 'Bo suu tap cong khai nay hien khong co muc nao ban co the truy cap.'
+                         : 'This public collection currently has no accessible items for your account.'}
+                     </p>
+                   )}
+                 </div>
+               </Card>
+             )}
 
             {!itemsLoading && items.length > 0 && (
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -182,15 +197,17 @@ export const CollectionsPage: React.FC = () => {
                           <span className="text-xs font-semibold text-[#1463ff]">
                             {href ? (isVi ? 'Mo' : 'Open') : '—'}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); void handleRemoveItem(item.contentId) }}
-                            disabled={busyContentId === item.contentId}
-                            className="rounded-full p-1 text-[#8a98b0] transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
-                            title={isVi ? 'Xoa khoi bo suu tap' : 'Remove from collection'}
-                          >
-                            <MaterialIcon icon="remove_circle_outline" size="xs" />
-                          </button>
+                          {selectedCollection.ownedByCaller && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); void handleRemoveItem(item.contentId) }}
+                              disabled={busyContentId === item.contentId}
+                              className="rounded-full p-1 text-[#8a98b0] transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
+                              title={isVi ? 'Xoa khoi bo suu tap' : 'Remove from collection'}
+                            >
+                              <MaterialIcon icon="remove_circle_outline" size="xs" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </Card>
@@ -222,8 +239,8 @@ export const CollectionsPage: React.FC = () => {
               </h2>
               <p className="mt-2 text-base text-[#60708a]">
                 {isVi
-                  ? 'Nhom cac tai nguyen hoc tap thanh bo suu tap ca nhan.'
-                  : 'Group learning resources into personal, customizable collections.'}
+                  ? 'Truy cap bo suu tap cua ban va cac bo suu tap cong khai tu nguoi dung khac.'
+                  : 'Access your collections and public collections created by other users.'}
               </p>
             </div>
             <button
@@ -348,17 +365,22 @@ export const CollectionsPage: React.FC = () => {
                             <p className="text-xs text-[#8a98b0]">
                               {new Date(c.createdAt).toLocaleDateString()}
                             </p>
+                            <p className="text-[11px] font-semibold text-[#1463ff]">
+                              {c.ownedByCaller ? (isVi ? 'Cua ban' : 'Yours') : (isVi ? 'Cong khai' : 'Public')}
+                            </p>
                           </div>
                         </Card>
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(c.id)}
-                        className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
-                        title={isVi ? 'Xoa' : 'Delete'}
-                      >
-                        <MaterialIcon icon="delete" size="xs" />
-                      </button>
+                      {c.ownedByCaller && (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmDeleteId(c.id)}
+                          className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
+                          title={isVi ? 'Xoa' : 'Delete'}
+                        >
+                          <MaterialIcon icon="delete" size="xs" />
+                        </button>
+                      )}
                     </>
                   )}
                 </div>

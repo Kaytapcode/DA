@@ -190,8 +190,10 @@ export const DocumentViewerPage: React.FC = () => {
     })
   }, [requestedId, documents, setSearchParams])
 
+  const fromHistory = searchParams.get('fromHistory') === 'true'
+
   React.useEffect(() => {
-    if (!loaded) return
+    if (!loaded || fromHistory) return
     const cId = contentIdFromUrl ?? documents.find((d) => d.id === loaded.id)?.contentId ?? null
     if (!cId || docActivityRef.current === loaded.id) return
     docActivityRef.current = loaded.id
@@ -201,7 +203,7 @@ export const DocumentViewerPage: React.FC = () => {
       progressPercentage: 0,
       timeSpentSeconds: 0,
     })
-  }, [loaded, contentIdFromUrl, documents])
+  }, [loaded, contentIdFromUrl, documents, fromHistory])
 
   const currentEntry = loaded ? documents.find((d) => d.id === loaded.id) : null
   const docYear = currentEntry?.createdAt
@@ -363,6 +365,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   // 'owned' is absent when navigating from Library (always owned) or Collections.
   // Explicitly 'false' only when navigated from Global Search for a non-owned deck.
   const ownedByMe = searchParams.get('owned') !== 'false'
+  const fromHistory = searchParams.get('fromHistory') === 'true'
   const activitySentRef = React.useRef(false)
   const {
     currentCard,
@@ -383,7 +386,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   } = useFlashcard(deckId)
 
   React.useEffect(() => {
-    if (!contentId || isLoading || activitySentRef.current) return
+    if (!contentId || isLoading || activitySentRef.current || fromHistory) return
     activitySentRef.current = true
     void apiClient.post('/student-progress/activity', {
       contentId,
@@ -391,7 +394,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
       progressPercentage: 0,
       timeSpentSeconds: 0,
     })
-  }, [contentId, isLoading])
+  }, [contentId, isLoading, fromHistory])
 
   return (
     <UserShell
@@ -478,12 +481,14 @@ interface LearningHistoryEntry {
   courseId: string | null
   courseTitle: string | null
   moduleTitle: string | null
+  contentId: string | null
   contentTitle: string | null
   contentType: string | null
   progressPercentage: number
   isCompleted: boolean
   activityAt: string
   attemptId?: string | null
+  subEntityId?: string | null
 }
 
 interface AttemptAnswerItem {
@@ -583,6 +588,20 @@ export const LearningHistoryPage: React.FC = () => {
     return isVi ? 'Da xem' : 'Viewed'
   }
 
+  const buildContentUrl = (row: LearningHistoryEntry): string | null => {
+    if (!row.contentId || !row.subEntityId) return null
+    switch (row.contentType) {
+      case 'VIDEO':
+        return `/user/lesson?contentId=${row.contentId}&videoId=${row.subEntityId}&fromHistory=true`
+      case 'PDF':
+        return `/user/documents?docId=${row.subEntityId}&contentId=${row.contentId}&fromHistory=true`
+      case 'FLASHCARD':
+        return `/user/flashcards?deckId=${row.subEntityId}&contentId=${row.contentId}&fromHistory=true`
+      default:
+        return null
+    }
+  }
+
   return (
     <UserShell
       titleEn="Learning History"
@@ -649,11 +668,17 @@ export const LearningHistoryPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, idx) => (
+                  {rows.map((row, idx) => {
+                    const isQuiz = row.contentType === 'QUIZ' && !!row.attemptId
+                    const contentUrl = !isQuiz ? buildContentUrl(row) : null
+                    const isExpanded = isQuiz && expandedAttemptId === row.attemptId
+                    const review = row.attemptId ? reviews[row.attemptId] : undefined
+
+                    return (
                     <React.Fragment key={`${row.contentType}-${row.activityAt}-${idx}`}>
                       <tr
-                        className={`border-b border-outline-variant/40 ${row.contentType === 'QUIZ' && row.attemptId ? 'cursor-pointer hover:bg-surface-container-low' : ''}`}
-                        onClick={row.contentType === 'QUIZ' && row.attemptId ? () => void toggleReview(row.attemptId!) : undefined}
+                        className={`border-b border-outline-variant/40 ${isQuiz ? 'cursor-pointer hover:bg-surface-container-low' : ''}`}
+                        onClick={isQuiz ? () => void toggleReview(row.attemptId!) : undefined}
                       >
                         <td className="py-3">
                           <div className="flex items-center gap-2">
@@ -661,12 +686,22 @@ export const LearningHistoryPage: React.FC = () => {
                             <span className="text-on-surface">
                               {row.contentTitle ?? row.moduleTitle ?? row.courseTitle ?? '—'}
                             </span>
-                            {row.contentType === 'QUIZ' && row.attemptId && (
+                            {isQuiz && (
                               <MaterialIcon
-                                icon={expandedAttemptId === row.attemptId ? 'expand_less' : 'expand_more'}
+                                icon={isExpanded ? 'expand_less' : 'expand_more'}
                                 size="xs"
                                 className="ml-auto text-on-surface-variant"
                               />
+                            )}
+                            {contentUrl && (
+                              <Link
+                                to={contentUrl}
+                                onClick={(e) => e.stopPropagation()}
+                                className="ml-auto inline-flex items-center gap-1 rounded-full border border-outline-variant px-2.5 py-0.5 text-xs text-on-surface-variant hover:bg-surface-container-low"
+                              >
+                                <MaterialIcon icon="open_in_new" size="xs" />
+                                {isVi ? 'Xem lai' : 'View again'}
+                              </Link>
                             )}
                           </div>
                         </td>
@@ -674,22 +709,35 @@ export const LearningHistoryPage: React.FC = () => {
                         <td className="py-3 text-sm text-on-surface-variant">{getResult(row)}</td>
                       </tr>
 
-                      {row.contentType === 'QUIZ' && row.attemptId && expandedAttemptId === row.attemptId && (
+                      {isQuiz && isExpanded && (
                         <tr>
                           <td colSpan={3} className="pb-4 pt-1">
-                            {reviewLoading && reviews[row.attemptId] === undefined && (
+                            {reviewLoading && review === undefined && (
                               <div className="flex justify-center py-4">
                                 <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
                               </div>
                             )}
-                            {reviews[row.attemptId] === null && (
+                            {review === null && (
                               <p className="py-2 text-center text-sm text-error">
                                 {isVi ? 'Khong tai duoc ket qua.' : 'Unable to load review.'}
                               </p>
                             )}
-                            {reviews[row.attemptId] && (
+                            {review && (
                               <div className="space-y-3 rounded-xl bg-surface-container-low p-4">
-                                {reviews[row.attemptId]!.answers.map((answer, aIdx) => (
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-semibold text-on-surface">
+                                    {isVi ? `Diem: ${review.scorePercentage}%` : `Score: ${review.scorePercentage}%`}
+                                  </p>
+                                  <Link
+                                    to={`/user/quiz?quizId=${review.quizId}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary hover:bg-primary/90"
+                                  >
+                                    <MaterialIcon icon="replay" size="xs" />
+                                    {isVi ? 'Lam lai' : 'Retake'}
+                                  </Link>
+                                </div>
+                                {review.answers.map((answer, aIdx) => (
                                   <div key={answer.questionId} className="rounded-lg border border-outline-variant/60 bg-surface p-3">
                                     <p className="mb-2 text-sm font-semibold text-on-surface">
                                       {`${aIdx + 1}. ${answer.questionText}`}
@@ -711,7 +759,7 @@ export const LearningHistoryPage: React.FC = () => {
                                     )}
                                   </div>
                                 ))}
-                                {reviews[row.attemptId]!.answers.length === 0 && (
+                                {review.answers.length === 0 && (
                                   <p className="text-center text-sm text-on-surface-variant">
                                     {isVi ? 'Khong co cau tra loi nao duoc luu.' : 'No answers recorded for this attempt.'}
                                   </p>
@@ -722,7 +770,8 @@ export const LearningHistoryPage: React.FC = () => {
                         </tr>
                       )}
                     </React.Fragment>
-                  ))}
+                  )})}
+
                 </tbody>
               </table>
             </div>
@@ -1252,9 +1301,10 @@ export const VideoLessonPage: React.FC = () => {
     void fetchVideos()
   }, [fetchVideos])
 
+  const fromHistory = searchParams.get('fromHistory') === 'true'
   const videoActivityRef = React.useRef<string | null>(null)
   React.useEffect(() => {
-    if (!selectedVideo || !contentId) return
+    if (!selectedVideo || !contentId || fromHistory) return
     if (videoActivityRef.current === selectedVideo.id) return
     videoActivityRef.current = selectedVideo.id
     void apiClient.post('/student-progress/activity', {
@@ -1263,7 +1313,7 @@ export const VideoLessonPage: React.FC = () => {
       progressPercentage: 0,
       timeSpentSeconds: 0,
     })
-  }, [selectedVideo, contentId])
+  }, [selectedVideo, contentId, fromHistory])
 
   const handleCreateVideo = async () => {
     if (!contentId || !youtubeUrl.trim()) return

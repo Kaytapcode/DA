@@ -159,12 +159,25 @@ namespace Content.Api.Controllers
             var userId = _orgCtx.GetCurrentUserId();
             if (userId == null) return Unauthorized();
 
-            var owned = await _db.Modules.IgnoreQueryFilters()
-                .AnyAsync(m => m.Id == id && m.OrgId == null && m.CreatedBy == userId, ct);
-            if (!owned) return NotFound(new ApiResponse(false, "Collection not found."));
+            var collection = await _db.Modules.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(m => m.Id == id && m.OrgId == null && m.CreatedBy.HasValue, ct);
+            if (collection == null) return NotFound(new ApiResponse(false, "Collection not found."));
 
-            var links = await _db.ModuleContents
-                .Where(mc => mc.ModuleId == id)
+            var ownedByCaller = collection.CreatedBy == userId;
+
+            var linksQuery = _db.ModuleContents
+                .Where(mc => mc.ModuleId == id);
+
+            if (!ownedByCaller)
+            {
+                // Non-owners can only view entries that they can access:
+                // public content or content authored by themselves.
+                linksQuery = linksQuery.Where(mc =>
+                    mc.Content != null &&
+                    (mc.Content.IsPublic || mc.Content.CreatedByUserId == userId));
+            }
+
+            var links = await linksQuery
                 .Include(mc => mc.Content)
                     .ThenInclude(c => c!.Video)
                 .Include(mc => mc.Content)

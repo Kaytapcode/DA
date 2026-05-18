@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -10,33 +11,29 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
 
-// Spec §1 User: "Can view other public resources but cannot edit resources not owned by them.
-// Can copy other public resources to create a personal version..."
-// Talks to BE/Content.Api/Controllers/PublicContentController.cs and ContentCloneController.cs.
-
-interface PublicContentRow {
-  id: string
+interface SearchResultRow {
+  contentId: string
   title: string
-  contentType: 'QUIZ' | 'FLASHCARD' | 'VIDEO' | 'PDF' | string
-  status: string
-  createdByUserId: string | null
-  createdAt: string
+  contentType: 'QUIZ' | 'FLASHCARD' | 'VIDEO' | 'PDF' | 'COLLECTION' | string
   ownedByCaller: boolean
+  resourceId: string | null
+  createdAt: string
 }
 
-const TYPES: Array<{ key: '' | PublicContentRow['contentType']; labelEn: string; labelVi: string; icon: string }> = [
+const TYPES: Array<{ key: '' | SearchResultRow['contentType']; labelEn: string; labelVi: string; icon: string }> = [
   { key: '', labelEn: 'All', labelVi: 'Tat ca', icon: 'apps' },
   { key: 'QUIZ', labelEn: 'Quizzes', labelVi: 'Quiz', icon: 'quiz' },
   { key: 'FLASHCARD', labelEn: 'Flashcards', labelVi: 'The ghi nho', icon: 'style' },
   { key: 'VIDEO', labelEn: 'Videos', labelVi: 'Video', icon: 'play_circle' },
   { key: 'PDF', labelEn: 'Documents', labelVi: 'Tai lieu', icon: 'description' },
+  { key: 'COLLECTION', labelEn: 'Collections', labelVi: 'Bo suu tap', icon: 'folder' },
 ]
 
 export const BrowsePublicPage: React.FC = () => {
   const isVi = useUserLanguage()
-  const [rows, setRows] = useState<PublicContentRow[]>([])
+  const [rows, setRows] = useState<SearchResultRow[]>([])
   const [query, setQuery] = useState('')
-  const [type, setType] = useState<'' | PublicContentRow['contentType']>('')
+  const [type, setType] = useState<'' | SearchResultRow['contentType']>('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cloningId, setCloningId] = useState<string | null>(null)
@@ -46,11 +43,10 @@ export const BrowsePublicPage: React.FC = () => {
     setIsLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams()
+      const params = new URLSearchParams({ limit: '50' })
       if (type) params.set('type', type)
-      if (query.trim()) params.set('query', query.trim())
-      params.set('limit', '50')
-      const res = await apiClient.get<PublicContentRow[]>(`/public-content?${params}`)
+      if (query.trim()) params.set('q', query.trim())
+      const res = await apiClient.get<SearchResultRow[]>(`/search?${params.toString()}`)
       if (res.success && res.data) setRows(res.data)
       else throw new Error(res.message || 'Failed to load')
     } catch (err) {
@@ -62,17 +58,36 @@ export const BrowsePublicPage: React.FC = () => {
 
   useEffect(() => { void refresh() }, [refresh])
 
-  const handleClone = async (row: PublicContentRow) => {
-    setCloningId(row.id)
+  const handleClone = async (row: SearchResultRow) => {
+    if (row.contentType === 'COLLECTION') return
+    setCloningId(row.contentId)
     setError(null)
     try {
-      const res = await apiClient.post(`/contents/${row.id}/clone`)
+      const res = await apiClient.post(`/contents/${row.contentId}/clone`)
       if (!res.success) throw new Error(res.message || 'Failed to copy')
-      setClonedIds((prev) => new Set(prev).add(row.id))
+      setClonedIds((prev) => new Set(prev).add(row.contentId))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to copy')
     } finally {
       setCloningId(null)
+    }
+  }
+
+  const resultHref = (row: SearchResultRow): string | null => {
+    if (!row.resourceId) return null
+    switch (row.contentType) {
+      case 'QUIZ':
+        return `/user/quiz?quizId=${row.resourceId}&contentId=${row.contentId}`
+      case 'FLASHCARD':
+        return `/user/flashcards?deckId=${row.resourceId}&contentId=${row.contentId}&owned=${row.ownedByCaller}`
+      case 'VIDEO':
+        return `/user/videos/watch/${row.resourceId}`
+      case 'PDF':
+        return `/user/documents?docId=${row.resourceId}&contentId=${row.contentId}`
+      case 'COLLECTION':
+        return `/user/collections?collectionId=${row.resourceId}`
+      default:
+        return null
     }
   }
 
@@ -82,6 +97,7 @@ export const BrowsePublicPage: React.FC = () => {
       case 'FLASHCARD': return 'style'
       case 'VIDEO': return 'play_circle'
       case 'PDF': return 'description'
+      case 'COLLECTION': return 'folder'
       default: return 'article'
     }
   }
@@ -158,21 +174,34 @@ export const BrowsePublicPage: React.FC = () => {
             {!isLoading && rows.length > 0 && (
               <div className="space-y-2">
                 {rows.map((row) => (
-                  <div key={row.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
+                  <div key={row.contentId} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
                     <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#eef2ff] text-[#4f6cf7]">
                       <MaterialIcon icon={typeIcon(row.contentType)} size="sm" />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-on-surface">{row.title}</p>
-                      <p className="truncate text-xs text-on-surface-variant">
-                        {row.contentType} • {new Date(row.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
+                    {resultHref(row) ? (
+                      <Link to={resultHref(row)!} className="min-w-0 flex-1 hover:opacity-80">
+                        <p className="truncate font-medium text-on-surface">{row.title}</p>
+                        <p className="truncate text-xs text-on-surface-variant">
+                          {row.contentType} • {new Date(row.createdAt).toLocaleDateString()}
+                        </p>
+                      </Link>
+                    ) : (
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium text-on-surface">{row.title}</p>
+                        <p className="truncate text-xs text-on-surface-variant">
+                          {row.contentType} • {new Date(row.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                     {row.ownedByCaller ? (
                       <Badge variant="secondary" size="sm">
                         {isVi ? 'Cua ban' : 'Yours'}
                       </Badge>
-                    ) : clonedIds.has(row.id) ? (
+                    ) : row.contentType === 'COLLECTION' ? (
+                      <Badge variant="secondary" size="sm">
+                        {isVi ? 'Bo suu tap' : 'Collection'}
+                      </Badge>
+                    ) : clonedIds.has(row.contentId) ? (
                       <Badge variant="success" size="sm">
                         {isVi ? 'Da sao chep' : 'Copied'}
                       </Badge>
@@ -180,10 +209,10 @@ export const BrowsePublicPage: React.FC = () => {
                       <Button
                         size="sm"
                         onClick={() => void handleClone(row)}
-                        disabled={cloningId === row.id}
+                        disabled={cloningId === row.contentId}
                       >
                         <MaterialIcon icon="content_copy" size="xs" className="mr-1" />
-                        {cloningId === row.id
+                        {cloningId === row.contentId
                           ? (isVi ? 'Dang sao chep...' : 'Copying...')
                           : (isVi ? 'Sao chep' : 'Copy to library')}
                       </Button>

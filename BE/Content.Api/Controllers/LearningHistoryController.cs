@@ -35,7 +35,8 @@ namespace Content.Api.Controllers
             int ProgressPercentage,
             bool IsCompleted,
             DateTime ActivityAt,
-            Guid? AttemptId = null
+            Guid? AttemptId = null,
+            Guid? SubEntityId = null  // VideoId / DocumentId / DeckId depending on ContentType
         );
 
         public record AttemptAnswerDto(
@@ -66,25 +67,45 @@ namespace Content.Api.Controllers
             if (userId == null) return Unauthorized();
             limit = Math.Clamp(limit, 1, 100);
 
-            var progressRows = await _db.StudentProgress
+            var rawProgress = await _db.StudentProgress
                 .IgnoreQueryFilters()
                 .Where(p => p.UserId == userId)
                 .OrderByDescending(p => p.UpdatedAt ?? p.CreatedAt)
                 .Take(limit)
-                .Select(p => new LearningHistoryEntryDto(
+                .Include(p => p.Course)
+                .Include(p => p.Module)
+                .Include(p => p.Content)
+                    .ThenInclude(c => c!.Video)
+                .Include(p => p.Content)
+                    .ThenInclude(c => c!.Document)
+                .Include(p => p.Content)
+                    .ThenInclude(c => c!.FlashcardDeck)
+                .ToListAsync(ct);
+
+            var progressRows = rawProgress.Select(p =>
+            {
+                Guid? subEntityId = p.Content?.ContentType switch
+                {
+                    "VIDEO" => p.Content.Video?.Id,
+                    "PDF" => p.Content.Document?.Id,
+                    "FLASHCARD" => p.Content.FlashcardDeck?.Id,
+                    _ => null
+                };
+                return new LearningHistoryEntryDto(
                     p.CourseId,
-                    p.Course != null ? p.Course.Title : null,
+                    p.Course?.Title,
                     p.ModuleId,
-                    p.Module != null ? p.Module.Title : null,
+                    p.Module?.Title,
                     p.ContentId,
-                    p.Content != null ? p.Content.Title : null,
-                    p.Content != null ? p.Content.ContentType : null,
+                    p.Content?.Title,
+                    p.Content?.ContentType,
                     p.ProgressPercentage,
                     p.IsCompleted,
                     p.UpdatedAt ?? p.CreatedAt,
-                    (Guid?)null
-                ))
-                .ToListAsync(ct);
+                    null,
+                    subEntityId
+                );
+            }).ToList();
 
             var quizAttempts = await _db.QuizAttempts
                 .Where(a => a.UserId == userId)

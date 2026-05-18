@@ -30,10 +30,11 @@ namespace Content.Api.Controllers
             DateTime CreatedAt
         );
 
-        // GET /api/search?q=&type=&scope=owned|public|all&limit=
-        // Returns regular content (VIDEO/QUIZ/FLASHCARD/PDF) and personal Collections.
-        // Two-stage for content: (1) query Contents, (2) batch-resolve ResourceIds.
-        // Collections are always personal (no IsPublic field); excluded from "public" scope.
+        // GET /api/search?q=&type=&scope=&limit=
+        // Unified search index:
+        // - returns caller-owned content + public content from other users
+        // - returns caller-owned collections + collections authored by other users
+        // The scope query param is accepted for backward compatibility but ignored.
         [HttpGet]
         public async Task<IActionResult> Search(
             [FromQuery] string? q,
@@ -46,9 +47,9 @@ namespace Content.Api.Controllers
             if (userId == null) return Unauthorized();
 
             var uid = userId.Value;
+            _ = scope;
             limit = Math.Clamp(limit, 1, 200);
             var typeUpper = type?.ToUpperInvariant();
-            var scopeLower = scope.ToLowerInvariant();
 
             // ── Stage A: regular content (VIDEO, QUIZ, FLASHCARD, PDF) ─────────────
             IEnumerable<SearchResultDto> contentDtos = [];
@@ -57,13 +58,12 @@ namespace Content.Api.Controllers
             {
                 var query = _db.Contents.IgnoreQueryFilters().AsQueryable();
 
-                query = scopeLower switch
-                {
-                    "owned"  => query.Where(c => c.CreatedByUserId == uid),
-                    "public" => query.Where(c =>
-                        c.IsPublic && c.CreatedByUserId.HasValue && c.CreatedByUserId != uid),
-                    _        => query.Where(c => c.CreatedByUserId == uid || c.IsPublic),
-                };
+                query = query.Where(c =>
+                    c.CreatedByUserId == uid ||
+                    (c.IsPublic &&
+                     c.CreatedByUserId.HasValue &&
+                     c.CreatedByUserId != uid &&
+                     !c.ModuleContents.Any()));
 
                 if (!string.IsNullOrWhiteSpace(typeUpper))
                     query = query.Where(c => c.ContentType == typeUpper);
@@ -129,27 +129,28 @@ namespace Content.Api.Controllers
                 }
             }
 
-            // ── Stage B: collections (Modules with OrgId == null, owned by caller) ──
-            // Collections have no IsPublic flag — always personal. Skip for "public" scope.
+            // ── Stage B: collections (Modules with OrgId == null) ────────────────────
             IEnumerable<SearchResultDto> collectionDtos = [];
 
-            if ((typeUpper is null || typeUpper == "COLLECTION") && scopeLower != "public")
+            if (typeUpper is null || typeUpper == "COLLECTION")
             {
                 var colQuery = _db.Modules.IgnoreQueryFilters()
-                    .Where(m => m.OrgId == null && m.CreatedBy == uid);
+                    .Where(m => m.OrgId == null && m.CreatedBy.HasValue);
 
                 if (!string.IsNullOrWhiteSpace(q))
-                    colQuery = colQuery.Where(m => EF.Functions.ILike(m.Title, $"%{q.Trim()}%"));
+                    colQuery = colQuery.Where(m =>
+                        EF.Functions.ILike(m.Title, $"%{q.Trim()}%") ||
+                        (m.Description != null && EF.Functions.ILike(m.Description, $"%{q.Trim()}%")));
 
                 var collections = await colQuery
                     .OrderByDescending(m => m.CreatedAt)
                     .Take(limit)
-                    .Select(m => new { m.Id, m.Title, m.CreatedAt })
+                    .Select(m => new { m.Id, m.Title, m.CreatedAt, m.CreatedBy })
                     .ToListAsync(ct);
 
                 // ContentId == ResourceId == module Id (collections have no Content row).
                 collectionDtos = collections.Select(m =>
-                    new SearchResultDto(m.Id, m.Title, "COLLECTION", true, m.Id, m.CreatedAt));
+                    new SearchResultDto(m.Id, m.Title, "COLLECTION", m.CreatedBy == uid, m.Id, m.CreatedAt));
             }
 
             // ── Merge, re-sort by recency, cap at limit ──────────────────────────────

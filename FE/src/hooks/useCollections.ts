@@ -8,6 +8,7 @@ export interface Collection {
   description: string | null
   parentId: string | null
   createdAt: string
+  ownedByCaller: boolean
 }
 
 // Mirrors CollectionsController.CollectionItemDto.
@@ -31,9 +32,22 @@ export const useCollections = () => {
     setIsLoading(true)
     setError(null)
     try {
-      const res = await apiClient.get<Collection[]>('/collections')
-      if (res.success && res.data) setCollections(res.data)
-      else throw new Error(res.message || 'Failed to load collections')
+      const params = new URLSearchParams({ type: 'COLLECTION', limit: '500' })
+      const res = await apiClient.get<Array<{
+        contentId: string
+        title: string
+        ownedByCaller: boolean
+        createdAt: string
+      }>>(`/search?${params.toString()}`)
+      if (!res.success || !res.data) throw new Error(res.message || 'Failed to load collections')
+      setCollections(res.data.map((row) => ({
+        id: row.contentId,
+        title: row.title,
+        description: null,
+        parentId: null,
+        createdAt: row.createdAt,
+        ownedByCaller: row.ownedByCaller,
+      })))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load collections')
     } finally {
@@ -49,7 +63,7 @@ export const useCollections = () => {
         const res = await apiClient.post<Collection>('/collections', { title, description: description ?? null, parentId: parentId ?? null })
         if (!res.success || !res.data) throw new Error(res.message || 'Failed to create collection')
         await refresh()
-        return res.data
+        return { ...res.data, ownedByCaller: true }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to create collection')
         return null
