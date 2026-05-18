@@ -41,6 +41,18 @@ namespace Content.Api.Controllers
             return role is "SysAdmin" or "OrgAdmin" or "Teacher";
         }
 
+        // Mutation guard: only the quiz owner or a SysAdmin may create/edit/delete questions.
+        private async Task<bool> VerifyQuizWriteAsync(Guid quizId)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue) return false;
+            if (_orgCtx.IsSysAdmin()) return true;
+            var quiz = await _db.Quizzes
+                .Include(q => q.Content)
+                .FirstOrDefaultAsync(q => q.Id == quizId);
+            return quiz?.Content?.CreatedByUserId == userId;
+        }
+
         private QuestionDto ToStudentDto(QuestionModel q) => new(
             q.Id, q.QuizId, q.QuestionText, q.Explanation, q.OrderIndex,
             q.Options.Select(o => new QuestionOptionDto(o.Id, o.OptionText, o.OrderIndex)).ToList()
@@ -150,12 +162,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionDto>(true, ToStudentDto(question), null));
         }
 
-        // POST /api/quizzes/{quizId}/questions - parent quiz access is verified inside
+        // POST /api/quizzes/{quizId}/questions - only the quiz owner may add questions
         [HttpPost("questions")]
         public async Task<IActionResult> CreateQuestion(Guid quizId, [FromBody] CreateQuestionRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
                 return NotFound(new ApiResponse(false, "Quiz not found."));
+            if (!await VerifyQuizWriteAsync(quizId))
+                return StatusCode(403, new ApiResponse(false, "Only the quiz owner may add questions."));
 
             if (request.Options == null || request.Options.Count < 2)
                 return BadRequest(new ApiResponse(false, "A question must have at least 2 options."));
@@ -182,12 +196,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionTeacherDto>(true, ToTeacherDto(created), "Question created."));
         }
 
-        // POST /api/quizzes/{quizId}/generate - parent quiz access is verified inside
+        // POST /api/quizzes/{quizId}/generate - only the quiz owner may import AI questions
         [HttpPost("generate")]
         public async Task<IActionResult> ImportAiQuestions(Guid quizId, [FromBody] ImportAiQuestionsRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
                 return NotFound(new ApiResponse(false, "Quiz not found."));
+            if (!await VerifyQuizWriteAsync(quizId))
+                return StatusCode(403, new ApiResponse(false, "Only the quiz owner may modify this quiz."));
 
             if (request.Questions == null || request.Questions.Count == 0)
                 return BadRequest(new ApiResponse(false, "At least one question is required."));
@@ -204,12 +220,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<List<QuestionTeacherDto>>(true, dtos, $"Successfully imported {created.Count} questions."));
         }
 
-        // PUT /api/quizzes/{quizId}/questions/{questionId} - parent quiz access is verified inside
+        // PUT /api/quizzes/{quizId}/questions/{questionId} - only the quiz owner may edit questions
         [HttpPut("questions/{questionId:guid}")]
         public async Task<IActionResult> UpdateQuestion(Guid quizId, Guid questionId, [FromBody] UpdateQuestionRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
                 return NotFound(new ApiResponse(false, "Quiz not found."));
+            if (!await VerifyQuizWriteAsync(quizId))
+                return StatusCode(403, new ApiResponse(false, "Only the quiz owner may edit questions."));
 
             var question = await _repo.GetByIdAsync(questionId, ct);
             if (question == null || question.QuizId != quizId)
@@ -235,12 +253,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<QuestionTeacherDto>(true, ToTeacherDto(updated), "Question updated."));
         }
 
-        // DELETE /api/quizzes/{quizId}/questions/{questionId} - parent quiz access is verified inside
+        // DELETE /api/quizzes/{quizId}/questions/{questionId} - only the quiz owner may delete questions
         [HttpDelete("questions/{questionId:guid}")]
         public async Task<IActionResult> DeleteQuestion(Guid quizId, Guid questionId, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
                 return NotFound(new ApiResponse(false, "Quiz not found."));
+            if (!await VerifyQuizWriteAsync(quizId))
+                return StatusCode(403, new ApiResponse(false, "Only the quiz owner may delete questions."));
 
             var question = await _repo.GetByIdAsync(questionId, ct);
             if (question == null || question.QuizId != quizId)
@@ -250,12 +270,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse(true, "Question deleted."));
         }
 
-        // PATCH /api/quizzes/{quizId}/questions/{questionId}/reorder - parent quiz access is verified inside
+        // PATCH /api/quizzes/{quizId}/questions/{questionId}/reorder - only the quiz owner may reorder questions
         [HttpPatch("questions/{questionId:guid}/reorder")]
         public async Task<IActionResult> ReorderQuestion(Guid quizId, Guid questionId, [FromBody] ReorderQuestionRequestDto request, CancellationToken ct)
         {
             if (!await VerifyQuizAccessAsync(quizId))
                 return NotFound(new ApiResponse(false, "Quiz not found."));
+            if (!await VerifyQuizWriteAsync(quizId))
+                return StatusCode(403, new ApiResponse(false, "Only the quiz owner may reorder questions."));
 
             await _repo.ReorderAsync(quizId, questionId, request.NewOrderIndex, ct);
             return Ok(new ApiResponse(true, "Question reordered."));

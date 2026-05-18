@@ -190,6 +190,25 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<IEnumerable<CollectionItemDto>>(true, dtos, null));
         }
 
+        // GET /api/collections/for-content/{contentId} — resolve which personal collection owns this content.
+        [HttpGet("for-content/{contentId:guid}")]
+        public async Task<IActionResult> GetCollectionForContent(Guid contentId, CancellationToken ct)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (userId == null) return Unauthorized();
+
+            var collection = await _db.ModuleContents
+                .Where(mc => mc.ContentId == contentId)
+                .Join(
+                    _db.Modules.IgnoreQueryFilters().Where(m => m.OrgId == null && m.CreatedBy == userId),
+                    mc => mc.ModuleId,
+                    m => m.Id,
+                    (mc, m) => new CollectionResponseDto(m.Id, m.Title, m.Description, m.ParentId, m.CreatedAt))
+                .FirstOrDefaultAsync(ct);
+
+            return Ok(new ApiResponse<CollectionResponseDto?>(true, collection, null));
+        }
+
         // DELETE /api/collections/{id}/items/{contentId}
         [HttpDelete("{id:guid}/items/{contentId:guid}")]
         public async Task<IActionResult> RemoveItem(Guid id, Guid contentId, CancellationToken ct)

@@ -10,7 +10,7 @@ namespace Content.Api.Data
         Task<Guid?> GetModuleOrgIdAsync(Guid moduleId, CancellationToken ct = default);
         Task<VideoModel> CreateAsync(VideoModel video, CancellationToken ct = default);
         Task<VideoModel> CreatePersonalAsync(string youTubeVideoId, string? title, string? description, string? thumbnailUrl, Guid? createdByUserId, CancellationToken ct = default);
-        Task<List<VideoModel>> GetPersonalAsync(CancellationToken ct = default);
+        Task<List<VideoModel>> GetPersonalAsync(Guid? userId, CancellationToken ct = default);
         Task<VideoModel> UpdateAsync(VideoModel video, CancellationToken ct = default);
         Task SoftDeleteAsync(Guid id, CancellationToken ct = default);
     }
@@ -89,13 +89,14 @@ namespace Content.Api.Data
             return video;
         }
 
-        public async Task<List<VideoModel>> GetPersonalAsync(CancellationToken ct = default)
+        public async Task<List<VideoModel>> GetPersonalAsync(Guid? userId, CancellationToken ct = default)
         {
-            // Videos whose Content has no ModuleContent attachment (personal/unaffiliated).
+            // Videos owned by the caller that have no ModuleContent attachment (personal/unaffiliated).
             return await _context.Videos
                 .Where(v => v.DeletedAt == null &&
                             v.Content != null &&
-                            !v.Content.ModuleContents.Any())
+                            !v.Content.ModuleContents.Any() &&
+                            v.Content.CreatedByUserId == userId)
                 .OrderByDescending(v => v.CreatedAt)
                 .ToListAsync(ct);
         }

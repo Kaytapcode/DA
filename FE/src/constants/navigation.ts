@@ -26,6 +26,7 @@ export const USER_NAV_ITEMS: NavItem[] = [
   // { id: 'documents', labelKey: 'user.documents', icon: 'description', path: '/user/documents' },
   
   // Resources
+  { id: 'search', labelKey: 'user.search', icon: 'search', path: '/user/search' },
   { id: 'library', labelKey: 'user.library', icon: 'library_books', path: '/user/library' },
   { id: 'collections', labelKey: 'user.collections', icon: 'folder', path: '/user/collections' },
   { id: 'browse', labelKey: 'user.browse', icon: 'explore', path: '/user/browse' },

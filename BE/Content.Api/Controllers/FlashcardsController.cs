@@ -34,6 +34,18 @@ namespace Content.Api.Controllers
             return _orgCtx.IsSysAdmin() || orgId == _orgCtx.GetCurrentOrgId();
         }
 
+        // Mutation guard: only the deck owner or a SysAdmin may create/edit/delete cards.
+        private async Task<bool> VerifyDeckWriteAsync(Guid deckId, CancellationToken ct = default)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue) return false;
+            if (_orgCtx.IsSysAdmin()) return true;
+            var deck = await _db.FlashcardDecks
+                .Include(d => d.Content)
+                .FirstOrDefaultAsync(d => d.Id == deckId, ct);
+            return deck?.Content?.CreatedByUserId == userId;
+        }
+
         private static FlashcardDto ToDto(FlashcardModel f) => new(
             f.Id, f.DeckId, f.FrontText, f.BackText,
             f.IsMastered, f.MasteredAt, f.OrderIndex, f.CreatedAt
@@ -107,12 +119,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<FlashcardDto>(true, ToDto(card), null));
         }
 
-        // POST /api/decks/{deckId}/flashcards - parent deck access is verified inside
+        // POST /api/decks/{deckId}/flashcards - only the deck owner may add cards
         [HttpPost]
         public async Task<IActionResult> CreateFlashcard(Guid deckId, [FromBody] CreateFlashcardRequestDto request, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
+            if (!await VerifyDeckWriteAsync(deckId, ct))
+                return StatusCode(403, new ApiResponse(false, "Only the deck owner may add cards."));
 
             var card = new FlashcardModel
             {
@@ -126,13 +140,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<FlashcardDto>(true, ToDto(created), "Flashcard created."));
         }
 
-        // PUT /api/decks/{deckId}/flashcards/{cardId}
+        // PUT /api/decks/{deckId}/flashcards/{cardId} - only the deck owner may edit cards
         [HttpPut("{cardId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> UpdateFlashcard(Guid deckId, Guid cardId, [FromBody] UpdateFlashcardRequestDto request, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
+            if (!await VerifyDeckWriteAsync(deckId, ct))
+                return StatusCode(403, new ApiResponse(false, "Only the deck owner may edit cards."));
 
             var card = await _repo.GetByIdAsync(cardId, ct);
             if (card == null || card.DeckId != deckId)
@@ -146,11 +161,15 @@ namespace Content.Api.Controllers
         }
 
         // PUT /api/decks/{deckId}/flashcards/{cardId}/master
+        // IsMastered is stored per-card globally, so only the deck owner may change it.
+        // Non-owners can view cards but mastery state belongs to the creator's study session.
         [HttpPut("{cardId:guid}/master")]
         public async Task<IActionResult> ToggleMastered(Guid deckId, Guid cardId, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
+            if (!await VerifyDeckWriteAsync(deckId, ct))
+                return StatusCode(403, new ApiResponse(false, "Only the deck owner may update mastery."));
 
             var card = await _repo.GetByIdAsync(cardId, ct);
             if (card == null || card.DeckId != deckId)
@@ -169,6 +188,8 @@ namespace Content.Api.Controllers
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
+            if (!await VerifyDeckWriteAsync(deckId, ct))
+                return StatusCode(403, new ApiResponse(false, "Only the deck owner may reset mastery."));
 
             var resetCount = await _repo.ResetMasteredAsync(deckId, ct);
             return Ok(new ApiResponse<object>(true, new { resetCount }, $"Reset {resetCount} card(s) to unmastered."));
@@ -205,13 +226,14 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse(true, "Deck deleted."));
         }
 
-        // DELETE /api/decks/{deckId}/flashcards/{cardId}
+        // DELETE /api/decks/{deckId}/flashcards/{cardId} - only the deck owner may delete cards
         [HttpDelete("{cardId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> DeleteFlashcard(Guid deckId, Guid cardId, CancellationToken ct)
         {
             if (!await VerifyDeckAccessAsync(deckId))
                 return NotFound(new ApiResponse(false, "Deck not found."));
+            if (!await VerifyDeckWriteAsync(deckId, ct))
+                return StatusCode(403, new ApiResponse(false, "Only the deck owner may delete cards."));
 
             var card = await _repo.GetByIdAsync(cardId, ct);
             if (card == null || card.DeckId != deckId)

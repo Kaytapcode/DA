@@ -194,11 +194,11 @@ namespace Content.Api.Controllers
             ));
         }
 
-        // GET /api/videos/personal - List videos not attached to any module (personal/public)
+        // GET /api/videos/personal - List videos not attached to any module, owned by caller
         [HttpGet("personal")]
         public async Task<IActionResult> GetPersonalVideos(CancellationToken ct = default)
         {
-            var videos = await _videoRepository.GetPersonalAsync(ct);
+            var videos = await _videoRepository.GetPersonalAsync(_orgContext.GetCurrentUserId(), ct);
             var result = videos.Select(v => new VideoDto(
                 Id: v.Id,
                 ContentId: v.ContentId,

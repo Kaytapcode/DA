@@ -34,13 +34,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     <nav className="flex items-center justify-between border-b border-[#3a9cff] bg-[#1890ff] p-4 text-white shadow-md dark:border-slate-700 dark:bg-slate-900">
       <div className="text-xl font-bold tracking-wide">{title}</div>
       <div className="space-x-6 flex items-center">
-        {showSearch && (
+        {/* {showSearch && (
           <input
             type="text"
             placeholder="Search..."
             className="rounded px-3 py-1 text-sm text-black focus:outline-none focus:ring-2 focus:ring-white/50 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400"
           />
-        )}
+        )} */}
         {/* {showThemeToggle && (
           <button
             type="button"

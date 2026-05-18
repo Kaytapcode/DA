@@ -104,11 +104,11 @@ export const BrowsePublicPage: React.FC = () => {
             </p>
           </div>
 
-          {error && (
+          {/* {error && (
             <Card className="border border-error/30 p-4">
               <p className="text-sm text-error">{error}</p>
             </Card>
-          )}
+          )} */}
 
           <Card className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4">

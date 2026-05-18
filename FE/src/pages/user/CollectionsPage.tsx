@@ -1,5 +1,5 @@
-import React, { useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -37,7 +37,9 @@ const FOLDER_GRADIENT = 'linear-gradient(140deg,#1463ff,#0f43b8,#7c3aed)'
 // Spec §3.1 "Collection (For Users)": user-created groupings of learning resources.
 export const CollectionsPage: React.FC = () => {
   const isVi = useUserLanguage()
+  const location = useLocation()
   const { collections, isLoading, error, create, remove, getItems, removeItem } = useCollections()
+  const autoOpenRef = useRef(false)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -91,6 +93,15 @@ export const CollectionsPage: React.FC = () => {
     setItems((prev) => prev.filter((i) => i.contentId !== contentId))
     setBusyContentId(null)
   }
+
+  // Auto-open a collection when navigated from search results (?collectionId=).
+  useEffect(() => {
+    if (autoOpenRef.current || isLoading || selectedCollection) return
+    const collectionId = new URLSearchParams(location.search).get('collectionId')
+    if (!collectionId) { autoOpenRef.current = true; return }
+    const target = collections.find((c) => c.id === collectionId)
+    if (target) { autoOpenRef.current = true; void handleSelectCollection(target) }
+  }, [isLoading, collections, selectedCollection, location.search, handleSelectCollection])
 
   // ── Collection detail view ─────────────────────────────────────────────────
   if (selectedCollection) {

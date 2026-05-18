@@ -55,6 +55,7 @@ export const translations = {
   'user.inbox': { en: 'Messages', vi: 'Tin Nhắn' },
   'user.library': { en: 'Content Library', vi: 'Thư Viện Nội Dung' },
   'user.collections': { en: 'Collections', vi: 'Bộ Sưu Tập' },
+  'user.search': { en: 'Search', vi: 'Tìm Kiếm' },
   'user.browse': { en: 'Browse Public', vi: 'Khám Phá' },
   'user.quiz': { en: 'Quizzes', vi: 'Bài Kiểm Tra' },
   'user.lesson': { en: 'Video Lessons', vi: 'Bài Học Video' },

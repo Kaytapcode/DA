@@ -150,6 +150,7 @@ export const DocumentViewerPage: React.FC = () => {
   } = useDocumentViewer()
   const [saved, setSaved] = useState(false)
   const [shareToast, setShareToast] = useState(false)
+  const [resolvedCollectionTitle, setResolvedCollectionTitle] = useState<string | null>(null)
   const docActivityRef = React.useRef<string | null>(null)
   // Always-current snapshot of the document list — updated synchronously before effects run.
   const documentsRef = React.useRef(documents)
@@ -158,6 +159,17 @@ export const DocumentViewerPage: React.FC = () => {
   React.useEffect(() => {
     void fetchList()
   }, [fetchList])
+
+  // Resolve collection name from backend when it isn't already in the URL (e.g. navigating
+  // from Library, course view, or a direct link rather than from CollectionsPage).
+  React.useEffect(() => {
+    if (collectionTitle) { setResolvedCollectionTitle(collectionTitle); return }
+    if (!contentIdFromUrl) { setResolvedCollectionTitle(null); return }
+    apiClient
+      .get<{ id: string; title: string }>(`/collections/for-content/${contentIdFromUrl}`)
+      .then((res) => { setResolvedCollectionTitle(res.success && res.data ? res.data.title : null) })
+      .catch(() => { setResolvedCollectionTitle(null) })
+  }, [contentIdFromUrl, collectionTitle])
 
   // Open the document when the requested ID changes. We intentionally do NOT include
   // `documents` in the dep array — the list loading should not trigger a second blob fetch.
@@ -234,7 +246,7 @@ export const DocumentViewerPage: React.FC = () => {
           <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-on-surface-variant">
             <span className="inline-flex items-center gap-2">
               <MaterialIcon icon="folder" size="xs" />
-              <span>{collectionTitle ?? (isVi ? 'Tai lieu ca nhan' : 'Personal documents')}</span>
+              <span>{resolvedCollectionTitle ?? (isVi ? 'Tai lieu ca nhan' : 'Personal documents')}</span>
               <span className="text-on-surface-variant/80">| {documents.length} {isVi ? 'tai lieu' : 'documents'}</span>
             </span>
             {docYear && (
@@ -348,6 +360,9 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   const [searchParams] = useSearchParams()
   const deckId = searchParams.get('deckId')
   const contentId = searchParams.get('contentId')
+  // 'owned' is absent when navigating from Library (always owned) or Collections.
+  // Explicitly 'false' only when navigated from Global Search for a non-owned deck.
+  const ownedByMe = searchParams.get('owned') !== 'false'
   const activitySentRef = React.useRef(false)
   const {
     currentCard,
@@ -358,6 +373,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     isLoading,
     isUpdating,
     error,
+    masteryError,
     toggleShuffle,
     toggleFlip,
     nextCard,
@@ -389,7 +405,17 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 
         {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
 
-        {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
+        {!ownedByMe && !isLoading && (
+          <p className="mb-4 text-xs text-on-surface-variant">
+            {isVi
+              ? 'Dang xem bo the cua nguoi khac. Tien trinh hoc khong duoc luu tren bo the goc.'
+              : "Viewing someone else's deck. Mastery progress is not saved on the original."}
+          </p>
+        )}
+
+        {masteryError && (
+          <p className="mb-3 text-xs text-error">{masteryError}</p>
+        )}
 
         {!isLoading && !error && currentCard && (
           <>
@@ -424,9 +450,11 @@ export const InteractiveFlashcardsPage: React.FC = () => {
               <Button variant="secondary" onClick={nextCard} disabled={totalCards <= 1}>
                 {isVi ? 'The tiep theo' : 'Next Card'}
               </Button>
-              <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating}>
-                {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
-              </Button>
+              {ownedByMe && (
+                <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating}>
+                  {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
+                </Button>
+              )}
             </div>
           </>
         )}
@@ -434,9 +462,11 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         {!isLoading && !error && !currentCard && deckId && (
           <div className="space-y-3">
             <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
-            <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating}>
-              {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
-            </Button>
+            {ownedByMe && (
+              <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating}>
+                {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
+              </Button>
+            )}
           </div>
         )}
       </Card>

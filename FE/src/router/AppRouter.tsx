@@ -30,6 +30,7 @@ import {
   VideoWatchPage,
   CollectionsPage,
   BrowsePublicPage,
+  GlobalSearchPage,
 } from '@pages/user'
 import {
   OrgAdminDashboardPage,
@@ -139,6 +140,9 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/user/collections" element={
             <ProtectedRoute><CollectionsPage /></ProtectedRoute>
+          } />
+          <Route path="/user/search" element={
+            <ProtectedRoute><GlobalSearchPage /></ProtectedRoute>
           } />
           <Route path="/user/browse" element={
             <ProtectedRoute><BrowsePublicPage /></ProtectedRoute>
