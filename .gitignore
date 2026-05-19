@@ -62,11 +62,13 @@ A8.txt
 
 
 ## Setup Scripts (explicitly include)
+*.ps1
+*.bat
+
 !setup-environment.ps1
 !setup-environment.bat
 # !dev-tasks.ps1
 # !dev-tasks.bat
 !start-local.ps1
 
-*.ps1
-*.bat
+
