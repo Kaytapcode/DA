@@ -49,6 +49,9 @@ namespace Shared.Contracts.Responses
         Guid ContentId,
         string Title,
         string Status,
-        DateTime CreatedAt
+        DateTime CreatedAt,
+        Guid? CreatedByUserId = null,
+        int? TimeLimit = null,
+        int? PassingScore = null
     );
 }

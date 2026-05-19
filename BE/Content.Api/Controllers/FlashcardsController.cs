@@ -78,10 +78,76 @@ namespace Content.Api.Controllers
                 Status: d.Content?.Status ?? "DRAFT",
                 CardCount: d.Flashcards.Count,
                 MasteredCount: d.Flashcards.Count(f => f.IsMastered),
-                CreatedAt: d.CreatedAt
+                CreatedAt: d.CreatedAt,
+                CreatedByUserId: d.Content?.CreatedByUserId,
+                Theme: d.Theme
             ));
 
             return Ok(new ApiResponse<IEnumerable<FlashcardDeckSummaryDto>>(true, result, null));
+        }
+
+        // GET /api/decks/{deckId} — deck summary including ownership info (for FE owner checks).
+        [HttpGet("/api/decks/{deckId:guid}")]
+        public async Task<IActionResult> GetDeck(Guid deckId, CancellationToken ct)
+        {
+            if (!await VerifyDeckAccessAsync(deckId))
+                return NotFound(new ApiResponse(false, "Deck not found."));
+
+            var deck = await _db.FlashcardDecks
+                .Include(d => d.Content)
+                .Include(d => d.Flashcards)
+                .FirstOrDefaultAsync(d => d.Id == deckId, ct);
+            if (deck == null)
+                return NotFound(new ApiResponse(false, "Deck not found."));
+
+            var summary = new FlashcardDeckSummaryDto(
+                DeckId: deck.Id,
+                ContentId: deck.ContentId,
+                Title: deck.Content?.Title ?? "Untitled Deck",
+                Status: deck.Content?.Status ?? "DRAFT",
+                CardCount: deck.Flashcards.Count,
+                MasteredCount: deck.Flashcards.Count(f => f.IsMastered),
+                CreatedAt: deck.CreatedAt,
+                CreatedByUserId: deck.Content?.CreatedByUserId,
+                Theme: deck.Theme
+            );
+            return Ok(new ApiResponse<FlashcardDeckSummaryDto>(true, summary, null));
+        }
+
+        // PATCH /api/decks/{deckId} — rename deck or update theme. Owner or SysAdmin only.
+        [HttpPatch("/api/decks/{deckId:guid}")]
+        public async Task<IActionResult> UpdateDeck(Guid deckId, [FromBody] UpdateDeckRequestDto request, CancellationToken ct)
+        {
+            if (!await VerifyDeckAccessAsync(deckId))
+                return NotFound(new ApiResponse(false, "Deck not found."));
+            if (!await VerifyDeckWriteAsync(deckId, ct))
+                return StatusCode(403, new ApiResponse(false, "Only the deck owner may edit this deck."));
+
+            var deck = await _db.FlashcardDecks
+                .Include(d => d.Content)
+                .FirstOrDefaultAsync(d => d.Id == deckId, ct);
+            if (deck == null || deck.Content == null)
+                return NotFound(new ApiResponse(false, "Deck not found."));
+
+            if (!string.IsNullOrWhiteSpace(request.Title))
+                deck.Content.Title = request.Title.Trim();
+            if (!string.IsNullOrWhiteSpace(request.Theme))
+                deck.Theme = request.Theme.Trim();
+
+            await _db.SaveChangesAsync(ct);
+
+            var summary = new FlashcardDeckSummaryDto(
+                DeckId: deck.Id,
+                ContentId: deck.ContentId,
+                Title: deck.Content.Title,
+                Status: deck.Content.Status,
+                CardCount: await _db.Flashcards.CountAsync(f => f.DeckId == deck.Id, ct),
+                MasteredCount: 0,
+                CreatedAt: deck.CreatedAt,
+                CreatedByUserId: deck.Content.CreatedByUserId,
+                Theme: deck.Theme
+            );
+            return Ok(new ApiResponse<FlashcardDeckSummaryDto>(true, summary, "Deck updated."));
         }
 
         // POST /api/decks - create new draft deck (any authenticated user; personal/public per spec)
@@ -100,7 +166,9 @@ namespace Content.Api.Controllers
                 Status: deck.Content?.Status ?? "DRAFT",
                 CardCount: 0,
                 MasteredCount: 0,
-                CreatedAt: deck.CreatedAt
+                CreatedAt: deck.CreatedAt,
+                CreatedByUserId: deck.Content?.CreatedByUserId,
+                Theme: deck.Theme
             );
             return Ok(new ApiResponse<FlashcardDeckSummaryDto>(true, summary, "Deck created."));
         }

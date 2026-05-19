@@ -34,6 +34,8 @@ namespace Identity.Api.Controllers
 
             try
             {
+                // Public registration is always Student. Elevated roles (Teacher, OrgAdmin,
+                // SysAdmin) are only assignable by an existing SysAdmin via POST /api/users.
                 var newUser = new UserModel
                 {
                     Username = request.Username,

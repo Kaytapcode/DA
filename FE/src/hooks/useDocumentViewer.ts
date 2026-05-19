@@ -4,6 +4,7 @@ import { apiClient } from '@/utils/apiClient'
 export interface DocumentListItem {
   id: string
   contentId?: string | null
+  createdByUserId?: string | null
   fileName: string
   fileType?: string
   fileSize?: number

@@ -73,10 +73,76 @@ namespace Content.Api.Controllers
                 q.ContentId,
                 q.Content?.Title ?? "Untitled Quiz",
                 q.Content?.Status ?? "DRAFT",
-                q.CreatedAt
+                q.CreatedAt,
+                q.Content?.CreatedByUserId,
+                q.TimeLimit,
+                q.PassingScore
             ));
 
             return Ok(new ApiResponse<IEnumerable<QuizSummaryDto>>(true, result, null));
+        }
+
+        // GET /api/quizzes/{quizId} — quiz summary including ownership info (for FE owner checks).
+        [HttpGet]
+        public async Task<IActionResult> GetQuiz(Guid quizId, CancellationToken ct)
+        {
+            if (!await VerifyQuizAccessAsync(quizId))
+                return NotFound(new ApiResponse(false, "Quiz not found."));
+
+            var quiz = await _db.Quizzes
+                .Include(q => q.Content)
+                .FirstOrDefaultAsync(q => q.Id == quizId, ct);
+            if (quiz == null)
+                return NotFound(new ApiResponse(false, "Quiz not found."));
+
+            var summary = new QuizSummaryDto(
+                quiz.Id,
+                quiz.ContentId,
+                quiz.Content?.Title ?? "Untitled Quiz",
+                quiz.Content?.Status ?? "DRAFT",
+                quiz.CreatedAt,
+                quiz.Content?.CreatedByUserId,
+                quiz.TimeLimit,
+                quiz.PassingScore
+            );
+            return Ok(new ApiResponse<QuizSummaryDto>(true, summary, null));
+        }
+
+        // PATCH /api/quizzes/{quizId} — rename quiz / update settings. Owner or SysAdmin only.
+        [HttpPatch]
+        public async Task<IActionResult> UpdateQuiz(Guid quizId, [FromBody] UpdateQuizRequestDto request, CancellationToken ct)
+        {
+            if (!await VerifyQuizAccessAsync(quizId))
+                return NotFound(new ApiResponse(false, "Quiz not found."));
+            if (!await VerifyQuizWriteAsync(quizId))
+                return StatusCode(403, new ApiResponse(false, "Only the quiz owner may edit this quiz."));
+
+            var quiz = await _db.Quizzes
+                .Include(q => q.Content)
+                .FirstOrDefaultAsync(q => q.Id == quizId, ct);
+            if (quiz == null || quiz.Content == null)
+                return NotFound(new ApiResponse(false, "Quiz not found."));
+
+            if (!string.IsNullOrWhiteSpace(request.Title))
+                quiz.Content.Title = request.Title.Trim();
+            if (request.TimeLimit.HasValue)
+                quiz.TimeLimit = request.TimeLimit.Value <= 0 ? null : request.TimeLimit.Value;
+            if (request.PassingScore.HasValue)
+                quiz.PassingScore = request.PassingScore.Value;
+
+            await _db.SaveChangesAsync(ct);
+
+            var summary = new QuizSummaryDto(
+                quiz.Id,
+                quiz.ContentId,
+                quiz.Content.Title,
+                quiz.Content.Status,
+                quiz.CreatedAt,
+                quiz.Content.CreatedByUserId,
+                quiz.TimeLimit,
+                quiz.PassingScore
+            );
+            return Ok(new ApiResponse<QuizSummaryDto>(true, summary, "Quiz updated."));
         }
 
         // POST /api/quizzes - create new draft quiz (any authenticated user; personal/public per spec)
@@ -93,7 +159,10 @@ namespace Content.Api.Controllers
                 quiz.ContentId,
                 quiz.Content?.Title ?? request.Title,
                 quiz.Content?.Status ?? "DRAFT",
-                quiz.CreatedAt
+                quiz.CreatedAt,
+                quiz.Content?.CreatedByUserId,
+                quiz.TimeLimit,
+                quiz.PassingScore
             );
             return Ok(new ApiResponse<QuizSummaryDto>(true, summary, "Quiz created."));
         }

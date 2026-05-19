@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Content.Api.Data;
 using Content.Api.Models;
 using Content.Api.Services;
+using Shared.Contracts.Requests;
 using Shared.Contracts.Responses;
 
 namespace Content.Api.Controllers
@@ -183,6 +185,44 @@ namespace Content.Api.Controllers
             // Content-Disposition: attachment, which we explicitly do NOT want here.
             Response.Headers.ContentDisposition = $"inline; filename=\"{Uri.EscapeDataString(doc.FileName)}\"";
             return File(stream, contentType);
+        }
+
+        // PATCH /api/documents/{docId} — rename a document. Owner or SysAdmin only.
+        // Updates DocumentModel.FileName and the linked ContentModel.Title so the rename
+        // is reflected in learning history and any future doc-list views.
+        [HttpPatch("{docId:guid}")]
+        public async Task<IActionResult> RenameDocument(Guid docId, [FromBody] UpdateDocumentRequestDto request, CancellationToken ct)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            if (string.IsNullOrWhiteSpace(request.FileName))
+                return BadRequest(new ApiResponse(false, "FileName is required."));
+
+            var doc = await _repo.GetByIdAsync(docId, ct);
+            if (doc == null)
+                return NotFound(new ApiResponse(false, "Document not found."));
+
+            if (doc.CreatedByUserId != userId && !_orgCtx.IsSysAdmin())
+                return StatusCode(403, new ApiResponse(false, "Only the document owner may rename it."));
+
+            // Preserve the original extension when renaming so the viewer/MIME mapping still works.
+            var newName = request.FileName.Trim();
+            var oldExt = System.IO.Path.GetExtension(doc.FileName);
+            if (!string.IsNullOrEmpty(oldExt) && !newName.EndsWith(oldExt, StringComparison.OrdinalIgnoreCase))
+                newName = System.IO.Path.GetFileNameWithoutExtension(newName) + oldExt;
+
+            doc.FileName = newName;
+
+            if (doc.ContentId.HasValue)
+            {
+                var content = await _db.Contents.FirstOrDefaultAsync(c => c.Id == doc.ContentId.Value, ct);
+                if (content != null) content.Title = newName;
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return Ok(new ApiResponse<DocumentDto>(true, ToDto(doc), "Document renamed."));
         }
 
         // DELETE /api/documents/{docId}

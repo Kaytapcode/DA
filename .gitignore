@@ -8,6 +8,8 @@ obj/
 *.cache
 *.log
 
+free-react-tailwind-admin-dashboard-main/
+
 ## User-specific files
 *.user
 *.suo

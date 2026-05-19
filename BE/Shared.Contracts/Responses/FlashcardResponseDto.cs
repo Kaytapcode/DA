@@ -29,6 +29,8 @@ namespace Shared.Contracts.Responses
         string Status,
         int CardCount,
         int MasteredCount,
-        DateTime CreatedAt
+        DateTime CreatedAt,
+        Guid? CreatedByUserId = null,
+        string? Theme = null
     );
 }

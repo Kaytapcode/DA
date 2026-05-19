@@ -13,6 +13,7 @@ import {
 import {
   CourseListPage,
   UserDashboardPage,
+  UserAnalyticsDashboardPage,
   UserProfilePage,
   UserHomePageLightPage,
   UserLearningDashboardPage,
@@ -84,7 +85,7 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/user/dashboard" element={
             <ProtectedRoute>
-              <UserLearningDashboardPage />
+              <UserAnalyticsDashboardPage />
             </ProtectedRoute>
           } />
           <Route path="/user/dashboard-legacy" element={
