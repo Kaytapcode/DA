@@ -17,6 +17,16 @@ interface VideoDetail {
 	description?: string | null
 	thumbnailUrl?: string | null
 	embeddableUrl: string
+	createdByUserId?: string | null
+}
+
+const getCurrentUserId = (): string | null => {
+	try {
+		const raw = localStorage.getItem('auth_user')
+		if (!raw) return null
+		const parsed = JSON.parse(raw) as { id?: string }
+		return parsed.id ?? null
+	} catch { return null }
 }
 
 export const VideoWatchPage: React.FC = () => {
@@ -28,7 +38,29 @@ export const VideoWatchPage: React.FC = () => {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
+	// Owner-only rename state.
+	const currentUserId = getCurrentUserId()
+	const [isEditingTitle, setIsEditingTitle] = useState(false)
+	const [titleDraft, setTitleDraft] = useState('')
+	const [isSavingTitle, setIsSavingTitle] = useState(false)
+	const [renameError, setRenameError] = useState<string | null>(null)
+
 	const t = (vi: string, en: string) => (isVi ? vi : en)
+
+	const isOwner = !!video?.createdByUserId && video.createdByUserId === currentUserId
+
+	const saveRename = async () => {
+		if (!videoId || !titleDraft.trim()) return
+		setIsSavingTitle(true); setRenameError(null)
+		try {
+			const res = await apiClient.patch<VideoDetail>(`/videos/${videoId}`, { title: titleDraft.trim() })
+			if (!res.success) throw new Error(res.message || 'Rename failed')
+			if (res.data) setVideo(res.data)
+			setIsEditingTitle(false)
+		} catch (err: any) {
+			setRenameError(err?.message || err?.data?.message || (isVi ? 'Khong the doi ten' : 'Rename failed'))
+		} finally { setIsSavingTitle(false) }
+	}
 
 	const fetchVideo = useCallback(async () => {
 		if (!videoId) return
@@ -59,10 +91,46 @@ export const VideoWatchPage: React.FC = () => {
 		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[1000px] space-y-6">
-					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="text-3xl font-black text-[#111b2d]">{video?.title || t('Xem video', 'Watch video')}</h1>
-							{video?.description && <p className="mt-1 text-sm text-[#60708a]">{video.description}</p>}
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<div className="flex-1 min-w-[280px]">
+							{isEditingTitle ? (
+								<div className="flex flex-wrap items-center gap-2">
+									<input
+										type="text"
+										value={titleDraft}
+										autoFocus
+										onChange={(e) => setTitleDraft(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === 'Enter') void saveRename()
+											if (e.key === 'Escape') { setIsEditingTitle(false); setTitleDraft(video?.title || '') }
+										}}
+										className="flex-1 min-w-[260px] rounded-lg border border-[#d7dfeb] bg-white px-3 py-2 text-2xl font-black text-[#111b2d] focus:border-[#1463ff] focus:outline-none"
+									/>
+									<Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()}>
+										{isSavingTitle ? t('Dang luu...', 'Saving...') : t('Luu', 'Save')}
+									</Button>
+									<Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(video?.title || ''); setRenameError(null) }} disabled={isSavingTitle}>
+										{t('Huy', 'Cancel')}
+									</Button>
+								</div>
+							) : (
+								<div className="flex flex-wrap items-center gap-2">
+									<h1 className="text-3xl font-black text-[#111b2d]">{video?.title || t('Xem video', 'Watch video')}</h1>
+									{isOwner && video && (
+										<button
+											type="button"
+											onClick={() => { setTitleDraft(video.title || ''); setIsEditingTitle(true) }}
+											className="inline-flex items-center gap-1 rounded-full border border-[#d7dfeb] px-2.5 py-1 text-xs text-[#60708a] hover:bg-white"
+											title={t('Doi ten video', 'Rename video')}
+										>
+											<MaterialIcon icon="edit" size="xs" />
+											<span>{t('Doi ten', 'Rename')}</span>
+										</button>
+									)}
+								</div>
+							)}
+							{video?.description && !isEditingTitle && <p className="mt-1 text-sm text-[#60708a]">{video.description}</p>}
+							{renameError && <p className="mt-1 text-sm text-red-600">{renameError}</p>}
 						</div>
 						<Button variant="ghost" onClick={() => navigate('/user/library')}>
 							<MaterialIcon icon="arrow_back" size="xs" />

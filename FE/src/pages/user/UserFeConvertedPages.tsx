@@ -484,16 +484,21 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     refresh: refreshDeck,
   } = useFlashcard(deckId)
 
-  // Owner-edit state. We fetch the deck summary (for title + createdByUserId) and an
-  // unfiltered card list (the hook returns only unmastered cards for study mode).
+  // Owner-edit state. Pattern mirrors UserQuizInterfacePage: pre-load editable items
+  // (existing cards get serverId; new draft cards don't) and batch-save on a single Save Deck.
   const currentUserId = getCurrentUserId()
   const [deckInfo, setDeckInfo] = useState<DeckSummaryInfo | null>(null)
   const [allCards, setAllCards] = useState<AllFlashcardItem[]>([])
   const [editMode, setEditMode] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
-  const [cardDraft, setCardDraft] = useState<{ front: string; back: string }>({ front: '', back: '' })
   const [editBusy, setEditBusy] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [editSuccess, setEditSuccess] = useState<string | null>(null)
+
+  interface CardEditItem { serverId?: string; frontText: string; backText: string }
+  const blankCard = (): CardEditItem => ({ frontText: '', backText: '' })
+  const [editCards, setEditCards] = useState<CardEditItem[]>([])
+  const [removedCardIds, setRemovedCardIds] = useState<string[]>([])
 
   const isOwner = !!deckInfo?.createdByUserId && deckInfo.createdByUserId === currentUserId && ownedByMe
 
@@ -522,50 +527,75 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     if (deckInfo?.title) setTitleDraft(deckInfo.title)
   }, [deckInfo?.title])
 
-  const saveTitle = async () => {
-    if (!deckId || !titleDraft.trim()) return
-    setEditBusy(true); setEditError(null)
-    try {
-      const res = await apiClient.patch<DeckSummaryInfo>(`/decks/${deckId}`, { title: titleDraft.trim() })
-      if (!res.success) throw new Error(res.message || 'Save failed')
-      if (res.data) setDeckInfo(res.data)
-    } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the luu' : 'Save failed'))
-    } finally { setEditBusy(false) }
-  }
+  // Seed editable form whenever edit mode is entered (or server cards refresh). Hard-resets
+  // any in-progress unsaved edits — same behavior as the quiz editor.
+  React.useEffect(() => {
+    if (!editMode) return
+    setEditCards(allCards
+      .slice()
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((c) => ({ serverId: c.id, frontText: c.frontText, backText: c.backText }))
+    )
+    setRemovedCardIds([])
+    setEditError(null)
+    setEditSuccess(null)
+  }, [editMode, allCards])
 
-  const addCard = async () => {
-    if (!deckId || !cardDraft.front.trim() || !cardDraft.back.trim()) {
-      setEditError(isVi ? 'Mat truoc va mat sau khong duoc trong.' : 'Front and back are required.')
-      return
+  const updateCard = (idx: number, patch: Partial<CardEditItem>) =>
+    setEditCards((prev) => prev.map((c, i) => (i === idx ? { ...c, ...patch } : c)))
+
+  const removeCardItem = (idx: number) =>
+    setEditCards((prev) => {
+      const target = prev[idx]
+      if (target?.serverId) setRemovedCardIds((r) => [...r, target.serverId!])
+      return prev.filter((_, i) => i !== idx)
+    })
+
+  const addCardItem = () => setEditCards((prev) => [...prev, blankCard()])
+
+  const validateDeckEdit = (): string | null => {
+    if (!titleDraft.trim()) return isVi ? 'Tieu de bo the khong duoc trong.' : 'Deck title is required.'
+    for (let i = 0; i < editCards.length; i++) {
+      const c = editCards[i]
+      if (!c.frontText.trim() || !c.backText.trim())
+        return isVi ? `The #${i + 1}: thieu noi dung mat truoc/sau.` : `Card #${i + 1}: front and back are required.`
     }
-    setEditBusy(true); setEditError(null)
-    try {
-      const res = await apiClient.post(`/decks/${deckId}/flashcards`, {
-        frontText: cardDraft.front.trim(),
-        backText: cardDraft.back.trim(),
-        orderIndex: 0,
-      })
-      if (!res.success) throw new Error(res.message || 'Add failed')
-      setCardDraft({ front: '', back: '' })
-      await fetchAllCards()
-      await refreshDeck()
-    } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the them the' : 'Add failed'))
-    } finally { setEditBusy(false) }
+    return null
   }
 
-  const deleteCard = async (cardId: string) => {
+  // Three-pass save: PATCH title (if changed) → PUT existing / POST new → DELETE removed.
+  const saveDeck = async () => {
     if (!deckId) return
-    if (!confirm(isVi ? 'Xoa the nay?' : 'Delete this card?')) return
-    setEditBusy(true); setEditError(null)
+    const validationError = validateDeckEdit()
+    if (validationError) { setEditError(validationError); return }
+    setEditBusy(true); setEditError(null); setEditSuccess(null)
     try {
-      const res = await apiClient.delete(`/decks/${deckId}/flashcards/${cardId}`)
-      if (!res.success) throw new Error(res.message || 'Delete failed')
+      if (titleDraft.trim() !== deckInfo?.title) {
+        const tRes = await apiClient.patch<DeckSummaryInfo>(`/decks/${deckId}`, { title: titleDraft.trim() })
+        if (!tRes.success) throw new Error(tRes.message || 'Save title failed')
+        if (tRes.data) setDeckInfo(tRes.data)
+      }
+
+      for (let i = 0; i < editCards.length; i++) {
+        const c = editCards[i]
+        const payload = { frontText: c.frontText.trim(), backText: c.backText.trim() }
+        const res = c.serverId
+          ? await apiClient.put(`/decks/${deckId}/flashcards/${c.serverId}`, payload)
+          : await apiClient.post(`/decks/${deckId}/flashcards`, { ...payload, orderIndex: i })
+        if (!res.success) throw new Error(res.message || `Failed at card ${i + 1}`)
+      }
+
+      for (const id of removedCardIds) {
+        const res = await apiClient.delete(`/decks/${deckId}/flashcards/${id}`)
+        if (!res.success) throw new Error(res.message || 'Delete failed')
+      }
+
+      setEditSuccess(isVi ? 'Da luu bo the.' : 'Deck saved.')
+      setRemovedCardIds([])
       await fetchAllCards()
       await refreshDeck()
     } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the xoa' : 'Delete failed'))
+      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the luu bo the' : 'Save failed'))
     } finally { setEditBusy(false) }
   }
 
@@ -603,88 +633,101 @@ export const InteractiveFlashcardsPage: React.FC = () => {
       )}
 
       {editMode && isOwner && (
-        <Card className="mb-4 p-6 space-y-5">
-          {editError && <p className="text-sm text-error">{editError}</p>}
-
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-on-surface">{isVi ? 'Tieu de bo the' : 'Deck Title'}</label>
-            <div className="flex gap-2">
+        <div className="space-y-4">
+          <Card className="p-6">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-on-surface">
+                {isVi ? 'Tieu de bo the' : 'Deck Title'} <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
-                className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
-              <Button size="sm" onClick={() => void saveTitle()} disabled={editBusy || !titleDraft.trim() || titleDraft.trim() === deckInfo?.title}>
-                {isVi ? 'Luu tieu de' : 'Save Title'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-on-surface">{isVi ? 'Them the moi' : 'Add New Card'}</h3>
-            <div className="grid gap-2 md:grid-cols-2">
-              <textarea
-                value={cardDraft.front}
-                onChange={(e) => setCardDraft({ ...cardDraft, front: e.target.value })}
-                rows={2}
-                placeholder={isVi ? 'Mat truoc (tu khoa)' : 'Front (keyword)'}
-                className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
-              <textarea
-                value={cardDraft.back}
-                onChange={(e) => setCardDraft({ ...cardDraft, back: e.target.value })}
-                rows={2}
-                placeholder={isVi ? 'Mat sau (dinh nghia)' : 'Back (definition)'}
+                placeholder={isVi ? 'Vi du: Tu vung Tieng Anh - Du lich' : 'e.g., English Vocab - Travel'}
                 className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
             </div>
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => void addCard()} disabled={editBusy}>
-                <MaterialIcon icon="add" size="xs" className="mr-1" />
-                {isVi ? 'Them the' : 'Add Card'}
-              </Button>
-            </div>
-          </div>
+          </Card>
 
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-on-surface">
-              {isVi ? 'Cac the trong bo' : 'Cards in Deck'} ({allCards.length})
-            </h3>
-            {allCards.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-outline-variant p-4 text-center text-xs text-on-surface-variant">
-                {isVi ? 'Chua co the nao.' : 'No cards yet.'}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {allCards.map((c, idx) => (
-                  <div key={c.id} className="grid grid-cols-[40px_1fr_1fr_auto] items-center gap-3 rounded-lg border border-outline-variant p-3">
-                    <span className="text-xs font-bold text-on-surface-variant">#{idx + 1}</span>
-                    <div>
-                      <p className="text-xs text-on-surface-variant">{isVi ? 'Truoc' : 'Front'}</p>
-                      <p className="text-sm text-on-surface">{c.frontText}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-on-surface-variant">{isVi ? 'Sau' : 'Back'}</p>
-                      <p className="text-sm text-on-surface">{c.backText}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void deleteCard(c.id)}
-                      disabled={editBusy}
-                      className="text-on-surface-variant hover:text-error"
-                      title={isVi ? 'Xoa the' : 'Delete card'}
-                    >
-                      <MaterialIcon icon="delete" size="xs" />
-                    </button>
+          {editError && (
+            <Card className="border border-red-200 bg-red-50">
+              <p className="text-sm text-red-700">{editError}</p>
+            </Card>
+          )}
+          {editSuccess && (
+            <Card className="border border-green-200 bg-green-50">
+              <p className="text-sm text-green-700">{editSuccess}</p>
+            </Card>
+          )}
+
+          {/* Per-card editable forms — text on both sides is editable inline. */}
+          {editCards.map((c, idx) => (
+            <Card key={c.serverId ?? `new-${idx}`}>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-on-surface">
+                    {isVi ? 'The' : 'Card'} #{idx + 1}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => removeCardItem(idx)}
+                    className="text-xs text-red-600 hover:underline"
+                  >
+                    <MaterialIcon icon="delete" size="xs" />
+                    <span className="ml-1">{isVi ? 'Xoa' : 'Remove'}</span>
+                  </button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
+                      {isVi ? 'Mat truoc (tu khoa)' : 'Front (keyword)'}
+                    </label>
+                    <textarea
+                      value={c.frontText}
+                      onChange={(e) => updateCard(idx, { frontText: e.target.value })}
+                      rows={3}
+                      placeholder={isVi ? 'Tu hoac khai niem' : 'Word or concept'}
+                      className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    />
                   </div>
-                ))}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
+                      {isVi ? 'Mat sau (dinh nghia)' : 'Back (definition)'}
+                    </label>
+                    <textarea
+                      value={c.backText}
+                      onChange={(e) => updateCard(idx, { backText: e.target.value })}
+                      rows={3}
+                      placeholder={isVi ? 'Dinh nghia hoac mo ta' : 'Definition or description'}
+                      className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
               </div>
-            )}
+            </Card>
+          ))}
+
+          {editCards.length === 0 && (
+            <Card className="border border-dashed border-outline-variant">
+              <p className="py-3 text-center text-sm text-on-surface-variant">
+                {isVi ? 'Chua co the nao. Bam "Them the" de bat dau.' : 'No cards yet. Click "Add Card" to start.'}
+              </p>
+            </Card>
+          )}
+
+          <div className="flex justify-between">
+            <Button variant="secondary" onClick={addCardItem} disabled={editBusy}>
+              <MaterialIcon icon="add" size="xs" />
+              <span className="ml-1">{isVi ? 'Them the' : 'Add Card'}</span>
+            </Button>
+            <Button onClick={() => void saveDeck()} disabled={editBusy}>
+              {editBusy ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu bo the' : 'Save Deck')}
+            </Button>
           </div>
-        </Card>
+        </div>
       )}
 
+      {editMode && isOwner ? null : (
       <Card className="p-10 text-center">
         {!deckId && <p className="text-sm text-on-surface-variant">{isVi ? 'Them ?deckId=... vao URL de hoc bo the.' : 'Add ?deckId=... to URL to study a deck.'}</p>}
 
@@ -758,6 +801,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           </div>
         )}
       </Card>
+      )}
     </UserShell>
   )
 }
@@ -1384,7 +1428,7 @@ export const UserQuizInterfacePage: React.FC = () => {
   } = useQuiz(quizId)
 
   // Owner-edit state. The owner sees an "Edit Quiz" toggle that swaps the study UI for a
-  // management view (title edit + add question + delete questions). Non-owners never see this.
+  // QuizCreatePage-style editor pre-populated with existing questions. Non-owners never see this.
   const currentUserId = getCurrentUserId()
   const [quizInfo, setQuizInfo] = useState<QuizSummaryInfo | null>(null)
   const [allQuestions, setAllQuestions] = useState<QuizQuestionWithCorrect[]>([])
@@ -1392,11 +1436,19 @@ export const UserQuizInterfacePage: React.FC = () => {
   const [titleDraft, setTitleDraft] = useState('')
   const [editBusy, setEditBusy] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [editSuccess, setEditSuccess] = useState<string | null>(null)
 
-  // Draft for a new question: a single editable form (text + 4 options + correct radio).
-  interface DraftOption { text: string; isCorrect: boolean }
-  interface QDraft { questionText: string; explanation: string; options: DraftOption[] }
-  const blankDraft = (): QDraft => ({
+  // Editable question list — items with `serverId` are existing questions (PUT on save);
+  // items without are new drafts (POST on save). Removed existing IDs are tracked separately
+  // for batch DELETE at save time.
+  interface QEditOption { text: string; isCorrect: boolean }
+  interface QEditItem {
+    serverId?: string
+    questionText: string
+    explanation: string
+    options: QEditOption[]
+  }
+  const blankQuestion = (): QEditItem => ({
     questionText: '',
     explanation: '',
     options: [
@@ -1406,7 +1458,8 @@ export const UserQuizInterfacePage: React.FC = () => {
       { text: '', isCorrect: false },
     ],
   })
-  const [qDraft, setQDraft] = useState<QDraft>(blankDraft())
+  const [editQuestions, setEditQuestions] = useState<QEditItem[]>([])
+  const [removedIds, setRemovedIds] = useState<string[]>([])
 
   const isOwner = !!quizInfo?.createdByUserId && quizInfo.createdByUserId === currentUserId
 
@@ -1435,61 +1488,123 @@ export const UserQuizInterfacePage: React.FC = () => {
     if (quizInfo?.title) setTitleDraft(quizInfo.title)
   }, [quizInfo?.title])
 
-  const saveTitle = async () => {
-    if (!quizId || !titleDraft.trim()) return
-    setEditBusy(true); setEditError(null)
-    try {
-      const res = await apiClient.patch<QuizSummaryInfo>(`/quizzes/${quizId}`, { title: titleDraft.trim() })
-      if (!res.success) throw new Error(res.message || 'Save failed')
-      if (res.data) setQuizInfo(res.data)
-    } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the luu' : 'Save failed'))
-    } finally { setEditBusy(false) }
-  }
+  // When entering edit mode (or when the loaded server question list changes), seed the
+  // editable form from the canonical server data. Drops any unsaved in-progress edits
+  // intentionally — re-entering edit mode is a hard reset.
+  React.useEffect(() => {
+    if (!editMode) return
+    setEditQuestions(allQuestions.map((q) => ({
+      serverId: q.id,
+      questionText: q.questionText,
+      explanation: q.explanation ?? '',
+      options: q.options
+        .slice()
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((o) => ({ text: o.optionText, isCorrect: o.isCorrect })),
+    })))
+    setRemovedIds([])
+    setEditError(null)
+    setEditSuccess(null)
+  }, [editMode, allQuestions])
 
-  const addQuestion = async () => {
-    if (!quizId) return
-    if (!qDraft.questionText.trim()) {
-      setEditError(isVi ? 'Vui long nhap noi dung cau hoi.' : 'Question text is required.'); return
-    }
-    if (qDraft.options.some((o) => !o.text.trim())) {
-      setEditError(isVi ? 'Tat ca lua chon phai co noi dung.' : 'All options must have text.'); return
-    }
-    if (!qDraft.options.some((o) => o.isCorrect)) {
-      setEditError(isVi ? 'Phai chon mot dap an dung.' : 'Pick a correct answer.'); return
-    }
-    setEditBusy(true); setEditError(null)
-    try {
-      const res = await apiClient.post(`/quizzes/${quizId}/questions`, {
-        questionText: qDraft.questionText.trim(),
-        explanation: qDraft.explanation.trim() || null,
-        orderIndex: allQuestions.length,
-        options: qDraft.options.map((o, i) => ({
-          optionText: o.text.trim(),
-          isCorrect: o.isCorrect,
-          orderIndex: i,
-        })),
+  // ---- Editable-list mutation helpers (mirror QuizCreatePage manual-mode shape). ----
+  const updateQ = (idx: number, patch: Partial<QEditItem>) =>
+    setEditQuestions((prev) => prev.map((q, i) => (i === idx ? { ...q, ...patch } : q)))
+
+  const updateOption = (qIdx: number, oIdx: number, patch: Partial<QEditOption>) =>
+    setEditQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q
+        return { ...q, options: q.options.map((o, j) => (j === oIdx ? { ...o, ...patch } : o)) }
       })
-      if (!res.success) throw new Error(res.message || 'Add failed')
-      setQDraft(blankDraft())
-      await fetchAllQuestions()
-      await reloadQuestions()
-    } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the them cau hoi' : 'Add failed'))
-    } finally { setEditBusy(false) }
+    )
+
+  const setCorrect = (qIdx: number, oIdx: number) =>
+    setEditQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIdx) return q
+        return { ...q, options: q.options.map((o, j) => ({ ...o, isCorrect: j === oIdx })) }
+      })
+    )
+
+  const addOption = (qIdx: number) =>
+    setEditQuestions((prev) => prev.map((q, i) =>
+      i === qIdx ? { ...q, options: [...q.options, { text: '', isCorrect: false }] } : q
+    ))
+
+  const removeOption = (qIdx: number, oIdx: number) =>
+    setEditQuestions((prev) => prev.map((q, i) =>
+      i === qIdx ? { ...q, options: q.options.filter((_, j) => j !== oIdx) } : q
+    ))
+
+  const addQuestionItem = () => setEditQuestions((prev) => [...prev, blankQuestion()])
+
+  // Removing an existing (server-backed) question records its id for DELETE at save time.
+  // Removing a new (unsaved) draft is purely local.
+  const removeQuestionItem = (idx: number) =>
+    setEditQuestions((prev) => {
+      const target = prev[idx]
+      if (target?.serverId) setRemovedIds((r) => [...r, target.serverId!])
+      return prev.filter((_, i) => i !== idx)
+    })
+
+  const validateEdit = (): string | null => {
+    if (!titleDraft.trim()) return isVi ? 'Vui long nhap tieu de quiz.' : 'Quiz title is required.'
+    if (editQuestions.length === 0) return isVi ? 'Can it nhat 1 cau hoi.' : 'At least one question is required.'
+    for (let i = 0; i < editQuestions.length; i++) {
+      const q = editQuestions[i]
+      if (!q.questionText.trim()) return isVi ? `Cau ${i + 1}: thieu noi dung.` : `Question ${i + 1}: text required.`
+      if (q.options.length < 2) return isVi ? `Cau ${i + 1}: can it nhat 2 lua chon.` : `Question ${i + 1}: at least 2 options.`
+      if (q.options.some((o) => !o.text.trim())) return isVi ? `Cau ${i + 1}: co lua chon bo trong.` : `Question ${i + 1}: empty option text.`
+      if (!q.options.some((o) => o.isCorrect)) return isVi ? `Cau ${i + 1}: chua chon dap an dung.` : `Question ${i + 1}: pick a correct answer.`
+    }
+    return null
   }
 
-  const deleteQuestion = async (questionId: string) => {
+  // Saves the whole quiz in three passes: title PATCH, then per-question PUT (existing) or
+  // POST (new), then DELETE for every question removed during this edit session. Order
+  // matters only loosely — deletes happen last so a slow request doesn't surface a 404 race.
+  const saveQuiz = async () => {
     if (!quizId) return
-    if (!confirm(isVi ? 'Xoa cau hoi nay?' : 'Delete this question?')) return
-    setEditBusy(true); setEditError(null)
+    const validationError = validateEdit()
+    if (validationError) { setEditError(validationError); return }
+    setEditBusy(true); setEditError(null); setEditSuccess(null)
     try {
-      const res = await apiClient.delete(`/quizzes/${quizId}/questions/${questionId}`)
-      if (!res.success) throw new Error(res.message || 'Delete failed')
+      if (titleDraft.trim() !== quizInfo?.title) {
+        const tRes = await apiClient.patch<QuizSummaryInfo>(`/quizzes/${quizId}`, { title: titleDraft.trim() })
+        if (!tRes.success) throw new Error(tRes.message || 'Save title failed')
+        if (tRes.data) setQuizInfo(tRes.data)
+      }
+
+      for (let i = 0; i < editQuestions.length; i++) {
+        const q = editQuestions[i]
+        const payload = {
+          questionText: q.questionText.trim(),
+          explanation: q.explanation.trim() || null,
+          orderIndex: i,
+          options: q.options.map((o, j) => ({
+            optionText: o.text.trim(),
+            isCorrect: o.isCorrect,
+            orderIndex: j,
+          })),
+        }
+        const res = q.serverId
+          ? await apiClient.put(`/quizzes/${quizId}/questions/${q.serverId}`, payload)
+          : await apiClient.post(`/quizzes/${quizId}/questions`, payload)
+        if (!res.success) throw new Error(res.message || `Failed at question ${i + 1}`)
+      }
+
+      for (const id of removedIds) {
+        const res = await apiClient.delete(`/quizzes/${quizId}/questions/${id}`)
+        if (!res.success) throw new Error(res.message || 'Delete failed')
+      }
+
+      setEditSuccess(isVi ? 'Da luu quiz.' : 'Quiz saved.')
+      setRemovedIds([])
       await fetchAllQuestions()
       await reloadQuestions()
     } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the xoa' : 'Delete failed'))
+      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the luu quiz' : 'Save failed'))
     } finally { setEditBusy(false) }
   }
 
@@ -1547,115 +1662,143 @@ export const UserQuizInterfacePage: React.FC = () => {
       )}
 
       {editMode && isOwner && (
-        <Card className="mb-4 p-6 space-y-6">
-          {editError && <p className="text-sm text-error">{editError}</p>}
-
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-on-surface">{isVi ? 'Tieu de quiz' : 'Quiz Title'}</label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={titleDraft}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              />
-              <Button size="sm" onClick={() => void saveTitle()} disabled={editBusy || !titleDraft.trim() || titleDraft.trim() === quizInfo?.title}>
-                {isVi ? 'Luu tieu de' : 'Save Title'}
-              </Button>
+        <div className="space-y-4">
+          {/* Title + meta */}
+          <Card className="p-6">
+            <div className="grid gap-4 md:grid-cols-[1fr_180px]">
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-on-surface">
+                  {isVi ? 'Tieu de quiz' : 'Quiz Title'} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  placeholder={isVi ? 'Vi du: He Mat Troi' : 'e.g., Solar System Basics'}
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-semibold text-on-surface">
+                  {isVi ? 'Gioi han thoi gian (phut)' : 'Time Limit (min)'}
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={quizInfo?.timeLimit ?? ''}
+                  disabled
+                  className="w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-sm text-on-surface-variant"
+                  placeholder={isVi ? 'Khong gioi han' : 'Unlimited'}
+                />
+              </div>
             </div>
-          </div>
+          </Card>
 
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-on-surface">{isVi ? 'Them cau hoi moi' : 'Add New Question'}</h3>
-            <textarea
-              value={qDraft.questionText}
-              onChange={(e) => setQDraft({ ...qDraft, questionText: e.target.value })}
-              rows={2}
-              placeholder={isVi ? 'Noi dung cau hoi...' : 'Question text...'}
-              className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
-            />
-            <div className="space-y-2">
-              {qDraft.options.map((opt, oIdx) => (
-                <div key={oIdx} className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="add-correct"
-                    checked={opt.isCorrect}
-                    onChange={() => setQDraft({
-                      ...qDraft,
-                      options: qDraft.options.map((o, j) => ({ ...o, isCorrect: j === oIdx })),
-                    })}
-                    className="h-4 w-4 cursor-pointer"
-                    title={isVi ? 'Danh dau dap an dung' : 'Mark as correct'}
-                  />
+          {editError && (
+            <Card className="border border-red-200 bg-red-50">
+              <p className="text-sm text-red-700">{editError}</p>
+            </Card>
+          )}
+          {editSuccess && (
+            <Card className="border border-green-200 bg-green-50">
+              <p className="text-sm text-green-700">{editSuccess}</p>
+            </Card>
+          )}
+
+          {/* Per-question editable cards — mirrors QuizCreatePage manual mode. */}
+          {editQuestions.map((q, qIdx) => (
+            <Card key={q.serverId ?? `new-${qIdx}`}>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-on-surface">
+                    {isVi ? 'Cau hoi' : 'Question'} {qIdx + 1}
+                  </h3>
+                  {editQuestions.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeQuestionItem(qIdx)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      <MaterialIcon icon="delete" size="xs" />
+                      <span className="ml-1">{isVi ? 'Xoa' : 'Remove'}</span>
+                    </button>
+                  )}
+                </div>
+
+                <textarea
+                  value={q.questionText}
+                  onChange={(e) => updateQ(qIdx, { questionText: e.target.value })}
+                  placeholder={isVi ? 'Noi dung cau hoi...' : 'Question text...'}
+                  rows={2}
+                  className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                />
+
+                <div className="space-y-2">
+                  {q.options.map((opt, oIdx) => (
+                    <div key={oIdx} className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name={`edit-correct-${qIdx}`}
+                        checked={opt.isCorrect}
+                        onChange={() => setCorrect(qIdx, oIdx)}
+                        className="h-4 w-4 cursor-pointer"
+                        title={isVi ? 'Danh dau dap an dung' : 'Mark as correct answer'}
+                      />
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => updateOption(qIdx, oIdx, { text: e.target.value })}
+                        placeholder={isVi ? `Lua chon ${oIdx + 1}` : `Option ${oIdx + 1}`}
+                        className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                      />
+                      {q.options.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeOption(qIdx, oIdx)}
+                          className="text-on-surface-variant hover:text-error"
+                        >
+                          <MaterialIcon icon="close" size="xs" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {q.options.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={() => addOption(qIdx)}
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
+                      + {isVi ? 'Them lua chon' : 'Add option'}
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
+                    {isVi ? 'Giai thich (tuy chon)' : 'Explanation (optional)'}
+                  </label>
                   <input
                     type="text"
-                    value={opt.text}
-                    onChange={(e) => setQDraft({
-                      ...qDraft,
-                      options: qDraft.options.map((o, j) => j === oIdx ? { ...o, text: e.target.value } : o),
-                    })}
-                    placeholder={isVi ? `Lua chon ${oIdx + 1}` : `Option ${oIdx + 1}`}
-                    className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+                    value={q.explanation}
+                    onChange={(e) => updateQ(qIdx, { explanation: e.target.value })}
+                    placeholder={isVi ? 'Giai thich vi sao dap an dung...' : 'Why this answer is correct...'}
+                    className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
-              ))}
-            </div>
-            <input
-              type="text"
-              value={qDraft.explanation}
-              onChange={(e) => setQDraft({ ...qDraft, explanation: e.target.value })}
-              placeholder={isVi ? 'Giai thich (tuy chon)' : 'Explanation (optional)'}
-              className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
-            />
-            <div className="flex justify-end">
-              <Button size="sm" onClick={() => void addQuestion()} disabled={editBusy}>
-                <MaterialIcon icon="add" size="xs" className="mr-1" />
-                {isVi ? 'Them cau hoi' : 'Add Question'}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-on-surface">
-              {isVi ? 'Cau hoi hien co' : 'Existing Questions'} ({allQuestions.length})
-            </h3>
-            {allQuestions.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-outline-variant p-4 text-center text-xs text-on-surface-variant">
-                {isVi ? 'Chua co cau hoi nao.' : 'No questions yet.'}
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {allQuestions.map((q, idx) => (
-                  <div key={q.id} className="rounded-lg border border-outline-variant p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-on-surface-variant">#{idx + 1}</p>
-                        <p className="mt-1 text-sm text-on-surface">{q.questionText}</p>
-                        <ul className="mt-2 space-y-1 text-xs">
-                          {q.options.map((o) => (
-                            <li key={o.id} className={o.isCorrect ? 'text-green-700 font-medium' : 'text-on-surface-variant'}>
-                              {o.isCorrect ? '✓ ' : '• '}{o.optionText}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void deleteQuestion(q.id)}
-                        disabled={editBusy}
-                        className="text-on-surface-variant hover:text-error"
-                        title={isVi ? 'Xoa cau hoi' : 'Delete question'}
-                      >
-                        <MaterialIcon icon="delete" size="xs" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
               </div>
-            )}
+            </Card>
+          ))}
+
+          <div className="flex justify-between">
+            <Button variant="secondary" onClick={addQuestionItem} disabled={editBusy}>
+              <MaterialIcon icon="add" size="xs" />
+              <span className="ml-1">{isVi ? 'Them cau hoi' : 'Add Question'}</span>
+            </Button>
+            <Button onClick={() => void saveQuiz()} disabled={editBusy}>
+              {editBusy ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu quiz' : 'Save Quiz')}
+            </Button>
           </div>
-        </Card>
+        </div>
       )}
 
       {editMode && isOwner ? null : (

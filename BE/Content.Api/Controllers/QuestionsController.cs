@@ -200,6 +200,9 @@ namespace Content.Api.Controllers
         }
 
         // GET /api/quizzes/{quizId}/questions
+        // Returns TeacherDto (with IsCorrect) when caller is a teacher OR the quiz owner —
+        // owners must be able to see the correct answers to edit their own quiz. Otherwise
+        // returns StudentDto so students taking the quiz can't see which option is correct.
         [HttpGet("questions")]
         public async Task<IActionResult> GetQuestions(Guid quizId, CancellationToken ct)
         {
@@ -207,8 +210,9 @@ namespace Content.Api.Controllers
                 return NotFound(new ApiResponse(false, "Quiz not found."));
 
             var questions = await _repo.GetByQuizIdAsync(quizId, ct);
+            var isOwner = await VerifyQuizWriteAsync(quizId);
 
-            if (IsTeacherOrAbove())
+            if (IsTeacherOrAbove() || isOwner)
                 return Ok(new ApiResponse<IEnumerable<QuestionTeacherDto>>(true, questions.Select(ToTeacherDto), null));
 
             return Ok(new ApiResponse<IEnumerable<QuestionDto>>(true, questions.Select(ToStudentDto), null));

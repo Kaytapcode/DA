@@ -123,6 +123,11 @@ namespace Content.Api.Controllers
             if (!await VerifyContentAccessAsync(video.ContentId))
                 return Forbid();
 
+            // Owner-of-personal-video check needs Content.CreatedByUserId — load it separately
+            // so the existing repo signature isn't disturbed.
+            var content = await _db.Contents.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == video.ContentId, ct);
+
             return Ok(new ApiResponse<VideoDto>(
                 Success: true,
                 Data: new VideoDto(
@@ -132,9 +137,66 @@ namespace Content.Api.Controllers
                     Title: video.Title,
                     Description: video.Description,
                     ThumbnailUrl: video.ThumbnailUrl,
-                    EmbeddableUrl: $"https://www.youtube.com/embed/{video.YouTubeVideoId}"
+                    EmbeddableUrl: $"https://www.youtube.com/embed/{video.YouTubeVideoId}",
+                    CreatedByUserId: content?.CreatedByUserId
                 ),
                 Message: null
+            ));
+        }
+
+        // PATCH /api/videos/{videoId} - Rename a personal video (owner-only, any auth role).
+        // Course-bound videos must still go through the Teacher-gated PUT endpoint above.
+        [HttpPatch("{videoId:guid}")]
+        public async Task<IActionResult> RenameVideo(Guid videoId, [FromBody] UpdateVideoRequestDto request, CancellationToken ct = default)
+        {
+            var userId = _orgContext.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(Success: false, Message: "Invalid user context."));
+
+            if (string.IsNullOrWhiteSpace(request.Title) && request.Description == null)
+                return BadRequest(new ApiResponse(Success: false, Message: "Nothing to update."));
+
+            var video = await _videoRepository.GetByIdAsync(videoId, ct);
+            if (video == null)
+                return NotFound(new ApiResponse(Success: false, Message: "Video not found."));
+
+            var content = await _db.Contents
+                .Include(c => c.ModuleContents)
+                .FirstOrDefaultAsync(c => c.Id == video.ContentId, ct);
+            if (content == null)
+                return NotFound(new ApiResponse(Success: false, Message: "Content not found."));
+
+            // Course-bound videos use the existing teacher-gated PUT instead.
+            if (content.ModuleContents.Any())
+                return StatusCode(403, new ApiResponse(Success: false, Message: "Course-bound videos must be renamed via the teacher endpoint."));
+
+            if (content.CreatedByUserId != userId && !_orgContext.IsSysAdmin())
+                return StatusCode(403, new ApiResponse(Success: false, Message: "Only the video owner may rename it."));
+
+            if (!string.IsNullOrWhiteSpace(request.Title))
+            {
+                video.Title = request.Title.Trim();
+                content.Title = request.Title.Trim();
+            }
+            if (request.Description != null)
+                video.Description = request.Description;
+
+            await _videoRepository.UpdateAsync(video, ct);
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new ApiResponse<VideoDto>(
+                Success: true,
+                Data: new VideoDto(
+                    Id: video.Id,
+                    ContentId: video.ContentId,
+                    YouTubeVideoId: video.YouTubeVideoId,
+                    Title: video.Title,
+                    Description: video.Description,
+                    ThumbnailUrl: video.ThumbnailUrl,
+                    EmbeddableUrl: $"https://www.youtube.com/embed/{video.YouTubeVideoId}",
+                    CreatedByUserId: content.CreatedByUserId
+                ),
+                Message: "Video renamed."
             ));
         }
 
@@ -329,6 +391,7 @@ namespace Content.Api.Controllers
         string? Title,
         string? Description,
         string? ThumbnailUrl,
-        string EmbeddableUrl
+        string EmbeddableUrl,
+        Guid? CreatedByUserId = null
     );
 }

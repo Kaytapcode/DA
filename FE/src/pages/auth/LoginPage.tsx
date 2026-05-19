@@ -23,6 +23,7 @@ export const LoginPage: React.FC = () => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleFieldChange = (field: keyof LoginFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -47,6 +48,8 @@ export const LoginPage: React.FC = () => {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+    } else if (/\s/.test(formData.password)) {
+      newErrors.password = 'Password cannot contain spaces';
     }
 
     setErrors(newErrors);
@@ -189,20 +192,27 @@ export const LoginPage: React.FC = () => {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="••••••••••••"
                     value={formData.password}
                     onChange={(e) => handleFieldChange('password', e.target.value)}
-                    className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
+                    className={`w-full rounded-lg border bg-white px-4 py-3 pr-12 text-sm outline-none transition ${
                       errors.password
                         ? 'border-red-400'
                         : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'
                     }`}
                   />
-                  <div className="absolute right-4 top-3 text-[#d1d5db]">
-                    <span className="material-symbols-outlined text-lg">lock</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-3 text-[#d1d5db] hover:text-[#6b7280] transition"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPassword ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
                 </div>
                 {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
               </div>
