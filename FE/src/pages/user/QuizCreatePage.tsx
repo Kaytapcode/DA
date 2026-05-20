@@ -337,6 +337,7 @@ export const QuizCreatePage: React.FC = () => {
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
 										placeholder={t('Ví dụ: Hệ Mặt Trời', 'e.g., Solar System Basics')}
+										data-testid="quiz-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
@@ -359,6 +360,7 @@ export const QuizCreatePage: React.FC = () => {
 								<button
 									type="button"
 									onClick={() => { setMode('manual'); setError(null) }}
+									data-testid="quiz-mode-manual"
 									className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
 										mode === 'manual' ? 'bg-[#1463ff] text-white' : 'border border-[#d7dfeb] bg-white text-[#5e6f88]'
 									}`}
@@ -369,6 +371,7 @@ export const QuizCreatePage: React.FC = () => {
 								<button
 									type="button"
 									onClick={() => { setMode('ai'); setError(null) }}
+									data-testid="quiz-mode-ai"
 									className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
 										mode === 'ai' ? 'bg-[#1463ff] text-white' : 'border border-[#d7dfeb] bg-white text-[#5e6f88]'
 									}`}
@@ -383,12 +386,12 @@ export const QuizCreatePage: React.FC = () => {
 					{/* Error / success banners */}
 					{error && (
 						<Card className="border border-red-200 bg-red-50">
-							<p className="text-sm text-red-700">{error}</p>
+							<p className="text-sm text-red-700" data-testid="quiz-error">{error}</p>
 						</Card>
 					)}
 					{success && (
 						<Card className="border border-green-200 bg-green-50">
-							<p className="text-sm text-green-700">{success}</p>
+							<p className="text-sm text-green-700" data-testid="quiz-success">{success}</p>
 						</Card>
 					)}
 
@@ -419,6 +422,7 @@ export const QuizCreatePage: React.FC = () => {
 											onChange={(e) => updateQuestion(qIdx, { questionText: e.target.value })}
 											placeholder={t('Nội dung câu hỏi...', 'Question text...')}
 											rows={2}
+											data-testid={`quiz-question-${qIdx}-text`}
 											className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 										/>
 
@@ -430,6 +434,7 @@ export const QuizCreatePage: React.FC = () => {
 														name={`correct-${qIdx}`}
 														checked={opt.isCorrect}
 														onChange={() => setCorrect(qIdx, oIdx)}
+														data-testid={`quiz-question-${qIdx}-option-${oIdx}-correct`}
 														className="h-4 w-4 cursor-pointer"
 														title={t('Đánh dấu đáp án đúng', 'Mark as correct answer')}
 													/>
@@ -438,6 +443,7 @@ export const QuizCreatePage: React.FC = () => {
 														value={opt.text}
 														onChange={(e) => updateOption(qIdx, oIdx, { text: e.target.value })}
 														placeholder={t(`Lựa chọn ${oIdx + 1}`, `Option ${oIdx + 1}`)}
+														data-testid={`quiz-question-${qIdx}-option-${oIdx}-text`}
 														className="flex-1 rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 													/>
 													{q.options.length > 2 && (
@@ -471,6 +477,7 @@ export const QuizCreatePage: React.FC = () => {
 												value={q.explanation}
 												onChange={(e) => updateQuestion(qIdx, { explanation: e.target.value })}
 												placeholder={t('Giải thích vì sao đáp án đúng...', 'Why this answer is correct...')}
+												data-testid={`quiz-question-${qIdx}-explanation`}
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
@@ -479,11 +486,11 @@ export const QuizCreatePage: React.FC = () => {
 							))}
 
 							<div className="flex justify-between">
-								<Button variant="secondary" onClick={addQuestion} disabled={isSubmitting}>
+								<Button variant="secondary" onClick={addQuestion} disabled={isSubmitting} data-testid="quiz-add-question-btn">
 									<MaterialIcon icon="add" size="xs" />
 									<span className="ml-1">{t('Thêm câu hỏi', 'Add Question')}</span>
 								</Button>
-								<Button onClick={() => void submitManual()} disabled={isSubmitting}>
+								<Button onClick={() => void submitManual()} disabled={isSubmitting} data-testid="quiz-save-btn">
 									{isSubmitting ? t('Đang lưu...', 'Saving...') : t('Lưu quiz', 'Save Quiz')}
 								</Button>
 							</div>
