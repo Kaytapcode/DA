@@ -178,6 +178,7 @@ export const DeckEditorPage: React.FC = () => {
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
 										placeholder={t('Vi du: Tu vung Tieng Anh - Du lich', 'e.g., English Vocab - Travel')}
+										data-testid="deck-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
@@ -194,7 +195,7 @@ export const DeckEditorPage: React.FC = () => {
 									/>
 								</div>
 								<div className="flex justify-end">
-									<Button onClick={() => void createDeck()} disabled={busy}>
+									<Button onClick={() => void createDeck()} disabled={busy} data-testid="deck-create-btn">
 										{busy ? t('Dang tao...', 'Creating...') : t('Tao bo the', 'Create Deck')}
 									</Button>
 								</div>
@@ -215,6 +216,7 @@ export const DeckEditorPage: React.FC = () => {
 												onChange={(e) => setDraft({ ...draft, front: e.target.value })}
 												rows={3}
 												placeholder={t('Tu hoac khai niem', 'Word or concept')}
+												data-testid="flashcard-front-input"
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
@@ -227,12 +229,13 @@ export const DeckEditorPage: React.FC = () => {
 												onChange={(e) => setDraft({ ...draft, back: e.target.value })}
 												rows={3}
 												placeholder={t('Dinh nghia hoac mo ta', 'Definition or description')}
+												data-testid="flashcard-back-input"
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
 									</div>
 									<div className="flex justify-end">
-										<Button onClick={() => void addCard()} disabled={busy}>
+										<Button onClick={() => void addCard()} disabled={busy} data-testid="flashcard-add-btn">
 											<MaterialIcon icon="add" size="xs" />
 											<span className="ml-1">{busy ? t('Dang them...', 'Adding...') : t('Them the', 'Add Card')}</span>
 										</Button>
