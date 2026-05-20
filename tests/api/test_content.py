@@ -223,39 +223,9 @@ class TestVideoManagement:
         assert result.status_code == 200
 
 
-class TestCourseContentIntegration:
-    """Test adding content to course curriculum"""
-    
-    @pytest.mark.api
-    def test_add_document_to_curriculum(self, authenticated_client, test_course):
-        """TC-INT-001: Add document to curriculum"""
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/curriculum",
-            json={"contentType": "DOCUMENT", "contentId": 1, "order": 1}
-        )
-        
-        # Endpoint may not exist yet
-        if result.status_code != 404:
-            assert result.status_code in [201, 200]
-    
-    @pytest.mark.api
-    def test_add_quiz_to_curriculum(self, authenticated_client, test_course):
-        """TC-INT-002: Add quiz to curriculum"""
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/curriculum",
-            json={"contentType": "QUIZ", "contentId": 1, "order": 2}
-        )
-        
-        if result.status_code != 404:
-            assert result.status_code in [201, 200]
-    
-    @pytest.mark.api
-    def test_add_video_to_curriculum(self, authenticated_client, test_course):
-        """TC-INT-003: Add video to curriculum"""
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/curriculum",
-            json={"contentType": "VIDEO", "contentId": 1, "order": 3}
-        )
-        
-        if result.status_code != 404:
-            assert result.status_code in [201, 200]
+# DELETED: TestCourseContentIntegration (curriculum endpoint tests)
+# Reason: Spec 3 defines Module-based grouping (Collections for User, Course Modules
+# for Teacher/OrgAdmin), not a "curriculum" concept. These tests assumed an endpoint
+# /api/courses/{id}/curriculum that does not align with Spec 3 module CRUD.
+# Replacement tests live in Wave 1 User checklist (Modules/Collections) and Wave 2
+# OrgAdmin checklist (Course Modules).

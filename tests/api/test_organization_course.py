@@ -168,17 +168,10 @@ class TestCourseCreation:
         
         assert result.status_code == 400, "Missing name should return 400"
     
-    @pytest.mark.api
-    def test_course_visibility_options(self, authenticated_client, test_organization):
-        """TC-COURSE-005: Course visibility settings work"""
-        result = authenticated_client.create_course(
-            test_organization["id"],
-            f"PrivateCourse_{TestDataFactory.random_string()}",
-            visibility="PRIVATE"
-        )
-        
-        assert result["status_code"] == 201
-        assert result["data"].get("visibility") == "PRIVATE" or "PRIVATE" in str(result["data"])
+    # DELETED: test_course_visibility_options
+    # Reason: Spec 4 does not define a PRIVATE/PUBLIC visibility flag on courses.
+    # Course access is controlled by Organization membership, not a visibility column.
+    # See CLAUDE.md Section 5 invariant 7 (OrgAdmin scope is org-bounded).
 
 
 class TestCourseRead:
