@@ -1,8 +1,56 @@
-# Tiny-LMS Automated Testing Framework - Implementation Complete ✅
+# Lumina LMS Automated Testing Framework
 
-**Status:** Ready to Use  
-**Version:** 1.0  
-**Created:** May 20, 2026  
+**Status:** Ready to Use
+**Version:** 1.1
+**Updated:** May 20, 2026
+
+---
+
+## Required Environment
+
+Tests run against the live stack. Before running:
+
+### Backend services (ports 5000–5005)
+
+Start each microservice (or use the launch script if available):
+```powershell
+dotnet run --project BE/Identity.Api       # 5001
+dotnet run --project BE/Organization.Api   # 5002
+dotnet run --project BE/Content.Api        # 5003
+dotnet run --project BE/AI.Api             # 5004
+dotnet run --project BE/SysAdmin.Api       # 5005
+dotnet run --project BE/Gateway.Api        # 5000 (last — depends on others)
+```
+
+### Frontend (port 5173)
+```powershell
+cd FE && npm run dev
+```
+
+### Environment variables required
+
+| Variable | Where set | Purpose |
+|---|---|---|
+| `ConnectionStrings__Postgres` | Each `BE/*/appsettings.Development.json` | PostgreSQL connection per service |
+| `OpenRouter__ApiKey` | `BE/AI.Api/appsettings.Development.json` | AI quiz generation (stepfun/step-3.5-flash) |
+| `Jwt__Key` / `Jwt__Issuer` / `Jwt__Audience` | Each BE service | Must match across services |
+| `API_BASE_URL` | Test env (defaults `http://localhost:5000`) | Gateway URL for tests |
+| `PLAYWRIGHT_HEADLESS` | Test env (default `true`) | Set `false` to watch the browser |
+
+### Test database
+
+Tests assume an empty-or-test PostgreSQL database. Recommended: a dedicated `lumina_test` DB; tear down between full runs:
+```powershell
+dotnet ef database drop --project BE/Identity.Api --force
+dotnet ef database update --project BE/Identity.Api
+# repeat for AI.Api and any other service with migrations
+```
+
+### Pre-seeded test accounts
+
+Some tests assume the following accounts exist (seed them via Identity.Api SQL or internal endpoints):
+- `test_sysadmin@example.com` / `TestPassword123!` — SysAdmin
+- The rest are created dynamically per-test by fixtures in `tests/fixtures/auth.py`.
 
 ---
 

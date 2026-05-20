@@ -80,13 +80,13 @@ def run_ui_tests() -> bool:
     print("\n" + "="*60)
     print("RUNNING UI TESTS")
     print("="*60)
-    
+
     test_dir = Path(__file__).parent / "ui"
-    
+
     if not test_dir.exists():
         print("⚠️  UI tests directory not found. Skipping UI tests.")
         return True
-    
+
     cmd = [
         "pytest",
         str(test_dir),
@@ -96,70 +96,147 @@ def run_ui_tests() -> bool:
         "--self-contained-html",
         "--color=yes",
     ]
-    
+
     result = subprocess.run(cmd, cwd=str(Path(__file__).parent.parent))
     return result.returncode == 0
 
 
-def generate_summary_report(api_passed: bool, ui_passed: bool):
-    """Generate summary report"""
+def run_e2e_tests() -> bool:
+    """Run E2E test suite (workflow tests)"""
+    print("\n" + "="*60)
+    print("RUNNING E2E TESTS")
+    print("="*60)
+
+    test_dir = Path(__file__).parent / "e2e"
+
+    if not test_dir.exists():
+        print("⚠️  E2E tests directory not found. Skipping E2E tests.")
+        return True
+
+    cmd = [
+        "pytest",
+        str(test_dir),
+        "-v",
+        "--tb=short",
+        f"--html={Path(__file__).parent / 'reports' / 'e2e_report.html'}",
+        "--self-contained-html",
+        "-m", "e2e",
+        "--color=yes",
+    ]
+
+    result = subprocess.run(cmd, cwd=str(Path(__file__).parent.parent))
+    return result.returncode == 0
+
+
+def run_katalon_tests() -> bool:
+    """Run Katalon-ported tests (browser-recorded workflows)"""
+    print("\n" + "="*60)
+    print("RUNNING KATALON TESTS")
+    print("="*60)
+
+    test_dir = Path(__file__).parent / "katalon"
+
+    if not test_dir.exists():
+        print("⚠️  Katalon tests directory not found. Skipping Katalon tests.")
+        return True
+
+    cmd = [
+        "pytest",
+        str(test_dir),
+        "-v",
+        "--tb=short",
+        f"--html={Path(__file__).parent / 'reports' / 'katalon_report.html'}",
+        "--self-contained-html",
+        "-m", "katalon",
+        "--color=yes",
+    ]
+
+    result = subprocess.run(cmd, cwd=str(Path(__file__).parent.parent))
+    return result.returncode == 0
+
+
+def generate_summary_report(results: dict) -> bool:
+    """
+    Generate combined summary report.
+
+    Args:
+        results: Dict with keys 'api', 'ui', 'e2e', 'katalon' mapping to bool (passed/failed)
+    """
     print("\n" + "="*60)
     print("TEST EXECUTION SUMMARY")
     print("="*60)
-    
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     report_dir = Path(__file__).parent / "reports"
-    
+
+    overall_passed = all(results.values())
+
     summary = {
         "timestamp": timestamp,
-        "api_tests": "✓ PASSED" if api_passed else "✗ FAILED",
-        "ui_tests": "✓ PASSED" if ui_passed else "✗ FAILED",
-        "overall": "✓ PASSED" if (api_passed and ui_passed) else "✗ FAILED",
+        "suites": {
+            suite: {
+                "status": "PASSED" if passed else "FAILED",
+                "report": str(report_dir / f"{suite}_report.html")
+            }
+            for suite, passed in results.items()
+        },
+        "overall": "PASSED" if overall_passed else "FAILED",
+        "spec_coverage": {
+            "Spec 1 — Authentication & i18n": "tracked by api + e2e markers",
+            "Spec 2.1 — Quiz (manual + AI)": "tracked by wave1+user markers",
+            "Spec 2.2 — Documents": "tracked by display+user markers",
+            "Spec 2.3 — Flashcards": "tracked by display+user markers",
+            "Spec 2.4 — Videos": "tracked by display+user markers",
+            "Spec 3 — Modules/Collections": "tracked by wave1+user markers",
+            "Spec 4 — Courses & Progress": "tracked by wave1+wave2 markers"
+        },
         "reports": {
-            "api": str(report_dir / "api_report.html"),
-            "ui": str(report_dir / "ui_report.html"),
+            suite: str(report_dir / f"{suite}_report.html")
+            for suite in results.keys()
         }
     }
-    
+
     print(f"\nTimestamp: {summary['timestamp']}")
-    print(f"API Tests:  {summary['api_tests']}")
-    print(f"UI Tests:   {summary['ui_tests']}")
-    print(f"Overall:    {summary['overall']}")
+    for suite, info in summary["suites"].items():
+        status_icon = "✓" if info["status"] == "PASSED" else "✗"
+        print(f"{suite.upper():12} {status_icon} {info['status']}")
+    print(f"\nOverall:     {'✓' if overall_passed else '✗'} {summary['overall']}")
+
     print(f"\nReports:")
-    print(f"  - API: {summary['reports']['api']}")
-    print(f"  - UI:  {summary['reports']['ui']}")
-    
-    # Save summary as JSON
+    for suite, path in summary["reports"].items():
+        print(f"  - {suite}: {path}")
+
     summary_file = report_dir / "summary.json"
     with open(summary_file, "w") as f:
         json.dump(summary, f, indent=2)
-    
+
     print(f"\nSummary saved to: {summary_file}")
-    
-    return summary["overall"] == "✓ PASSED"
+
+    return overall_passed
 
 
 def main():
-    """Main test runner"""
-    print("\n🧪 Tiny-LMS Automated Test Suite")
+    """Main test runner — runs all 4 suites in order"""
+    print("\n🧪 Lumina LMS Automated Test Suite")
     print("="*60)
-    
-    # Create reports directory
+
     reports_dir = Path(__file__).parent / "reports"
     reports_dir.mkdir(exist_ok=True)
-    
-    # Verify services
+
     if not verify_services():
         print("\n❌ Test execution aborted: Services not running")
         return 1
-    
-    # Run tests
-    api_passed = run_api_tests()
-    ui_passed = run_ui_tests()
-    
-    # Generate report
-    overall_passed = generate_summary_report(api_passed, ui_passed)
-    
+
+    # Run all 4 suites
+    results = {
+        "api": run_api_tests(),
+        "ui": run_ui_tests(),
+        "e2e": run_e2e_tests(),
+        "katalon": run_katalon_tests(),
+    }
+
+    overall_passed = generate_summary_report(results)
+
     print("\n" + "="*60)
     if overall_passed:
         print("✅ All tests passed!")
