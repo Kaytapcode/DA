@@ -1,0 +1,126 @@
+# Lumina - TECHNICAL SPECIFICATIONS
+
+## 1. Authentication & Authorization (Auth & RBAC)
+
+Uses Token-based authentication (e.g., JWT).
+
+* **Registration/Login (Authentication):**
+    * Supports standard login (Email/Password).
+    * (Optional extension) SSO (Google/Microsoft).
+* **Account Management:**
+    * **Change Password:** Allows authenticated users to change their current password by providing the old password, a new password, and a password confirmation.
+    * **Profile Management:** Users can view and edit their profile information, including name, email, and other details.
+* **Localization & Internationalization (i18n):**
+    * **System Interface Languages:** Supports multi-language switching across the entire platform interface. Supported languages: **Vietnamese, Japanese, and English**.
+    * **User Preference:** Stores the user's selected language preference in their profile/local storage to persist across sessions.
+* **Main System Roles & Scopes:**
+
+    * **User (Normal User):**
+        * Has CRUD rights for personal learning resources (Quiz, Document, Deck).
+        * Resources created by a User **must be public**.
+        * Can view other public resources but cannot edit resources not owned by them.
+        * Can copy other public resources to create a personal version and has CRUD rights to this new version. This new version must also be public.
+        * Can group resources (personal or public) into Collections.
+        * Can join Organizations.
+        * Can join Courses within an Organization when added by an Admin (can only access courses they have been added to).
+        * Holds one of two roles within a Course: Teacher or Student.
+
+    * **OrgAdmin (Organization Administrator):**
+        * Management scope is restricted to a specific Organization.
+        * Has the right to create Courses within that Organization.
+        * Assign roles (Teacher/Student) to Users within a Course belonging to the Organization.
+        * Manage Users within the Organization.
+        * View Organization analytics/statistics.
+        * Has full Teacher privileges in every course within that Organization.
+
+    * **SysAdmin (System Administrator):**
+        * Highest authority across the entire system.
+        * Manage Organizations.
+        * Manage Global Users.
+        * Configure AI API Keys.
+        * View global analytics/statistics.
+
+## 2. Learning Resources Management (CRUD)
+
+### 2.1. Quiz Management (AI-Powered)
+
+* **Manual CRUD:** Manually create, edit, delete multiple-choice questions/answers. The Explanation field is not mandatory when creating manually.
+* **AI Auto-Generation (Core Feature):**
+    * **Input:** User uploads a PDF/Text file (Document object).
+    * **Action:** Calls API (stepfun/step-3.5-flash) with a Prompt enforcing Zero Hallucination (only uses knowledge from the provided file).
+    * **Language Matching:** The AI must generate the quiz elements (questions, options, explanations) in the same language as the uploaded source document.
+    * **Output:** Returns strict JSON format (Question, Options, correct_index, Explanation). **The Explanation field is mandatory and must be based on the original document.**
+    * **Verification:** Automatically parses JSON and saves it to the Database as a Draft Quiz. The User has the right to verify/edit before Publishing.
+
+### 2.2. Document Management
+
+* **Upload:** Supports uploading PDF files, images, and text files.
+* **Storage:** Secure file storage (Database).
+* **Viewer:** Integrated PDF/Image viewer directly on the LMS interface.
+
+### 2.3. Flashcard Management
+
+* **Card CRUD:** Create flashcards (Front: Keyword/Concept; Back: Definition/Description).
+* **Deck CRUD:** Group Flashcards into Decks by topic.
+* **Study Mode:**
+    * Flashcard flipping mode for Users.
+    * Supports the Shuffle function.
+    * Allows Users to mark cards as "Mastered". The system will not display these cards in subsequent study sessions unless the User resets them.
+
+### 2.4. Video Management (YouTube)
+
+* **Upload Link:** Users provide YouTube links (no direct video file uploads to optimize storage resources).
+* **Metadata:** Automatically extract video Title and Thumbnail from the YouTube API.
+* **Embedded Viewer:** Integrated YouTube video player directly within the LMS.
+
+## 3. Resource Grouping Mechanism (Module)
+
+A Module is a general resource grouping mechanism that operates similarly to a Folder. Modules support nesting (a Module can contain other Modules).
+
+### 3.1. Module Classification by Scope and Role
+
+* **Collection (For Users):**
+    * Created by Users to group learning resources (personal or public).
+    * Has a public scope.
+
+* **Course Module (For Teachers):**
+    * Created by Teachers (or OrgAdmins with Teacher privileges) to group learning resources created within a course.
+    * Scope is restricted to the course.
+
+### 3.2. Module Structure
+
+* **Module CRUD:** Create, edit, delete Modules (by Users for Collections; by Teachers/OrgAdmins for Course Modules).
+* **Resource Items:**
+    * Users can add/remove resources (Quiz, Document, Deck, Video link) to/from a Collection.
+    * Teachers/OrgAdmins can add/remove resources (Quiz, Document, Deck, Video link) to/from a Course Module.
+    * Supports custom ordering/sorting.
+
+## 4. Course Management & Learning Functions
+
+A Course belongs to an Organization. The OrgAdmin manages Course users and authorization.
+
+### 4.1. Course Roles
+
+* **Teacher:**
+    * Has CRUD rights for learning resources within the course.
+    * Has the right to create Modules to group resources within the course.
+    * Can view the progress of Students in the course.
+
+* **Student:**
+    * Can only view (study) learning resources within the course.
+    * The system records their viewing (study) progress in each course and updates the progress tracker.
+
+### 4.2. Course Management (By OrgAdmin)
+
+* **Course CRUD:** Create, edit, delete courses within the Organization.
+* **User Management:** Add/remove Organization Users to/from courses.
+* **Role Assignment:** Assign Teacher or Student roles to Users within a course.
+* **Analytics:** View course statistics.
+
+### 4.3. Learning Functions & Interaction (Student Flow in Course)
+
+* **Participation:** Users join a Course when added by an Admin.
+* **Study Flow:** Students study Items in a Module sequentially according to the learning path.
+* **Progress Tracking:** The system automatically records and updates the Student's learning progress for each resource and course.
+* **Doing Quiz:** Provides an interface for taking multiple-choice quizzes, including a timer and submission.
+* **Grading:** Automatically grades the quiz. The Explanation is only displayed if it was provided. For AI-generated quizzes, the Explanation must be displayed since it is a mandatory field.

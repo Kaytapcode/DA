@@ -47,7 +47,8 @@ export const VideoWatchPage: React.FC = () => {
 
 	const t = (vi: string, en: string) => (isVi ? vi : en)
 
-	const isOwner = !!video?.createdByUserId && video.createdByUserId === currentUserId
+	const isOwner = !!video?.createdByUserId && !!currentUserId
+		&& video.createdByUserId.toLowerCase() === currentUserId.toLowerCase()
 
 	const saveRename = async () => {
 		if (!videoId || !titleDraft.trim()) return

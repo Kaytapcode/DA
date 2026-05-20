@@ -227,8 +227,10 @@ export const DocumentViewerPage: React.FC = () => {
   const baseTitle = ((currentEntry?.fileName || loaded?.fileName) || '').replace(/\.[^/.]+$/, '') || (isVi ? 'Tai lieu' : 'Document')
 
   // Owner-only rename UI: matches the document's createdByUserId against the cached user id.
+  // Case-insensitive to be defensive about GUID casing differences.
   const currentUserId = getCurrentUserId()
-  const isOwner = !!currentEntry?.createdByUserId && currentEntry.createdByUserId === currentUserId
+  const isOwner = !!currentEntry?.createdByUserId && !!currentUserId
+    && currentEntry.createdByUserId.toLowerCase() === currentUserId.toLowerCase()
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleDraft, setTitleDraft] = useState('')
   const [isSavingTitle, setIsSavingTitle] = useState(false)
@@ -500,13 +502,29 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   const [editCards, setEditCards] = useState<CardEditItem[]>([])
   const [removedCardIds, setRemovedCardIds] = useState<string[]>([])
 
-  const isOwner = !!deckInfo?.createdByUserId && deckInfo.createdByUserId === currentUserId && ownedByMe
+  // Case-insensitive Guid compare — defends against any case mismatch between FE-stored
+  // user id and BE-serialized GUIDs.
+  const idsMatch = (a?: string | null, b?: string | null) =>
+    !!a && !!b && a.toLowerCase() === b.toLowerCase()
+  const isOwner = idsMatch(deckInfo?.createdByUserId, currentUserId) && ownedByMe
 
+  // Loads deck meta. Tries the single-deck endpoint first (cleanest), then falls back to
+  // scanning the deck list — that fallback is essential when the BE binary is older than
+  // the FE and the single-deck route 404s.
   const fetchDeckMeta = React.useCallback(async () => {
     if (!deckId) { setDeckInfo(null); return }
     try {
-      const res = await apiClient.get<DeckSummaryInfo>(`/decks/${deckId}`)
-      if (res.success && res.data) setDeckInfo(res.data)
+      const single = await apiClient.get<DeckSummaryInfo>(`/decks/${deckId}`)
+      if (single.success && single.data && single.data.createdByUserId) {
+        setDeckInfo(single.data); return
+      }
+    } catch { /* fall through to list */ }
+    try {
+      const list = await apiClient.get<DeckSummaryInfo[]>('/decks')
+      if (list.success && list.data) {
+        const found = list.data.find((d) => idsMatch(d.deckId, deckId))
+        if (found) setDeckInfo(found)
+      }
     } catch { /* non-critical for non-owners */ }
   }, [deckId])
 
@@ -1461,14 +1479,26 @@ export const UserQuizInterfacePage: React.FC = () => {
   const [editQuestions, setEditQuestions] = useState<QEditItem[]>([])
   const [removedIds, setRemovedIds] = useState<string[]>([])
 
-  const isOwner = !!quizInfo?.createdByUserId && quizInfo.createdByUserId === currentUserId
+  const idsMatchQ = (a?: string | null, b?: string | null) =>
+    !!a && !!b && a.toLowerCase() === b.toLowerCase()
+  const isOwner = idsMatchQ(quizInfo?.createdByUserId, currentUserId)
 
+  // Same fallback strategy as the deck page — try single-quiz endpoint, then scan the list.
   const fetchQuizMeta = React.useCallback(async () => {
     if (!quizId) { setQuizInfo(null); return }
     try {
-      const res = await apiClient.get<QuizSummaryInfo>(`/quizzes/${quizId}`)
-      if (res.success && res.data) setQuizInfo(res.data)
-    } catch { /* non-critical for non-owners */ }
+      const single = await apiClient.get<QuizSummaryInfo>(`/quizzes/${quizId}`)
+      if (single.success && single.data && single.data.createdByUserId) {
+        setQuizInfo(single.data); return
+      }
+    } catch { /* fall through to list */ }
+    try {
+      const list = await apiClient.get<QuizSummaryInfo[]>('/quizzes')
+      if (list.success && list.data) {
+        const found = list.data.find((q) => idsMatchQ(q.quizId, quizId))
+        if (found) setQuizInfo(found)
+      }
+    } catch { /* non-critical */ }
   }, [quizId])
 
   const fetchAllQuestions = React.useCallback(async () => {
