@@ -100,6 +100,7 @@ export const VideoWatchPage: React.FC = () => {
 										type="text"
 										value={titleDraft}
 										autoFocus
+										data-testid="video-rename-input"
 										onChange={(e) => setTitleDraft(e.target.value)}
 										onKeyDown={(e) => {
 											if (e.key === 'Enter') void saveRename()
@@ -107,20 +108,21 @@ export const VideoWatchPage: React.FC = () => {
 										}}
 										className="flex-1 min-w-[260px] rounded-lg border border-[#d7dfeb] bg-white px-3 py-2 text-2xl font-black text-[#111b2d] focus:border-[#1463ff] focus:outline-none"
 									/>
-									<Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()}>
+									<Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()} data-testid="video-rename-save">
 										{isSavingTitle ? t('Dang luu...', 'Saving...') : t('Luu', 'Save')}
 									</Button>
-									<Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(video?.title || ''); setRenameError(null) }} disabled={isSavingTitle}>
+									<Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(video?.title || ''); setRenameError(null) }} disabled={isSavingTitle} data-testid="video-rename-cancel">
 										{t('Huy', 'Cancel')}
 									</Button>
 								</div>
 							) : (
 								<div className="flex flex-wrap items-center gap-2">
-									<h1 className="text-3xl font-black text-[#111b2d]">{video?.title || t('Xem video', 'Watch video')}</h1>
+									<h1 className="text-3xl font-black text-[#111b2d]" data-testid="video-title">{video?.title || t('Xem video', 'Watch video')}</h1>
 									{isOwner && video && (
 										<button
 											type="button"
 											onClick={() => { setTitleDraft(video.title || ''); setIsEditingTitle(true) }}
+											data-testid="video-edit-btn"
 											className="inline-flex items-center gap-1 rounded-full border border-[#d7dfeb] px-2.5 py-1 text-xs text-[#60708a] hover:bg-white"
 											title={t('Doi ten video', 'Rename video')}
 										>
@@ -148,6 +150,7 @@ export const VideoWatchPage: React.FC = () => {
 								<iframe
 									title={video.title || 'YouTube video'}
 									src={video.embeddableUrl}
+									data-testid="video-player"
 									className="h-full w-full"
 									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
 									referrerPolicy="strict-origin-when-cross-origin"

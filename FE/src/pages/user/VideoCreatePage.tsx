@@ -121,6 +121,7 @@ export const VideoCreatePage: React.FC = () => {
 										value={url}
 										onChange={(e) => setUrl(e.target.value)}
 										placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+										data-testid="video-url-input"
 										className="flex-1 rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 									<Button variant="secondary" onClick={handlePreview}>
@@ -140,6 +141,7 @@ export const VideoCreatePage: React.FC = () => {
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
 										placeholder={t('Bai giang vat ly...', 'Physics lecture...')}
+										data-testid="video-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
@@ -158,7 +160,7 @@ export const VideoCreatePage: React.FC = () => {
 							</div>
 
 							<div className="flex justify-end gap-2">
-								<Button onClick={() => void handleSave()} disabled={busy || !url.trim()}>
+								<Button onClick={() => void handleSave()} disabled={busy || !url.trim()} data-testid="video-save-btn">
 									<MaterialIcon icon="bookmark_add" size="xs" />
 									<span className="ml-1">{busy ? t('Dang luu...', 'Saving...') : t('Luu vao thu vien', 'Save to Library')}</span>
 								</Button>

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using Content.Api.Data;
 using Content.Api.Models;
@@ -30,6 +32,26 @@ namespace Content.Api.Controllers
             _contentRepository = contentRepository;
             _orgContext = orgContext;
             _db = db;
+        }
+
+        // Spec 2.4 — Automatically extract video Title from the YouTube API.
+        // Uses the public oEmbed endpoint (no API key required, returns title + thumbnail).
+        // Returns null on any failure so the caller can fall back to a sensible default.
+        private static readonly HttpClient _oEmbedClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+        private async Task<string?> FetchYouTubeTitleAsync(string videoId, CancellationToken ct)
+        {
+            try
+            {
+                var url = $"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={videoId}&format=json";
+                var doc = await _oEmbedClient.GetFromJsonAsync<System.Text.Json.JsonElement>(url, ct);
+                if (doc.TryGetProperty("title", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String)
+                    return t.GetString();
+            }
+            catch
+            {
+                // Network failure / video unlisted: leave title null, caller will use fallback.
+            }
+            return null;
         }
 
         private string? ExtractYouTubeVideoId(string url)
@@ -240,8 +262,14 @@ namespace Content.Api.Controllers
 
             var thumbnailUrl = $"https://i.ytimg.com/vi/{videoId}/maxresdefault.jpg";
 
+            // Spec 2.4 — auto-extract title from YouTube when the user did not provide one.
+            // If the oEmbed lookup fails (offline / unlisted video), fall back to a generic label.
+            var title = request.Title;
+            if (string.IsNullOrWhiteSpace(title))
+                title = await FetchYouTubeTitleAsync(videoId, ct) ?? "YouTube Video";
+
             var created = await _videoRepository.CreatePersonalAsync(
-                videoId, request.Title, request.Description, thumbnailUrl, _orgContext.GetCurrentUserId(), ct);
+                videoId, title, request.Description, thumbnailUrl, _orgContext.GetCurrentUserId(), ct);
 
             return Ok(new ApiResponse<VideoDto>(
                 Success: true,
