@@ -112,6 +112,17 @@ class APIClient:
             return {"response": None, "status_code": 200, "data": {}}
         return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
 
+    def post_file(self, endpoint: str, files: Dict[str, Any], data: Dict[str, Any] = None) -> requests.Response:
+        """
+        Upload a file via multipart/form-data. Bypasses the JSON Content-Type so requests
+        can set its own multipart boundary header.
+        """
+        url = f"{self.base_url}{endpoint}"
+        headers = {}
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+        return requests.post(url, files=files, data=data or {}, headers=headers, timeout=self.timeout)
+
     def get_me(self) -> Dict[str, Any]:
         """
         Get current user profile. Spec 1: GET /api/auth/me requires JWT.

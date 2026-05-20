@@ -298,6 +298,7 @@ export const DocumentViewerPage: React.FC = () => {
                   type="text"
                   value={titleDraft}
                   autoFocus
+                  data-testid="document-rename-input"
                   onChange={(e) => setTitleDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') void saveRename()
@@ -305,20 +306,21 @@ export const DocumentViewerPage: React.FC = () => {
                   }}
                   className="flex-1 min-w-[280px] rounded-lg border border-outline-variant bg-surface px-3 py-2 text-2xl font-bold text-on-surface focus:border-primary focus:outline-none"
                 />
-                <Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()}>
+                <Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()} data-testid="document-rename-save">
                   {isSavingTitle ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu' : 'Save')}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(baseTitle); setRenameError(null) }} disabled={isSavingTitle}>
+                <Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(baseTitle); setRenameError(null) }} disabled={isSavingTitle} data-testid="document-rename-cancel">
                   {isVi ? 'Huy' : 'Cancel'}
                 </Button>
               </>
             ) : (
               <>
-                <h2 className="text-2xl font-bold text-on-surface">{baseTitle}</h2>
+                <h2 className="text-2xl font-bold text-on-surface" data-testid="document-title">{baseTitle}</h2>
                 {isOwner && loaded && (
                   <button
                     type="button"
                     onClick={() => { setTitleDraft(baseTitle); setIsEditingTitle(true) }}
+                    data-testid="document-edit-btn"
                     className="inline-flex items-center gap-1 rounded-full border border-outline-variant px-2.5 py-1 text-xs text-on-surface-variant hover:bg-surface-container-low"
                     title={isVi ? 'Doi ten tai lieu' : 'Rename document'}
                   >

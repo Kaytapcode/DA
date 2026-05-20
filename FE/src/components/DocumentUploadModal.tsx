@@ -116,7 +116,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="document-upload-modal">
       <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-on-surface">Upload Document</h3>
@@ -149,6 +149,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             id="document-upload-input"
             type="file"
             className="hidden"
+            data-testid="document-upload-input"
             accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain"
             onChange={(event) => validateAndSetFile(event.target.files?.[0] ?? null)}
           />
@@ -173,8 +174,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           </div>
         )}
 
-        {error && <p className="mt-4 text-sm text-error">{error}</p>}
-        {successMessage && <p className="mt-4 text-sm text-green-600">{successMessage}</p>}
+        {error && <p className="mt-4 text-sm text-error" data-testid="document-upload-error">{error}</p>}
+        {successMessage && <p className="mt-4 text-sm text-green-600" data-testid="document-upload-success">{successMessage}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <Button
@@ -188,7 +189,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           >
             Cancel
           </Button>
-          <Button type="button" onClick={() => void handleUpload()} disabled={isUploading}>
+          <Button type="button" onClick={() => void handleUpload()} disabled={isUploading} data-testid="document-upload-submit">
             {isUploading ? 'Uploading...' : 'Upload'}
           </Button>
         </div>
