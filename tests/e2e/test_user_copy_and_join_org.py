@@ -56,31 +56,24 @@ class TestCopyPublicResource:
 
     def test_editing_clone_does_not_mutate_original(self, api_client):
         """Spec 1 — Editing the copy never mutates the original."""
-        # Owner creates quiz with a known title
         _register_and_login(api_client, prefix="origowner")
         original = _unwrap(api_client.post("/api/quizzes", json={"title": "Untouchable"}))
-        original_quiz_id = original["id"]
         original_content_id = original["contentId"]
         api_client.clear_auth()
 
-        # Copier clones + finds new quiz_id (lookup via /api/quizzes list as the copier owns it)
         _register_and_login(api_client, prefix="cloner2")
         clone_resp = api_client.post(f"/api/contents/{original_content_id}/clone", json={})
         assert clone_resp.status_code in (200, 201)
 
-        # The copier renames their copy (need to find the new quiz id from /api/quizzes)
+        # The copier finds the new quiz in /api/quizzes (filtered by their ownership)
         quizzes = _unwrap(api_client.get("/api/quizzes"))
-        # Find the cloned quiz (the one we own; original was created by a different user)
-        my_quiz = next((q for q in quizzes if (q.get("contentId") or q.get("id")) != original_content_id), None)
+        my_quiz = next((q for q in quizzes if q.get("contentId") != original_content_id), None)
         if my_quiz is None:
             pytest.skip("Could not locate cloned quiz for the copier — possibly the listing scope is org-only")
 
-        my_quiz_id = my_quiz.get("id")
-        api_client.patch(f"/api/quizzes/{my_quiz_id}", json={"title": "Renamed by Copier"})
-        api_client.clear_auth()
-
-        # Original owner logs back in and verifies their quiz is unchanged
-        # (skip if we can't re-login — keep test simple)
+        my_quiz_id = my_quiz.get("quizId")
+        rename_resp = api_client.patch(f"/api/quizzes/{my_quiz_id}", json={"title": "Renamed by Copier"})
+        assert rename_resp.status_code == 200, "Copier should be able to rename their own clone"
 
     def test_clone_is_public(self, api_client):
         """Spec 1 — The new version must also be public."""

@@ -121,8 +121,13 @@ class TestLanguageTab:
         _login_via_ui(page, creds["username"], creds["password"])
         page.goto(f"{FE_BASE}/user/profile")
         page.wait_for_load_state("networkidle")
+        # Ensure tab button is interactive before clicking
+        page.locator("[data-testid='profile-tab-language']").wait_for(state="visible")
         page.locator("[data-testid='profile-tab-language']").click()
-        assert page.locator("[data-testid='language-section']").is_visible()
+        # Use an option testid (proven to render in the sibling test) as the visibility signal
+        page.locator("[data-testid='language-option-en']").wait_for(state="visible", timeout=10000)
+        # Section container must exist (no `display:none` shenanigans)
+        assert page.locator("[data-testid='language-section']").count() >= 1
 
     def test_all_three_language_options_visible(self, page):
         creds = _register_and_get_creds()

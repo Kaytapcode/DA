@@ -251,7 +251,8 @@ export const UserProfilePage: React.FC = () => {
 
           {/* Language */}
           {activeTab === 'language' && (
-            <Card className="p-10 space-y-6" data-testid="language-section">
+            <Card className="p-10 space-y-6">
+              <div data-testid="language-section">
               <h3 className="text-lg font-bold mb-4">Display Language</h3>
               <p className="text-sm text-on-surface-variant mb-4">
                 Choose how Lumina is displayed. Your preference is saved to your account and applies on every device.
@@ -287,6 +288,7 @@ export const UserProfilePage: React.FC = () => {
                   {langMsg.text}
                 </div>
               )}
+              </div>
             </Card>
           )}
         </div>

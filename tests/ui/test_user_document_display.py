@@ -36,10 +36,11 @@ def _register_and_login_ui(page, prefix="docui"):
 
 
 def _api_login(identifier, password):
-    """Helper — get an API token for direct backend upload from the test."""
+    """Helper — get an API token. BE wraps LoginResponseDto in ApiResponse envelope."""
     r = requests.post(f"{API_BASE}/api/auth/login", json={"username": identifier, "password": password}, timeout=10)
     assert r.status_code == 200
-    return r.json()["accessToken"]
+    body = r.json()
+    return (body.get("data") or body)["accessToken"]
 
 
 @pytest.mark.ui
@@ -94,15 +95,11 @@ class TestDocumentViewerDisplay:
 
         page.goto(f"{FE_BASE}/user/documents?docId={doc_id}")
         page.wait_for_load_state("networkidle")
-        # Give the document fetch time to populate the title
-        page.wait_for_timeout(1500)
+        # Wait for the document to load + title to render
+        page.locator("[data-testid='document-title']").wait_for(state="visible", timeout=10000)
 
         title = page.locator("[data-testid='document-title']")
-        if title.count() > 0:
-            assert title.is_visible(), "Document title must render in the viewer"
-            assert title.inner_text().strip() != "", "Title text must be non-empty"
+        assert title.inner_text().strip() != "", "Title text must be non-empty"
 
-        edit_btn = page.locator("[data-testid='document-edit-btn']")
-        # Owner-only: must be visible for the uploader
-        assert edit_btn.count() >= 1, "Owner must see the Edit/Rename button (data-testid='document-edit-btn')"
-        assert edit_btn.first.is_visible()
+        # Owner-only edit button (wait for it to appear since isOwner check uses async user load)
+        page.locator("[data-testid='document-edit-btn']").wait_for(state="visible", timeout=5000)

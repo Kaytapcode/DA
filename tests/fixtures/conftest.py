@@ -20,19 +20,19 @@ class APIClient:
         self.timeout = timeout
         self.session = requests.Session()
         self.auth_token = None
-        self.refresh_token = None
+        self._refresh_token = None
         
     def set_auth_token(self, token: str, refresh_token: str = None):
         """Set JWT token for authenticated requests"""
         self.auth_token = token
         if refresh_token:
-            self.refresh_token = refresh_token
+            self._refresh_token = refresh_token
         self._update_headers()
     
     def clear_auth(self):
         """Clear authentication tokens"""
         self.auth_token = None
-        self.refresh_token = None
+        self._refresh_token = None
         self._update_headers()
     
     def _update_headers(self):
@@ -83,29 +83,31 @@ class APIClient:
         """
         Login user and store tokens.
         Spec 1: POST /api/auth/login accepts {Username, Password} where Username may be either username or email.
-        Returns LoginResponseDto with AccessToken, RefreshToken, AccessTokenExpiresInSeconds, RefreshTokenExpiresAt, User, OrgId.
+        BE wraps the LoginResponseDto in ApiResponse envelope: { success, data: { accessToken, refreshToken, ... } }
         """
         response = self.post(
             "/api/auth/login",
             json={"username": identifier, "password": password}
         )
-        data = response.json() if response.text else {}
+        raw = response.json() if response.text else {}
+        payload = raw.get("data") if isinstance(raw, dict) and isinstance(raw.get("data"), dict) else raw
         if response.status_code == 200:
-            self.set_auth_token(data.get("accessToken"), data.get("refreshToken"))
-        return {"response": response, "status_code": response.status_code, "data": data}
+            self.set_auth_token(payload.get("accessToken"), payload.get("refreshToken"))
+        return {"response": response, "status_code": response.status_code, "data": payload}
 
     def refresh_token(self, refresh_token: str = None) -> Dict[str, Any]:
         """Refresh access token. Spec 1: POST /api/auth/refresh rotates refresh tokens."""
-        rt = refresh_token or self.refresh_token
+        rt = refresh_token or self._refresh_token
         response = self.post("/api/auth/refresh", json={"refreshToken": rt})
-        data = response.json() if response.text else {}
+        raw = response.json() if response.text else {}
+        payload = raw.get("data") if isinstance(raw, dict) and isinstance(raw.get("data"), dict) else raw
         if response.status_code == 200:
-            self.set_auth_token(data.get("accessToken"), data.get("refreshToken"))
-        return {"response": response, "status_code": response.status_code, "data": data}
+            self.set_auth_token(payload.get("accessToken"), payload.get("refreshToken"))
+        return {"response": response, "status_code": response.status_code, "data": payload}
 
     def logout_user(self, refresh_token: str = None) -> Dict[str, Any]:
         """Logout (revoke refresh token). Spec 1: POST /api/auth/logout is idempotent."""
-        rt = refresh_token or self.refresh_token
+        rt = refresh_token or self._refresh_token
         response = self.post("/api/auth/logout", json={"refreshToken": rt}) if rt else None
         self.clear_auth()
         if response is None:

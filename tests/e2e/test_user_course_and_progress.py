@@ -41,7 +41,7 @@ class TestQuizPlayAndGrading:
 
     def _build_quiz_with_one_question(self, api_client):
         quiz = _unwrap(api_client.post("/api/quizzes", json={"title": "Play Quiz", "timeLimit": 5}))
-        api_client.post(f"/api/quizzes/{quiz['id']}/questions", json={
+        api_client.post(f"/api/quizzes/{quiz['quizId']}/questions", json={
             "questionText": "What is 1+1?",
             "explanation": "Basic arithmetic",
             "options": [
@@ -63,11 +63,11 @@ class TestQuizPlayAndGrading:
         """Spec 4.3 — Auto-grade: response includes a score percentage."""
         _register_and_login(api_client)
         quiz = self._build_quiz_with_one_question(api_client)
-        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}/questions"))
+        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}/questions"))
         q = questions[0]
         correct_option = next((o for o in q["options"] if o.get("isCorrect") or o.get("optionText") == "2"), q["options"][1])
 
-        resp = api_client.post(f"/api/quizzes/{quiz['id']}/submit", json={
+        resp = api_client.post(f"/api/quizzes/{quiz['quizId']}/submit", json={
             "answers": [{"questionId": q["id"], "selectedOptionId": correct_option["id"]}],
             "timeTakenSeconds": 30,
         })
@@ -81,10 +81,10 @@ class TestQuizPlayAndGrading:
         """Spec 4.3 — Explanation included in the per-question result when set."""
         _register_and_login(api_client)
         quiz = self._build_quiz_with_one_question(api_client)
-        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}/questions"))
+        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}/questions"))
         q = questions[0]
 
-        resp = api_client.post(f"/api/quizzes/{quiz['id']}/submit", json={
+        resp = api_client.post(f"/api/quizzes/{quiz['quizId']}/submit", json={
             "answers": [{"questionId": q["id"], "selectedOptionId": q["options"][0]["id"]}],
             "timeTakenSeconds": 5,
         })

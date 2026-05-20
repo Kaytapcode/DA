@@ -37,7 +37,7 @@ def _register_and_login_ui(page, prefix="quizui"):
 
 def _open_quiz_create(page):
     """Navigate to quiz create page (FE route may vary; use the most common)."""
-    for url in (f"{FE_BASE}/user/quizzes/create", f"{FE_BASE}/user/quiz/create", f"{FE_BASE}/user/create-quiz"):
+    for url in (f"{FE_BASE}/user/quizzes/new", f"{FE_BASE}/user/quizzes/create", f"{FE_BASE}/user/quiz/create", f"{FE_BASE}/user/create-quiz"):
         page.goto(url)
         page.wait_for_load_state("networkidle")
         if page.locator("[data-testid='quiz-title-input']").count() > 0:

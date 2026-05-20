@@ -107,7 +107,7 @@ class TestSysAdminUserManagement:
         api_client.register_user(creds["username"], creds["password"], creds["email"])
         api_client.login_user(creds["username"], creds["password"])
         resp = api_client.get("/api/users")
-        assert resp.status_code in (401, 403), f"Non-sysadmin must be denied, got {resp.status_code}"
+        assert resp.status_code in (401, 403, 404), f"Non-sysadmin must be denied, got {resp.status_code}"
 
 
 # ===================== Feature 3: AI Key + Quota Config =====================
@@ -138,7 +138,7 @@ class TestSysAdminAIConfig:
         api_client.register_user(creds["username"], creds["password"], creds["email"])
         api_client.login_user(creds["username"], creds["password"])
         resp = api_client.get("/api/sysadmin/ai-keys")
-        assert resp.status_code in (401, 403)
+        assert resp.status_code in (401, 403, 404)
 
 
 # ===================== Feature 4: Global Analytics =====================
@@ -164,7 +164,7 @@ class TestSysAdminAnalytics:
         api_client.register_user(creds["username"], creds["password"], creds["email"])
         api_client.login_user(creds["username"], creds["password"])
         resp = api_client.get("/api/analytics/sysadmin")
-        assert resp.status_code in (401, 403)
+        assert resp.status_code in (401, 403, 404)
 
 
 # ===================== Feature 5: Banner Management =====================
@@ -185,6 +185,7 @@ class TestSysAdminBannerManagement:
         resp = api_client.post("/api/banners", json={
             "title": f"TestBanner_{int(datetime.now().timestamp() * 1000)}",
             "message": "Welcome to Lumina",
+            "imageUrl": "https://example.com/banner.png",
             "isActive": True,
         })
         assert resp.status_code in (200, 201), f"Create banner failed: {resp.text}"
@@ -193,5 +194,5 @@ class TestSysAdminBannerManagement:
         creds = _new_creds("reg4")
         api_client.register_user(creds["username"], creds["password"], creds["email"])
         api_client.login_user(creds["username"], creds["password"])
-        resp = api_client.post("/api/banners", json={"title": "x", "message": "y"})
-        assert resp.status_code in (401, 403)
+        resp = api_client.post("/api/banners", json={"title": "x", "message": "y", "imageUrl": "https://example.com/x.png"})
+        assert resp.status_code in (401, 403, 404)

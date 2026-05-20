@@ -64,7 +64,7 @@ class TestQuizManualCreate:
         """Spec 2.1 — POST /api/quizzes returns the new quiz summary."""
         _register_and_login(api_client)
         quiz = _create_quiz(api_client, title="My Math Quiz")
-        assert "id" in quiz, "Quiz must return its id"
+        assert "quizId" in quiz, "Quiz must return its quizId"
         assert quiz.get("title") == "My Math Quiz"
 
     def test_quiz_creation_requires_title(self, api_client):
@@ -95,7 +95,7 @@ class TestQuestionManualCRUD:
             {"optionText": "London", "isCorrect": False, "orderIndex": 1},
         ]
         # Explanation deliberately omitted (null)
-        resp = _add_question(api_client, quiz["id"], "Capital of France?", options, explanation=None)
+        resp = _add_question(api_client, quiz["quizId"], "Capital of France?", options, explanation=None)
         assert resp.status_code == 200, f"Question creation without explanation failed: {resp.text}"
 
     def test_add_question_with_explanation_succeeds(self, api_client):
@@ -107,7 +107,7 @@ class TestQuestionManualCRUD:
             {"optionText": "5", "isCorrect": False, "orderIndex": 1},
         ]
         resp = _add_question(
-            api_client, quiz["id"], "2 + 2?", options,
+            api_client, quiz["quizId"], "2 + 2?", options,
             explanation="Basic arithmetic addition.",
         )
         assert resp.status_code == 200
@@ -120,7 +120,7 @@ class TestQuestionManualCRUD:
             {"optionText": "A", "isCorrect": False, "orderIndex": 0},
             {"optionText": "B", "isCorrect": False, "orderIndex": 1},
         ]
-        resp = _add_question(api_client, quiz["id"], "?", options)
+        resp = _add_question(api_client, quiz["quizId"], "?", options)
         assert resp.status_code == 400, "Question with no correct option must be rejected"
 
     def test_get_questions_returns_created_question(self, api_client):
@@ -131,9 +131,9 @@ class TestQuestionManualCRUD:
             {"optionText": "yes", "isCorrect": True, "orderIndex": 0},
             {"optionText": "no", "isCorrect": False, "orderIndex": 1},
         ]
-        _add_question(api_client, quiz["id"], "Is the sky blue?", options)
+        _add_question(api_client, quiz["quizId"], "Is the sky blue?", options)
 
-        resp = api_client.get(f"/api/quizzes/{quiz['id']}/questions")
+        resp = api_client.get(f"/api/quizzes/{quiz['quizId']}/questions")
         assert resp.status_code == 200
         questions = _unwrap(resp)
         assert len(questions) == 1
@@ -147,16 +147,16 @@ class TestQuestionManualCRUD:
             {"optionText": "old", "isCorrect": True, "orderIndex": 0},
             {"optionText": "other", "isCorrect": False, "orderIndex": 1},
         ]
-        _add_question(api_client, quiz["id"], "Old text?", options)
+        _add_question(api_client, quiz["quizId"], "Old text?", options)
 
-        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}/questions"))
+        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}/questions"))
         qid = questions[0]["id"]
 
         new_options = [
             {"optionText": "new", "isCorrect": True, "orderIndex": 0},
             {"optionText": "other", "isCorrect": False, "orderIndex": 1},
         ]
-        resp = api_client.put(f"/api/quizzes/{quiz['id']}/questions/{qid}", json={
+        resp = api_client.put(f"/api/quizzes/{quiz['quizId']}/questions/{qid}", json={
             "questionText": "New text?",
             "explanation": "Updated reason",
             "options": new_options,
@@ -164,7 +164,7 @@ class TestQuestionManualCRUD:
         assert resp.status_code == 200, f"Update failed: {resp.text}"
 
         # Verify persisted
-        after = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}/questions"))
+        after = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}/questions"))
         assert after[0]["questionText"] == "New text?"
 
     def test_owner_can_delete_question(self, api_client):
@@ -175,14 +175,14 @@ class TestQuestionManualCRUD:
             {"optionText": "a", "isCorrect": True, "orderIndex": 0},
             {"optionText": "b", "isCorrect": False, "orderIndex": 1},
         ]
-        _add_question(api_client, quiz["id"], "?", options)
-        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}/questions"))
+        _add_question(api_client, quiz["quizId"], "?", options)
+        questions = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}/questions"))
         qid = questions[0]["id"]
 
-        resp = api_client.delete(f"/api/quizzes/{quiz['id']}/questions/{qid}")
+        resp = api_client.delete(f"/api/quizzes/{quiz['quizId']}/questions/{qid}")
         assert resp.status_code in (200, 204)
 
-        after = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}/questions"))
+        after = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}/questions"))
         assert len(after) == 0
 
 
@@ -201,7 +201,7 @@ class TestQuizOwnership:
 
         # Different user logs in
         _register_and_login(api_client, prefix="other")
-        resp = api_client.patch(f"/api/quizzes/{quiz['id']}", json={"title": "Hacked!"})
+        resp = api_client.patch(f"/api/quizzes/{quiz['quizId']}", json={"title": "Hacked!"})
         assert resp.status_code in (403, 404), \
             f"Non-owner edit must be denied (403/404), got {resp.status_code}"
 
@@ -216,7 +216,7 @@ class TestQuizOwnership:
             {"optionText": "x", "isCorrect": True, "orderIndex": 0},
             {"optionText": "y", "isCorrect": False, "orderIndex": 1},
         ]
-        resp = _add_question(api_client, quiz["id"], "Injected?", options)
+        resp = _add_question(api_client, quiz["quizId"], "Injected?", options)
         assert resp.status_code in (403, 404), \
             f"Non-owner question add must be denied, got {resp.status_code}"
 
@@ -228,13 +228,13 @@ class TestQuizOwnership:
             {"optionText": "a", "isCorrect": True, "orderIndex": 0},
             {"optionText": "b", "isCorrect": False, "orderIndex": 1},
         ]
-        _add_question(api_client, quiz["id"], "Public Q?", options)
+        _add_question(api_client, quiz["quizId"], "Public Q?", options)
         api_client.clear_auth()
 
         _register_and_login(api_client, prefix="other3")
-        resp = api_client.get(f"/api/quizzes/{quiz['id']}")
+        resp = api_client.get(f"/api/quizzes/{quiz['quizId']}")
         assert resp.status_code == 200, "Spec 1: User-created quizzes must be readable by anyone"
-        qs = api_client.get(f"/api/quizzes/{quiz['id']}/questions")
+        qs = api_client.get(f"/api/quizzes/{quiz['quizId']}/questions")
         assert qs.status_code == 200, "Spec 1: Quiz questions must be readable by anyone"
 
 
@@ -247,16 +247,16 @@ class TestQuizUpdateAndDelete:
     def test_owner_can_rename_quiz(self, api_client):
         _register_and_login(api_client)
         quiz = _create_quiz(api_client, title="Old Title")
-        resp = api_client.patch(f"/api/quizzes/{quiz['id']}", json={"title": "New Title"})
+        resp = api_client.patch(f"/api/quizzes/{quiz['quizId']}", json={"title": "New Title"})
         assert resp.status_code == 200
-        after = _unwrap(api_client.get(f"/api/quizzes/{quiz['id']}"))
+        after = _unwrap(api_client.get(f"/api/quizzes/{quiz['quizId']}"))
         assert after["title"] == "New Title"
 
     def test_owner_can_delete_quiz(self, api_client):
         _register_and_login(api_client)
         quiz = _create_quiz(api_client, title="To Be Deleted")
-        resp = api_client.delete(f"/api/quizzes/{quiz['id']}")
+        resp = api_client.delete(f"/api/quizzes/{quiz['quizId']}")
         assert resp.status_code == 200
         # Quiz no longer accessible
-        after = api_client.get(f"/api/quizzes/{quiz['id']}")
+        after = api_client.get(f"/api/quizzes/{quiz['quizId']}")
         assert after.status_code == 404

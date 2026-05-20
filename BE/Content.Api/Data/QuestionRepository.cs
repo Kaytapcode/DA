@@ -189,23 +189,43 @@ namespace Content.Api.Data
 
         public async Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default)
         {
-            // Remove old options
-            var oldOptions = await _db.QuestionOptions.Where(o => o.QuestionId == question.Id).ToListAsync(ct);
-            _db.QuestionOptions.RemoveRange(oldOptions);
+            // Detach any tracked entities from prior reads so we start clean.
+            foreach (var entry in _db.ChangeTracker.Entries<QuestionModel>().Where(e => e.Entity.Id == question.Id).ToList())
+                entry.State = EntityState.Detached;
+            foreach (var entry in _db.ChangeTracker.Entries<QuestionOptionModel>().Where(e => e.Entity.QuestionId == question.Id).ToList())
+                entry.State = EntityState.Detached;
 
-            // Add new options
+            // Wholesale-replace the options table for this question via raw delete (no navigation collection drama).
+            await _db.QuestionOptions
+                .Where(o => o.QuestionId == question.Id)
+                .ExecuteDeleteAsync(ct);
+
+            // Update the question scalar fields with a bulk update — no concurrency token, no row tracking churn.
+            var rowsUpdated = await _db.Questions
+                .Where(q => q.Id == question.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(q => q.QuestionText, question.QuestionText)
+                    .SetProperty(q => q.Explanation, question.Explanation)
+                    .SetProperty(q => q.UpdatedAt, DateTime.UtcNow), ct);
+
+            if (rowsUpdated == 0)
+                throw new KeyNotFoundException($"Question {question.Id} not found.");
+
+            // Insert the new options.
             foreach (var opt in options)
             {
                 opt.Id = Guid.NewGuid();
                 opt.QuestionId = question.Id;
                 opt.CreatedAt = DateTime.UtcNow;
+                _db.QuestionOptions.Add(opt);
             }
-
-            question.UpdatedAt = DateTime.UtcNow;
-            question.Options = options;
-            _db.Questions.Update(question);
             await _db.SaveChangesAsync(ct);
-            return question;
+
+            // Return a fresh read with Options included.
+            return await _db.Questions
+                .Include(q => q.Options.OrderBy(o => o.OrderIndex))
+                .AsNoTracking()
+                .FirstAsync(q => q.Id == question.Id, ct);
         }
 
         public async Task SoftDeleteAsync(Guid id, CancellationToken ct = default)
