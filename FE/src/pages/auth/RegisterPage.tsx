@@ -187,7 +187,7 @@ export const RegisterPage: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleRegister} className="space-y-5">
+          <form onSubmit={handleRegister} className="space-y-5" data-testid="register-form">
             {/* Username */}
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
@@ -197,6 +197,7 @@ export const RegisterPage: React.FC = () => {
                 id="username"
                 name="username"
                 type="text"
+                data-testid="register-username"
                 placeholder="e.g., john_doe"
                 value={formData.username}
                 onChange={(e) => handleFieldChange('username', e.target.value)}
@@ -221,6 +222,7 @@ export const RegisterPage: React.FC = () => {
                 id="email"
                 name="email"
                 type="email"
+                data-testid="register-email"
                 autoComplete="email"
                 placeholder="your@email.com"
                 value={formData.email}
@@ -244,6 +246,7 @@ export const RegisterPage: React.FC = () => {
                   id="password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
+                  data-testid="register-password"
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={formData.password}
@@ -324,6 +327,7 @@ export const RegisterPage: React.FC = () => {
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
+                  data-testid="register-confirm-password"
                   autoComplete="new-password"
                   placeholder="••••••••"
                   value={formData.confirmPassword}
@@ -352,6 +356,7 @@ export const RegisterPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
+              data-testid="register-submit"
               className={`w-full py-2 px-4 rounded-md font-semibold text-white transition ${
                 isLoading
                   ? 'bg-gray-400 cursor-not-allowed'

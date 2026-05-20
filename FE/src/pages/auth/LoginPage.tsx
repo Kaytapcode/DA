@@ -144,13 +144,13 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Alert */}
             {submitError && (
-              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" data-testid="login-error">
                 <p className="text-sm font-medium text-red-700">{submitError}</p>
               </div>
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleLogin} className="mt-8 space-y-4">
+            <form onSubmit={handleLogin} className="mt-8 space-y-4" data-testid="login-form">
               {/* Email or Username Field */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
@@ -163,6 +163,7 @@ export const LoginPage: React.FC = () => {
                     type="text"
                     autoComplete="username"
                     placeholder="name@institution.edu or username"
+                    data-testid="login-identifier"
                     value={formData.identifier}
                     onChange={(e) => handleFieldChange('identifier', e.target.value)}
                     className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
@@ -195,6 +196,7 @@ export const LoginPage: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="••••••••••••"
+                    data-testid="login-password"
                     value={formData.password}
                     onChange={(e) => handleFieldChange('password', e.target.value)}
                     className={`w-full rounded-lg border bg-white px-4 py-3 pr-12 text-sm outline-none transition ${
@@ -221,6 +223,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
+                data-testid="login-submit"
                 className={`mt-6 w-full rounded-full px-6 py-3 text-base font-bold text-white transition ${
                   isLoading
                     ? 'cursor-not-allowed bg-gray-400'

@@ -68,24 +68,54 @@ class APIClient:
         return self._make_request("DELETE", endpoint, **kwargs)
     
     # Convenience methods for common operations
-    def register_user(self, email: str, password: str, name: str) -> Dict[str, Any]:
-        """Register a new user"""
+    def register_user(self, username: str, password: str, email: str) -> Dict[str, Any]:
+        """
+        Register a new user.
+        Spec 1: POST /api/auth/register accepts {Username, Password, Email}, returns 200 on success (no tokens).
+        """
         response = self.post(
             "/api/auth/register",
-            json={"email": email, "password": password, "name": name}
+            json={"username": username, "password": password, "email": email}
         )
         return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
-    
-    def login_user(self, email: str, password: str) -> Dict[str, Any]:
-        """Login user and store tokens"""
+
+    def login_user(self, identifier: str, password: str) -> Dict[str, Any]:
+        """
+        Login user and store tokens.
+        Spec 1: POST /api/auth/login accepts {Username, Password} where Username may be either username or email.
+        Returns LoginResponseDto with AccessToken, RefreshToken, AccessTokenExpiresInSeconds, RefreshTokenExpiresAt, User, OrgId.
+        """
         response = self.post(
             "/api/auth/login",
-            json={"email": email, "password": password}
+            json={"username": identifier, "password": password}
         )
         data = response.json() if response.text else {}
         if response.status_code == 200:
-            self.set_auth_token(data.get("token"), data.get("refreshToken"))
+            self.set_auth_token(data.get("accessToken"), data.get("refreshToken"))
         return {"response": response, "status_code": response.status_code, "data": data}
+
+    def refresh_token(self, refresh_token: str = None) -> Dict[str, Any]:
+        """Refresh access token. Spec 1: POST /api/auth/refresh rotates refresh tokens."""
+        rt = refresh_token or self.refresh_token
+        response = self.post("/api/auth/refresh", json={"refreshToken": rt})
+        data = response.json() if response.text else {}
+        if response.status_code == 200:
+            self.set_auth_token(data.get("accessToken"), data.get("refreshToken"))
+        return {"response": response, "status_code": response.status_code, "data": data}
+
+    def logout_user(self, refresh_token: str = None) -> Dict[str, Any]:
+        """Logout (revoke refresh token). Spec 1: POST /api/auth/logout is idempotent."""
+        rt = refresh_token or self.refresh_token
+        response = self.post("/api/auth/logout", json={"refreshToken": rt}) if rt else None
+        self.clear_auth()
+        if response is None:
+            return {"response": None, "status_code": 200, "data": {}}
+        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
+
+    def get_me(self) -> Dict[str, Any]:
+        """Get current user profile. Spec 1: GET /api/auth/me requires JWT."""
+        response = self.get("/api/auth/me")
+        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
     
     def logout(self):
         """Logout user"""
@@ -147,8 +177,8 @@ def api_client(api_client_factory):
 
 @pytest.fixture
 def authenticated_client(api_client, test_user):
-    """API client with authenticated user"""
-    result = api_client.login_user(test_user["email"], test_user["password"])
+    """API client with authenticated user. Logs in using username (BE accepts username or email)."""
+    result = api_client.login_user(test_user["username"], test_user["password"])
     assert result["status_code"] == 200, f"Login failed: {result['data']}"
     yield api_client
     api_client.logout()
@@ -156,16 +186,16 @@ def authenticated_client(api_client, test_user):
 
 @pytest.fixture
 def test_user(api_client):
-    """Create a test user"""
-    email = f"test_{datetime.now().timestamp()}@example.com"
+    """Create a test user. Spec 1: registration returns 200 (not 201)."""
+    timestamp = str(int(datetime.now().timestamp() * 1000))
+    username = f"testuser_{timestamp}"
+    email = f"test_{timestamp}@example.com"
     password = "TestPassword123!"
-    name = "Test User"
-    
-    # Register user
-    result = api_client.register_user(email, password, name)
-    assert result["status_code"] == 201, f"Registration failed: {result['data']}"
-    
-    return {"email": email, "password": password, "name": name, "id": result["data"].get("id")}
+
+    result = api_client.register_user(username, password, email)
+    assert result["status_code"] == 200, f"Registration failed: {result['data']}"
+
+    return {"username": username, "email": email, "password": password, "id": result["data"].get("id")}
 
 
 @pytest.fixture
