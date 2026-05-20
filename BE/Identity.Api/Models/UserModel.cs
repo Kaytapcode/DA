@@ -35,5 +35,10 @@ namespace Identity.Api.Models
 
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
+
+        // Spec 1 — i18n preference. Supported: "vi", "ja", "en". Null = no preference set (FE defaults to "en").
+        [Column("language")]
+        [StringLength(8)]
+        public string? Language { get; set; }
     }
 }

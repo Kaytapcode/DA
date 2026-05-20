@@ -113,9 +113,19 @@ class APIClient:
         return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
 
     def get_me(self) -> Dict[str, Any]:
-        """Get current user profile. Spec 1: GET /api/auth/me requires JWT."""
+        """
+        Get current user profile. Spec 1: GET /api/auth/me requires JWT.
+        BE wraps the response as ApiResponse<UserInfoDto> { success, data, message };
+        unwrap so callers see the UserInfoDto directly.
+        """
         response = self.get("/api/auth/me")
-        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
+        raw = response.json() if response.text else {}
+        # Unwrap ApiResponse envelope when present
+        if isinstance(raw, dict) and "data" in raw and isinstance(raw.get("data"), dict):
+            payload = raw["data"]
+        else:
+            payload = raw
+        return {"response": response, "status_code": response.status_code, "data": payload}
     
     def logout(self):
         """Logout user"""

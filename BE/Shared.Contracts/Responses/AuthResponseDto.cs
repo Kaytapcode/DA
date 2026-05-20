@@ -19,6 +19,7 @@ namespace Shared.Contracts.Responses
         Guid Id,
         string Username,
         string Email,
-        string Role
+        string Role,
+        string? Language = null
     );
 }

@@ -136,8 +136,89 @@ namespace Identity.Api.Controllers
 
             return Ok(new ApiResponse<UserInfoDto>(
                 Success: true,
-                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role),
+                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
                 Message: null
+            ));
+        }
+
+        // Spec 1 — Profile Management. PATCH self-profile (username + email).
+        [HttpPatch("me")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequestDto request)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return NotFound();
+
+            if (request.Username != null && request.Username != user.Username)
+            {
+                if (await _userRepository.UserExistsByUsernameAsync(request.Username))
+                    return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
+                user.Username = request.Username;
+            }
+
+            if (request.Email != null && request.Email != user.Email)
+            {
+                if (await _userRepository.UserExistsByEmailAsync(request.Email))
+                    return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
+                user.Email = request.Email;
+            }
+
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateAsync(user);
+
+            return Ok(new ApiResponse<UserInfoDto>(
+                Success: true,
+                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
+                Message: "Profile updated."
+            ));
+        }
+
+        // Spec 1 — Change Password. Requires correct current password, validates new password strength.
+        [HttpPost("change-password")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequestDto request)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return Unauthorized();
+
+            if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
+                return Unauthorized(new ApiResponse(Success: false, Message: "Current password is incorrect."));
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateAsync(user);
+
+            return Ok(new ApiResponse(Success: true, Message: "Password changed."));
+        }
+
+        // Spec 1 — i18n preference. Supported languages: vi, ja, en. Validated by UpdateLanguageRequestValidator.
+        [HttpPatch("me/language")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> UpdateLanguage([FromBody] UpdateLanguageRequestDto request)
+        {
+            var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!Guid.TryParse(userIdClaim, out var userId))
+                return Unauthorized();
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null) return NotFound();
+
+            user.Language = request.Language;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _userRepository.UpdateAsync(user);
+
+            return Ok(new ApiResponse<UserInfoDto>(
+                Success: true,
+                Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
+                Message: "Language preference updated."
             ));
         }
     }
