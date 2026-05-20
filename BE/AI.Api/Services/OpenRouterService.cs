@@ -214,10 +214,13 @@ DOCUMENT TITLE: {documentTitle}
 
 RULES:
 1. Every question must be answerable solely from the document — zero hallucination.
-2. Each question has EXACTLY 4 options (A, B, C, D).
-3. Exactly ONE option is correct; the other three are plausible distractors.
-4. The ""explanation"" field is MANDATORY and must quote or paraphrase the document.
-5. Continue generating until you have written all {targetQ} questions.
+2. Output ALL questions, options, and explanations in the SAME LANGUAGE as the source document.
+   Detect the document language and match it exactly (e.g. Vietnamese document → Vietnamese output;
+   Japanese document → Japanese output; English document → English output).
+3. Each question has EXACTLY 4 options (A, B, C, D).
+4. Exactly ONE option is correct; the other three are plausible distractors.
+5. The ""explanation"" field is MANDATORY and must quote or paraphrase the document.
+6. Continue generating until you have written all {targetQ} questions.
 
 Return ONLY this JSON — no markdown fences, no extra text:
 {{
@@ -247,10 +250,12 @@ DOCUMENT TITLE: {documentTitle}
 
 RULES:
 1. Every question must be answerable solely from the document — zero hallucination.
-2. Each question has EXACTLY 4 options (A, B, C, D).
-3. Exactly ONE option is correct; the other three are plausible distractors.
-4. The ""explanation"" field is MANDATORY and must quote or paraphrase the document.
-5. Do NOT repeat topics already likely covered — choose different sections/concepts.
+2. Output ALL questions, options, and explanations in the SAME LANGUAGE as the source document.
+   Detect the document language and match it exactly.
+3. Each question has EXACTLY 4 options (A, B, C, D).
+4. Exactly ONE option is correct; the other three are plausible distractors.
+5. The ""explanation"" field is MANDATORY and must quote or paraphrase the document.
+6. Do NOT repeat topics already likely covered — choose different sections/concepts.
 
 Return ONLY this JSON — no markdown fences, no extra text:
 {{

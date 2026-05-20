@@ -104,9 +104,14 @@ namespace Content.Api.Data
 
         public async Task MarkQuizAiGeneratedAsync(Guid quizId, CancellationToken ct = default)
         {
-            var quiz = await _db.Quizzes.FirstOrDefaultAsync(q => q.Id == quizId, ct);
-            if (quiz == null || quiz.IsAiGenerated) return;
+            var quiz = await _db.Quizzes
+                .Include(q => q.Content)
+                .FirstOrDefaultAsync(q => q.Id == quizId, ct);
+            if (quiz == null) return;
+            if (quiz.IsAiGenerated && quiz.Content?.Status == "DRAFT") return;
             quiz.IsAiGenerated = true;
+            // Spec 2.1 — AI-imported quiz lands in DRAFT state for user verification before publish.
+            if (quiz.Content != null) quiz.Content.Status = "DRAFT";
             await _db.SaveChangesAsync(ct);
         }
 

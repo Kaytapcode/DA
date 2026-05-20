@@ -12,12 +12,24 @@ namespace AI.Api.Controllers
     public class QuizGenerationController : ControllerBase
     {
         private readonly IOpenRouterService _openRouterService;
+        private readonly IAiQuotaService _quotaService;
         private readonly ILogger<QuizGenerationController> _logger;
 
-        public QuizGenerationController(IOpenRouterService openRouterService, ILogger<QuizGenerationController> logger)
+        public QuizGenerationController(
+            IOpenRouterService openRouterService,
+            IAiQuotaService quotaService,
+            ILogger<QuizGenerationController> logger)
         {
             _openRouterService = openRouterService;
+            _quotaService = quotaService;
             _logger = logger;
+        }
+
+        // Spec 1 SysAdmin — read org_id from JWT claim so we can scope quota per organization.
+        private Guid? GetOrgId()
+        {
+            var claim = User.FindFirst("org_id")?.Value;
+            return Guid.TryParse(claim, out var g) ? g : null;
         }
 
         /// <summary>
@@ -52,6 +64,14 @@ namespace AI.Api.Controllers
             if (string.IsNullOrWhiteSpace(documentContent) || documentContent.Trim().Length < 50)
                 return BadRequest(new ApiResponse(false, "File content is too short (minimum 50 characters of text)."));
 
+            // Spec 1 SysAdmin — enforce per-org AI quota. Skip check when org_id is null
+            // (personal user not yet attached to an org).
+            var orgId = GetOrgId();
+            if (orgId.HasValue && !await _quotaService.CanMakeCallAsync(orgId.Value))
+            {
+                return StatusCode(429, new ApiResponse(false, "AI quota exhausted for this organization."));
+            }
+
             var title = !string.IsNullOrWhiteSpace(documentTitle)
                 ? documentTitle.Trim()
                 : Path.GetFileNameWithoutExtension(file.FileName);
@@ -64,6 +84,11 @@ namespace AI.Api.Controllers
                     questionCount ?? "normal",
                     difficulty ?? "normal");
                 _logger.LogInformation("Quiz generated with {Count} questions", response.QuestionsCount);
+
+                // Spec 1 SysAdmin — decrement quota only on success.
+                if (orgId.HasValue)
+                    await _quotaService.IncrementUsageAsync(orgId.Value);
+
                 return Ok(new ApiResponse<QuizGenerationResponse>(true, response, "Quiz generated successfully"));
             }
             catch (InvalidOperationException ex)
