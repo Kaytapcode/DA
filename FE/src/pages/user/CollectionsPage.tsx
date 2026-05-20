@@ -246,6 +246,7 @@ export const CollectionsPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowCreateForm((v) => !v)}
+              data-testid="collection-new-btn"
               className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
             >
               <MaterialIcon icon="add" size="xs" />
@@ -265,18 +266,20 @@ export const CollectionsPage: React.FC = () => {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder={isVi ? 'Vi du: On thi giua ky' : 'e.g. Midterm review'}
+                  data-testid="collection-title-input"
                 />
                 <Input
                   label={isVi ? 'Mo ta (tuy chon)' : 'Description (optional)'}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  data-testid="collection-description-input"
                 />
               </div>
               <div className="mt-4 flex justify-end gap-2">
-                <Button variant="ghost" onClick={() => { setShowCreateForm(false); setTitle(''); setDescription('') }}>
+                <Button variant="ghost" onClick={() => { setShowCreateForm(false); setTitle(''); setDescription('') }} data-testid="collection-cancel-btn">
                   {isVi ? 'Huy' : 'Cancel'}
                 </Button>
-                <Button onClick={() => void handleCreate()} disabled={isCreating || !title.trim()}>
+                <Button onClick={() => void handleCreate()} disabled={isCreating || !title.trim()} data-testid="collection-create-btn">
                   {isCreating ? (isVi ? 'Dang tao...' : 'Creating...') : (isVi ? 'Tao' : 'Create')}
                 </Button>
               </div>
