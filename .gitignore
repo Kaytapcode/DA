@@ -72,3 +72,8 @@ A8.txt
 !start-local.ps1
 
 
+
+# Test artifacts
+BE/Content.Api/uploads/
+tests/**/__pycache__/
+tests/reports/
