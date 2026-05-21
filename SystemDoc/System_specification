@@ -5,11 +5,19 @@
 Uses Token-based authentication (e.g., JWT).
 
 * **Registration & Login Flows (Authentication):**
-    * **User (Normal User):** Can self-register an account via the public registration form. Logs in via the standard login interface (Email/Password).
-    * **OrgAdmin:** Can self-register an account by providing Organization details (or can be invited/created by SysAdmin). Logs in via the standard login interface or a dedicated Organization portal.
-    * **SysAdmin:** Cannot self-register. A SysAdmin account can **ONLY** be created by another existing SysAdmin account via the administrative dashboard. Logs in via a dedicated secure Admin portal.
+    * **Unified Public Registration Form:** The system provides a single, public registration page where any visitor can create an account. On this form, the user **MUST explicitly select their desired initial role** via a choice selector (e.g., radio buttons, toggle, or dropdown). The options are:
+        * **Option 1: User (Normal User)** - Registers a standard global student/teacher account.
+        * **Option 2: OrgAdmin (Organization Administrator)** - Registers an administrative account and requires filling in additional mandatory fields regarding their Organization details (e.g., Organization Name, Business Domain).
+    * **Third-Party SSO (Single Sign-On - Google & Microsoft):**
+        * **SSO Login:** Users and OrgAdmins can log in instantly using their Google or Microsoft accounts via OAuth2 / OpenID Connect protocols.
+        * **SSO Registration (First-time Login):** If the email from the SSO provider does not exist in the Lumina database, the system will redirect the user to a **Role Selection Intermediary Page**. 
+            * The user must explicitly choose to become a **User** or an **OrgAdmin** (with mandatory Organization details) to complete the account provisioning.
+            * Subsequent logins via SSO will automatically bypass this step and route the user to their designated dashboard based on the mapped role.
+    * **User Login:** Logs in via the standard credentials form (Email/Password) or Third-Party SSO.
+    * **OrgAdmin Login:** Logs in via the standard form, dedicated Organization portal, or Third-Party SSO.
+    * **SysAdmin Login & Creation:** Cannot self-register and **cannot bypass via public SSO**. A SysAdmin account can **ONLY** be created manually by another existing SysAdmin account via the administrative dashboard. Logs in via a dedicated secure Admin portal.
 * **Account Management:**
-    * **Change Password:** Allows authenticated users to change their current password by providing the old password, a new password, and a password confirmation.
+    * **Change Password:** Allows authenticated users (who registered via standard Email/Password) to change their current password by providing the old password, a new password, and a password confirmation.
     * **Forgot Password:** Allows unauthenticated users to request a password reset link/OTP via their registered Email to securely set a new password.
 * **Localization & Internationalization (i18n):**
     * **System Interface Languages:** Supports multi-language switching across the entire platform interface. Supported languages: **Vietnamese, Japanese, and English**.
@@ -62,7 +70,7 @@ Uses Token-based authentication (e.g., JWT).
 ### 2.2. Document Management
 
 * **Upload:** Supports uploading PDF files, images, and text files with a strict **maximum file size limit of 200MB**.
-* **Storage:** Secure file storage (database).
+* **Storage:** Secure file storage inside the database.
 * **Viewer:** Integrated PDF/Image viewer directly on the Lumina interface.
 
 ### 2.3. Flashcard Management
@@ -141,21 +149,28 @@ To facilitate system testing, verification, and evaluation, the database must be
 * **Password Format:** `[role_name]@123`
 
 ### 5.1. System Administrator (SysAdmin) Accounts
-* **SysAdmin 1:** * Username: `SysAdmin1`
+* **SysAdmin 1:**
+  * Username: `SysAdmin1`
   * Password: `SysAdmin@123`
-* **SysAdmin 2:** * Username: `SysAdmin2`
+* **SysAdmin 2:**
+  * Username: `SysAdmin2`
   * Password: `SysAdmin@123`
 
 ### 5.2. Organization Administrator (OrgAdmin) Accounts
-* **OrgAdmin 1:** * Username: `OrgAdmin1`
+* **OrgAdmin 1:**
+  * Username: `OrgAdmin1`
   * Password: `OrgAdmin@123`
-* **OrgAdmin 2:** * Username: `OrgAdmin2`
+* **OrgAdmin 2:**
+  * Username: `OrgAdmin2`
   * Password: `OrgAdmin@123`
 
 ### 5.3. Regular User (User) Accounts
-* **User 1:** * Username: `User1`
+* **User 1:**
+  * Username: `User1`
   * Password: `User@123`
-* **User 2:** * Username: `User2`
+* **User 2:**
+  * Username: `User2`
   * Password: `User@123`
-* **User 3:** * Username: `User3`
+* **User 3:**
+  * Username: `User3`
   * Password: `User@123`
