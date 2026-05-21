@@ -79,13 +79,15 @@ export const useCourse = (): UseCourseReturn => {
       setPageSize(newPageSize);
 
       try {
-        const response = await apiClient.get<PaginatedResponse<CourseList>>(
+        // BE returns PaginatedResponse flat: { success, data: CourseList[], pageIndex, totalCount }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const response = await apiClient.get<any>(
           `/courses?pageIndex=${newPageIndex}&pageSize=${newPageSize}`
         );
 
-        if (response.success && response.data) {
-          setCourses(response.data.data);
-          setTotalCount(response.data.totalCount);
+        if (response.success && Array.isArray(response.data)) {
+          setCourses(response.data as CourseList[]);
+          setTotalCount(response.totalCount ?? 0);
         } else {
           throw new Error(response.message || 'Failed to fetch courses');
         }

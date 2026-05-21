@@ -102,7 +102,11 @@ namespace Content.Api.Services
 
             // 2. Fall back to JWT claim
             var claim = Context?.User?.FindFirst("org_id")?.Value;
-            return Guid.TryParse(claim, out var claimId) ? claimId : null;
+            if (Guid.TryParse(claim, out var claimId)) return claimId;
+
+            // 3. Fall back to X-Org-Id request header (forwarded by YARP from FE localStorage)
+            var header = Context?.Request.Headers["X-Org-Id"].FirstOrDefault();
+            return Guid.TryParse(header, out var headerId) ? headerId : null;
         }
 
         public Guid? GetCurrentUserId()

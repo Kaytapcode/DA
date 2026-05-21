@@ -1,4 +1,5 @@
 using Content.Api.Data;
+using Content.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,8 +13,13 @@ namespace Content.Api.Controllers
     public class AnalyticsController : ControllerBase
     {
         private readonly ContentDbContext _db;
+        private readonly IOrgContextService _orgCtx;
 
-        public AnalyticsController(ContentDbContext db) => _db = db;
+        public AnalyticsController(ContentDbContext db, IOrgContextService orgCtx)
+        {
+            _db = db;
+            _orgCtx = orgCtx;
+        }
 
         public record SysAdminOverviewDto(
             int TotalCourses,
@@ -53,10 +59,13 @@ namespace Content.Api.Controllers
         }
 
         // GET /api/analytics/orgs/{orgId} — per-org content metrics.
+        // Spec §1 invariant 7: OrgAdmin scope is hard-bounded to one org. Reject if orgId != JWT org_id.
         [HttpGet("orgs/{orgId:guid}")]
         [Authorize(Policy = "RequireOrgAdmin")]
         public async Task<IActionResult> GetOrgOverview(Guid orgId, CancellationToken ct)
         {
+            if (!_orgCtx.IsSysAdmin() && _orgCtx.GetCurrentOrgId() != orgId)
+                return Forbid();
             var cutoff = DateTime.UtcNow.AddDays(-30);
             var dto = new OrgOverviewDto(
                 OrgId: orgId,

@@ -95,7 +95,7 @@ export const CourseManagementPage: React.FC = () => {
       subtitleVi="Quan ly xuat ban, ghi danh va chat luong"
     >
       <div className="flex gap-3">
-        <Button onClick={() => setShowCreate((v) => !v)}>
+        <Button data-testid="course-create-toggle-btn" onClick={() => setShowCreate((v) => !v)}>
           {showCreate ? (isVi ? 'Dong' : 'Cancel') : (isVi ? 'Tao khoa hoc' : 'Create Course')}
         </Button>
       </div>
@@ -104,18 +104,21 @@ export const CourseManagementPage: React.FC = () => {
         <Card className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
+              data-testid="course-title-input"
               label={isVi ? 'Tieu de' : 'Title'}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder={isVi ? 'Vi du: Lap trinh React' : 'e.g. React Programming'}
             />
             <Input
+              data-testid="course-code-input"
               label={isVi ? 'Ma khoa hoc' : 'Course Code'}
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
               placeholder="CS101"
             />
             <Input
+              data-testid="course-description-input"
               label={isVi ? 'Mo ta' : 'Description'}
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
@@ -128,7 +131,7 @@ export const CourseManagementPage: React.FC = () => {
             </p>
           )}
           <div className="mt-4 flex justify-end">
-            <Button onClick={() => void handleCreate()} disabled={submitting || !orgId || !newTitle.trim()}>
+            <Button data-testid="course-create-submit-btn" onClick={() => void handleCreate()} disabled={submitting || !orgId || !newTitle.trim()}>
               {submitting ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Tao' : 'Create')}
             </Button>
           </div>
@@ -161,9 +164,9 @@ export const CourseManagementPage: React.FC = () => {
               </thead>
               <tbody>
                 {courses.map((c) => (
-                  <tr key={c.id} className="border-b border-outline-variant/40">
+                  <tr key={c.id} className="border-b border-outline-variant/40" data-testid={`course-row-${c.id}`}>
                     <td className="py-3 font-medium">
-                      <Link to={`/admin/editor/curriculum?courseId=${c.id}`} className="hover:text-primary">
+                      <Link to={`/admin/editor/curriculum?courseId=${c.id}`} className="hover:text-primary" data-testid={`course-title-${c.id}`}>
                         {c.title}
                       </Link>
                     </td>
@@ -174,6 +177,7 @@ export const CourseManagementPage: React.FC = () => {
                       <Button
                         size="sm"
                         variant="ghost"
+                        data-testid={`course-delete-btn-${c.id}`}
                         onClick={() => void handleDelete(c.id)}
                         disabled={busyCourseId === c.id}
                       >
@@ -500,13 +504,14 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                 <Card className="p-4 border-primary space-y-3">
                   <p className="font-semibold text-sm">{isVi ? 'Them module moi' : 'Add New Module'}</p>
                   <Input
+                    data-testid="module-title-input"
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
                     placeholder={isVi ? 'Ten module' : 'Module title'}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddModule()}
                   />
                   <div className="flex gap-2">
-                    <Button size="sm" onClick={handleAddModule}>{isVi ? 'Them' : 'Add'}</Button>
+                    <Button size="sm" data-testid="module-add-btn" onClick={handleAddModule}>{isVi ? 'Them' : 'Add'}</Button>
                     <Button size="sm" variant="secondary" onClick={() => setAddingModule(false)}>
                       {isVi ? 'Huy' : 'Cancel'}
                     </Button>
@@ -514,6 +519,7 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                 </Card>
               ) : (
                 <button
+                  data-testid="module-add-toggle-btn"
                   onClick={() => setAddingModule(true)}
                   className="w-full py-3 rounded-lg border-2 border-dashed border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
                 >
@@ -595,11 +601,13 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-3">
             <Input
+              data-testid="enrollment-userid-input"
               value={newUserId}
               onChange={(e) => setNewUserId(e.target.value)}
               placeholder={isVi ? 'User ID (UUID)' : 'User ID (UUID)'}
             />
             <select
+              data-testid="enrollment-role-select"
               className="px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as 'Teacher' | 'Student')}
@@ -607,7 +615,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
               <option value="Student">Student</option>
               <option value="Teacher">Teacher</option>
             </select>
-            <Button onClick={() => void handleAdd()} disabled={submitting || !newUserId.trim()}>
+            <Button data-testid="enrollment-submit-btn" onClick={() => void handleAdd()} disabled={submitting || !newUserId.trim()}>
               {submitting ? (isVi ? 'Dang them...' : 'Adding...') : (isVi ? 'Them' : 'Enroll')}
             </Button>
           </div>
@@ -637,7 +645,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
           {!isLoading && enrollments.length > 0 && (
             <div className="space-y-2">
               {enrollments.map((e) => (
-                <div key={e.id} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
+                <div key={e.id} data-testid={`enrollment-row-${e.userId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
                   <Badge variant={e.role === 'Teacher' ? 'warning' : 'primary'} size="sm">
                     {e.role}
                   </Badge>
