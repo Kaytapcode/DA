@@ -146,11 +146,18 @@ class APIClient:
     
     def create_organization(self, name: str, description: str = "", logo_url: str = "") -> Dict[str, Any]:
         """Create a new organization"""
+        import re
+        slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:50]
         response = self.post(
             "/api/organizations",
-            json={"name": name, "description": description, "logo": logo_url}
+            json={"name": name, "description": description, "logo": logo_url, "slug": slug}
         )
-        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
+        raw = response.json() if response.text else {}
+        if isinstance(raw, dict) and "data" in raw and isinstance(raw.get("data"), dict):
+            payload = raw["data"]
+        else:
+            payload = raw
+        return {"response": response, "status_code": response.status_code, "data": payload}
     
     def get_organization(self, org_id: int) -> Dict[str, Any]:
         """Get organization details"""

@@ -1,15 +1,16 @@
-# Lumina - TECHNICAL SPECIFICATIONS
+# LUMINA - TECHNICAL SPECIFICATIONS
 
 ## 1. Authentication & Authorization (Auth & RBAC)
 
 Uses Token-based authentication (e.g., JWT).
 
-* **Registration/Login (Authentication):**
-    * Supports standard login (Email/Password).
-    * (Optional extension) SSO (Google/Microsoft).
+* **Registration & Login Flows (Authentication):**
+    * **User (Normal User):** Can self-register an account via the public registration form. Logs in via the standard login interface (Email/Password).
+    * **OrgAdmin:** Can self-register an account by providing Organization details (or can be invited/created by SysAdmin). Logs in via the standard login interface or a dedicated Organization portal.
+    * **SysAdmin:** Cannot self-register. A SysAdmin account can **ONLY** be created by another existing SysAdmin account via the administrative dashboard. Logs in via a dedicated secure Admin portal.
 * **Account Management:**
     * **Change Password:** Allows authenticated users to change their current password by providing the old password, a new password, and a password confirmation.
-    * **Profile Management:** Users can view and edit their profile information, including name, email, and other details.
+    * **Forgot Password:** Allows unauthenticated users to request a password reset link/OTP via their registered Email to securely set a new password.
 * **Localization & Internationalization (i18n):**
     * **System Interface Languages:** Supports multi-language switching across the entire platform interface. Supported languages: **Vietnamese, Japanese, and English**.
     * **User Preference:** Stores the user's selected language preference in their profile/local storage to persist across sessions.
@@ -22,7 +23,7 @@ Uses Token-based authentication (e.g., JWT).
         * Can copy other public resources to create a personal version and has CRUD rights to this new version. This new version must also be public.
         * Can group resources (personal or public) into Collections.
         * Can join Organizations.
-        * Can join Courses within an Organization when added by an Admin (can only access courses they have been added to).
+        * Can join Courses within an Organization when added by an Admin (can only access courses they have been explicitly added to).
         * Holds one of two roles within a Course: Teacher or Student.
 
     * **OrgAdmin (Organization Administrator):**
@@ -32,6 +33,7 @@ Uses Token-based authentication (e.g., JWT).
         * Manage Users within the Organization.
         * View Organization analytics/statistics.
         * Has full Teacher privileges in every course within that Organization.
+        * **Content Override Right:** Has the authority to delete any content inside any course within their own Organization.
 
     * **SysAdmin (System Administrator):**
         * Highest authority across the entire system.
@@ -39,6 +41,8 @@ Uses Token-based authentication (e.g., JWT).
         * Manage Global Users.
         * Configure AI API Keys.
         * View global analytics/statistics.
+        * Exclusive right to create other SysAdmin accounts.
+        * **Absolute Destructive Right:** Has global authority to delete any course, any content inside any course, and any learning resource/content across the entire system.
 
 ## 2. Learning Resources Management (CRUD)
 
@@ -46,17 +50,20 @@ Uses Token-based authentication (e.g., JWT).
 
 * **Manual CRUD:** Manually create, edit, delete multiple-choice questions/answers. The Explanation field is not mandatory when creating manually.
 * **AI Auto-Generation (Core Feature):**
-    * **Input:** User uploads a PDF/Text file (Document object).
-    * **Action:** Calls API (stepfun/step-3.5-flash) with a Prompt enforcing Zero Hallucination (only uses knowledge from the provided file).
+    * **Source Document Selection:** The system allows the user to select a document to generate the quiz from. The user can either:
+        * Choose an existing document that they own on the system (**Owned Document**).
+        * Upload a new document directly from their local device.
+    * **Upload File Size Limitation:** The system strictly restricts the uploaded file size to a **maximum of 200MB** per file. Any file exceeding this limit must be rejected with a clear error message before processing.
+    * **Action:** Calls the API configured in the system, specifically using the **`stepfun/step-3.5-flash`** model, with a Prompt enforcing Zero Hallucination (only uses knowledge from the provided file).
     * **Language Matching:** The AI must generate the quiz elements (questions, options, explanations) in the same language as the uploaded source document.
     * **Output:** Returns strict JSON format (Question, Options, correct_index, Explanation). **The Explanation field is mandatory and must be based on the original document.**
     * **Verification:** Automatically parses JSON and saves it to the Database as a Draft Quiz. The User has the right to verify/edit before Publishing.
 
 ### 2.2. Document Management
 
-* **Upload:** Supports uploading PDF files, images, and text files.
-* **Storage:** Secure file storage (Database).
-* **Viewer:** Integrated PDF/Image viewer directly on the LMS interface.
+* **Upload:** Supports uploading PDF files, images, and text files with a strict **maximum file size limit of 200MB**.
+* **Storage:** Secure file storage (database).
+* **Viewer:** Integrated PDF/Image viewer directly on the Lumina interface.
 
 ### 2.3. Flashcard Management
 
@@ -71,7 +78,7 @@ Uses Token-based authentication (e.g., JWT).
 
 * **Upload Link:** Users provide YouTube links (no direct video file uploads to optimize storage resources).
 * **Metadata:** Automatically extract video Title and Thumbnail from the YouTube API.
-* **Embedded Viewer:** Integrated YouTube video player directly within the LMS.
+* **Embedded Viewer:** Integrated YouTube video player directly within the Lumina platform.
 
 ## 3. Resource Grouping Mechanism (Module)
 
@@ -85,7 +92,7 @@ A Module is a general resource grouping mechanism that operates similarly to a F
 
 * **Course Module (For Teachers):**
     * Created by Teachers (or OrgAdmins with Teacher privileges) to group learning resources created within a course.
-    * Scope is restricted to the course.
+    * Scope is restricted entirely to the course.
 
 ### 3.2. Module Structure
 
@@ -97,9 +104,11 @@ A Module is a general resource grouping mechanism that operates similarly to a F
 
 ## 4. Course Management & Learning Functions
 
-A Course belongs to an Organization. The OrgAdmin manages Course users and authorization.
+### 4.1. Strict Privacy & Access Control
+* **Course Isolation:** A Course belongs to a specific Organization. 
+* **Strict Access Restriction:** **All contents, modules, and learning resources within a Course are strictly private. Only users who have been explicitly added to the Course by the OrgAdmin/SysAdmin can view, access, or interact with these contents.** Any unauthenticated access or access from users outside the Course must be denied at both the API (Backend) and UI (Frontend) levels.
 
-### 4.1. Course Roles
+### 4.2. Course Roles
 
 * **Teacher:**
     * Has CRUD rights for learning resources within the course.
@@ -110,17 +119,43 @@ A Course belongs to an Organization. The OrgAdmin manages Course users and autho
     * Can only view (study) learning resources within the course.
     * The system records their viewing (study) progress in each course and updates the progress tracker.
 
-### 4.2. Course Management (By OrgAdmin)
+### 4.3. Course Management (By OrgAdmin)
 
 * **Course CRUD:** Create, edit, delete courses within the Organization.
 * **User Management:** Add/remove Organization Users to/from courses.
 * **Role Assignment:** Assign Teacher or Student roles to Users within a course.
 * **Analytics:** View course statistics.
 
-### 4.3. Learning Functions & Interaction (Student Flow in Course)
+### 4.4. Learning Functions & Interaction (Student Flow in Course)
 
 * **Participation:** Users join a Course when added by an Admin.
 * **Study Flow:** Students study Items in a Module sequentially according to the learning path.
 * **Progress Tracking:** The system automatically records and updates the Student's learning progress for each resource and course.
 * **Doing Quiz:** Provides an interface for taking multiple-choice quizzes, including a timer and submission.
 * **Grading:** Automatically grades the quiz. The Explanation is only displayed if it was provided. For AI-generated quizzes, the Explanation must be displayed since it is a mandatory field.
+
+## 5. Seed Data & System Testing Accounts
+
+To facilitate system testing, verification, and evaluation, the database must be pre-seeded with the following testing accounts adhering to a strict formatting rule:
+* **Username Format:** `[role_name][N]` (where N is a sequential natural number starting from 1).
+* **Password Format:** `[role_name]@123`
+
+### 5.1. System Administrator (SysAdmin) Accounts
+* **SysAdmin 1:** * Username: `SysAdmin1`
+  * Password: `SysAdmin@123`
+* **SysAdmin 2:** * Username: `SysAdmin2`
+  * Password: `SysAdmin@123`
+
+### 5.2. Organization Administrator (OrgAdmin) Accounts
+* **OrgAdmin 1:** * Username: `OrgAdmin1`
+  * Password: `OrgAdmin@123`
+* **OrgAdmin 2:** * Username: `OrgAdmin2`
+  * Password: `OrgAdmin@123`
+
+### 5.3. Regular User (User) Accounts
+* **User 1:** * Username: `User1`
+  * Password: `User@123`
+* **User 2:** * Username: `User2`
+  * Password: `User@123`
+* **User 3:** * Username: `User3`
+  * Password: `User@123`

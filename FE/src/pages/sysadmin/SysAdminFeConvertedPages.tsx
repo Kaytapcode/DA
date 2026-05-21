@@ -307,9 +307,10 @@ export const GlobalUserManagementPage: React.FC = () => {
           placeholder={isVi ? 'Tim nguoi dung...' : 'Search users...'}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           className="flex-1 min-w-[200px]"
+          data-testid="user-search-input"
         />
-        <Button variant="secondary" onClick={handleSearch}>{isVi ? 'Tim' : 'Search'}</Button>
-        <Button onClick={() => setCreateOpen(true)}>
+        <Button variant="secondary" onClick={handleSearch} data-testid="user-search-btn">{isVi ? 'Tim' : 'Search'}</Button>
+        <Button onClick={() => setCreateOpen(true)} data-testid="user-create-btn">
           <MaterialIcon icon="person_add" className="mr-1" />
           {isVi ? 'Tao nguoi dung' : 'New User'}
         </Button>
@@ -331,18 +332,18 @@ export const GlobalUserManagementPage: React.FC = () => {
             {isVi ? 'Khong tim thay nguoi dung' : 'No users found'}
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="user-list">
             {users.map((user) => (
-              <div key={user.id} className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
+              <div key={user.id} className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between" data-testid="user-item">
                 <div>
-                  <span className="font-medium text-on-surface">{user.username}</span>
-                  <span className="ml-2 text-sm text-on-surface-variant">{user.email}</span>
-                  <Badge variant={user.role === 'SysAdmin' ? 'warning' : 'secondary'} size="sm" className="ml-2">
+                  <span className="font-medium text-on-surface" data-testid="user-item-username">{user.username}</span>
+                  <span className="ml-2 text-sm text-on-surface-variant" data-testid="user-item-email">{user.email}</span>
+                  <Badge variant={user.role === 'SysAdmin' ? 'warning' : 'secondary'} size="sm" className="ml-2" data-testid="user-item-role">
                     {user.role}
                   </Badge>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleDelete(user)}>
+                  <Button size="sm" variant="secondary" onClick={() => handleDelete(user)} data-testid="user-delete-btn">
                     {isVi ? 'Xoa' : 'Delete'}
                   </Button>
                 </div>
@@ -385,10 +386,31 @@ export const GlobalUserManagementPage: React.FC = () => {
 export const OrganizationDirectoryPage: React.FC = () => {
   const isVi = useLang()
   const [search, setSearch] = useState('')
-  const { organizations, isLoading, error, fetchOrganizations } = useOrganization()
-  const PAGE_SIZE = 12
+  const [organizations, setOrganizations] = useState<{ id: string; name: string; slug: string; memberCount?: number }[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const PAGE_SIZE = 100
 
-  useEffect(() => { fetchOrganizations(0, PAGE_SIZE) }, [fetchOrganizations])
+  const fetchOrganizations = React.useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await apiClient.get<any>(`/organizations?pageIndex=0&pageSize=${PAGE_SIZE}`)
+      if (res.success && res.data) {
+        // BE returns flat array
+        const list = Array.isArray(res.data) ? res.data : (res.data?.data ?? [])
+        setOrganizations(list)
+      } else {
+        setError(res.message || 'Failed to load organizations')
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load organizations')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void fetchOrganizations() }, [fetchOrganizations])
 
   const displayed = organizations.filter(o =>
     o.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -408,8 +430,9 @@ export const OrganizationDirectoryPage: React.FC = () => {
           onChange={(e) => setSearch(e.target.value)}
           placeholder={isVi ? 'Tim to chuc...' : 'Search organizations...'}
           className="flex-1"
+          data-testid="org-search-input"
         />
-        <Button onClick={() => fetchOrganizations(0, PAGE_SIZE)}>
+        <Button onClick={() => void fetchOrganizations()} data-testid="org-refresh-btn">
           {isVi ? 'Tai lai' : 'Refresh'}
         </Button>
       </Card>
@@ -425,19 +448,19 @@ export const OrganizationDirectoryPage: React.FC = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="org-list">
           {displayed.length === 0 ? (
             <p className="text-on-surface-variant text-sm col-span-3 text-center py-4">
               {isVi ? 'Khong tim thay to chuc nao' : 'No organizations found'}
             </p>
           ) : displayed.map((org) => (
-            <Card key={org.id} className="p-6">
+            <Card key={org.id} className="p-6" data-testid="org-item">
               <div className="flex items-center justify-between mb-3">
                 <MaterialIcon icon="apartment" className="text-primary" />
                 <Badge variant="primary" size="sm">{isVi ? 'Hoat dong' : 'Active'}</Badge>
               </div>
-              <h3 className="font-bold text-on-surface">{org.name}</h3>
-              <p className="text-xs text-on-surface-variant mt-1">/{org.slug}</p>
+              <h3 className="font-bold text-on-surface" data-testid="org-item-name">{org.name}</h3>
+              <p className="text-xs text-on-surface-variant mt-1" data-testid="org-item-slug">/{org.slug}</p>
               {org.memberCount !== undefined && (
                 <p className="text-sm text-on-surface-variant mt-2">
                   {org.memberCount} {isVi ? 'thanh vien' : 'members'}

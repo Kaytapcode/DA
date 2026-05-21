@@ -771,10 +771,10 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         {!isLoading && !error && currentCard && (
           <>
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs uppercase tracking-widest text-on-surface-variant">
+              <p className="text-xs uppercase tracking-widest text-on-surface-variant" data-testid="flashcard-counter">
                 {isVi ? `The ${currentIndex + 1}/${totalCards}` : `Card ${currentIndex + 1}/${totalCards}`}
               </p>
-              <Button variant="ghost" size="sm" onClick={toggleShuffle}>
+              <Button variant="ghost" size="sm" onClick={toggleShuffle} data-testid="flashcard-shuffle-btn">
                 <MaterialIcon icon="shuffle" size="xs" className="mr-1" />
                 {shuffleMode ? (isVi ? 'Bo tron' : 'Shuffled') : (isVi ? 'Tron the' : 'Shuffle')}
               </Button>
@@ -783,6 +783,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
             <button
               type="button"
               onClick={toggleFlip}
+              data-testid="flashcard-flip-btn"
               className={`flex min-h-[220px] w-full items-center justify-center rounded-xl p-8 text-center transition-all duration-300 ${
                 isFlipped
                   ? 'bg-blue-50 hover:bg-blue-100'
@@ -791,7 +792,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
               style={{ transform: `perspective(1000px) rotateY(${isFlipped ? 180 : 0}deg)` }}
             >
               <div style={{ transform: `rotateY(${isFlipped ? 180 : 0}deg)` }}>
-                <h3 className="mb-2 text-2xl font-bold font-headline text-on-surface">
+                <h3 className="mb-2 text-2xl font-bold font-headline text-on-surface" data-testid={isFlipped ? 'flashcard-back-text' : 'flashcard-front-text'}>
                   {isFlipped ? currentCard.backText : currentCard.frontText}
                 </h3>
                 <p className="text-sm text-on-surface-variant">{isVi ? 'Cham de lat the' : 'Tap to flip'}</p>
@@ -799,13 +800,13 @@ export const InteractiveFlashcardsPage: React.FC = () => {
             </button>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Button variant="secondary" onClick={previousCard} disabled={totalCards <= 1}>
+              <Button variant="secondary" onClick={previousCard} disabled={totalCards <= 1} data-testid="flashcard-prev-btn">
                 {isVi ? 'The truoc' : 'Previous'}
               </Button>
-              <Button variant="secondary" onClick={nextCard} disabled={totalCards <= 1}>
+              <Button variant="secondary" onClick={nextCard} disabled={totalCards <= 1} data-testid="flashcard-next-btn">
                 {isVi ? 'The tiep theo' : 'Next Card'}
               </Button>
-              <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating}>
+              <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating} data-testid="flashcard-mastered-btn">
                 {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
               </Button>
             </div>
@@ -813,9 +814,9 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         )}
 
         {!isLoading && !error && !currentCard && deckId && (
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="flashcard-all-mastered">
             <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
-            <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating}>
+            <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating} data-testid="flashcard-reset-btn">
               {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
             </Button>
           </div>

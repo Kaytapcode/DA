@@ -69,12 +69,15 @@ export const useOrganization = (): UseOrganizationReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.get<PaginatedResponse<OrganizationList>>(
+        const response = await apiClient.get<OrganizationList[] | PaginatedResponse<OrganizationList>>(
           `/organizations?pageIndex=${pageIndex}&pageSize=${pageSize}`
         );
 
         if (response.success && response.data) {
-          setOrganizations(response.data.data);
+          // BE may return flat array or paginated wrapper
+          const raw = response.data as any
+          const list: OrganizationList[] = Array.isArray(raw) ? raw : (raw.data ?? [])
+          setOrganizations(list)
         } else {
           throw new Error(response.message || 'Failed to fetch organizations');
         }
