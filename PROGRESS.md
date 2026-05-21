@@ -1,8 +1,27 @@
 # Progress
 
-**Current phase:** All waves complete + Auth/Role fixes + E2E coverage expanded
+**Current phase:** Spec §1 Update — Unified Registration + SSO + Per-field tests
 **Branch:** K-B
-**Next action:** Run the full test suite against the live stack to confirm all new tests pass, then commit and push.
+**Next action:** Run all new katalon tests against live stack (start FE dev server + all BE services), then confirm `test_sysadmin_login_portal.py` and `test_sso_flow.py` green. Remaining open item: SSO full OAuth2 (requires dev to provide Google/Microsoft OAuth credentials).
+
+## Session 2026-05-22 (continued) — Unified Registration + Per-field tests
+
+**New FE feature:**
+- `FE/src/pages/auth/RegisterPage.tsx` — completely rewritten as unified form with role selector (User/OrgAdmin radio cards), OrgAdmin org-name/slug fields revealed on selection, auto-slug derivation, Google + Microsoft SSO stubs
+- `FE/src/pages/auth/LoginPage.tsx` — Google + Microsoft SSO buttons added, org-id pre-fill from `?orgId=` query param
+- `SystemDoc/System_specification` — new spec §1: Unified Public Registration Form + SSO
+
+**New tests (per-field coverage — user request "test từng ô nhập liệu từng chữ"):**
+- `tests/katalon/test_registration_unified_form.py` — 5 classes (~17 tests): role selector, field visibility, validation, success flows
+- `tests/katalon/test_login_all_roles.py` — 5 classes (~40 tests): every label/placeholder/error text, role-specific redirects
+- `tests/katalon/test_sysadmin_portal_fields.py` — 5 classes (~35 tests): user list columns, create-user modal, org directory, AI key form
+- `tests/katalon/test_orgadmin_portal_fields.py` — 5 classes (~35 tests): course management, member management, role assignment dropdown
+
+**Remaining checklist items (Spec §1 Update):**
+- [x] Unified Registration Form — FE + tests + BE done
+- [ ] SSO Login (Google/Microsoft) — stubs added; full OAuth2 requires external credentials from dev
+- [x] SSO Role Selection Intermediary Page (`/sso/complete-profile`) — done; `test_sso_flow.py`
+- [x] SysAdmin dedicated login portal (`/admin/login`) — done; `test_sysadmin_login_portal.py`
 
 ## Session 2026-05-22 — Auth/Role fixes + OrgAdmin self-registration
 
