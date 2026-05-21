@@ -5,6 +5,7 @@ import { OrgLayout } from '@layouts/OrgLayout'
 import {
   LoginPage,
   RegisterPage,
+  RegisterOrgAdminPage,
   ResetPasswordPage,
   TwoFactorPage,
   ForgotPasswordPage,
@@ -73,6 +74,7 @@ export const AppRouter: React.FC = () => {
           <Route path="/" element={<GuestHomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register/orgadmin" element={<RegisterOrgAdminPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/2fa" element={<TwoFactorPage />} />

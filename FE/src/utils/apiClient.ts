@@ -39,10 +39,15 @@ async function performRefresh(): Promise<string | null> {
   try {
     // Use a bare axios call (not our instrumented instance) so we don't recurse
     // through the 401 interceptor if the refresh itself returns 401.
+    // Include X-Org-Id so the BE can preserve org context in the new access token.
+    const refreshHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+    const orgId = localStorage.getItem('org_id');
+    if (orgId) refreshHeaders['X-Org-Id'] = orgId;
+
     const res = await axios.post<ApiResponse<LoginPayload>>(
       `${API_BASE_URL}/auth/refresh`,
       { refreshToken: rt },
-      { headers: { 'Content-Type': 'application/json' }, timeout: 15000 }
+      { headers: refreshHeaders, timeout: 15000 }
     );
     const body = res.data;
     if (!body?.success || !body.data?.accessToken) return null;

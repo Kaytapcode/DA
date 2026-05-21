@@ -1,10 +1,11 @@
-﻿import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface LoginFormData {
   identifier: string;
   password: string;
+  orgId: string;
 }
 
 interface FormErrors {
@@ -14,12 +15,20 @@ interface FormErrors {
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, isLoading } = useAuthContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
     identifier: '',
     password: '',
+    orgId: searchParams.get('orgId') ?? '',
   });
+
+  // Pre-fill orgId if arriving from OrgAdmin registration redirect
+  useEffect(() => {
+    const orgId = searchParams.get('orgId');
+    if (orgId) setFormData((prev) => ({ ...prev, orgId }));
+  }, [searchParams]);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -27,11 +36,12 @@ export const LoginPage: React.FC = () => {
 
   const handleFieldChange = (field: keyof LoginFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear field error when user starts typing
-    if (errors[field]) {
+    // Clear field error when user starts typing (only for validated fields)
+    const validatedField = field as keyof FormErrors;
+    if (errors[validatedField]) {
       setErrors((prev) => {
         const updated = { ...prev };
-        delete updated[field];
+        delete updated[validatedField];
         return updated;
       });
     }
@@ -65,10 +75,15 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      await login(formData.identifier.trim(), formData.password, undefined);
+      const orgIdParam = formData.orgId.trim() || undefined;
+      const authUser = await login(formData.identifier.trim(), formData.password, orgIdParam);
 
-      // Navigate to user home
-      navigate('/user/home', { replace: true });
+      // Route by role so SysAdmin / OrgAdmin land on their correct dashboard
+      const dest =
+        authUser?.role === 'SysAdmin'  ? '/sysadmin/dashboard' :
+        authUser?.role === 'OrgAdmin'  ? '/admin/dashboard' :
+        '/user/home';
+      navigate(dest, { replace: true });
     } catch (err) {
       setSubmitError(
         typeof err === 'string'
@@ -217,6 +232,24 @@ export const LoginPage: React.FC = () => {
                   </button>
                 </div>
                 {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+              </div>
+
+              {/* Organization ID (optional — required for OrgAdmin to get org context) */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
+                  Organization ID <span className="font-normal normal-case tracking-normal">(optional — OrgAdmin only)</span>
+                </label>
+                <input
+                  id="orgId"
+                  name="orgId"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  data-testid="login-org-id"
+                  value={formData.orgId}
+                  onChange={(e) => handleFieldChange('orgId' as keyof LoginFormData, e.target.value)}
+                  className="w-full rounded-lg border border-[#e5e7eb] bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]"
+                />
               </div>
 
               {/* Sign In Button */}

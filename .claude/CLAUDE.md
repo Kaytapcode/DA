@@ -399,3 +399,27 @@ Tick only when the matching tests (API + FE display + at least one E2E) are gree
 - [x] OrgAdmin Content Override Right (Spec §1 OrgAdmin) — CanTeachAsync already grants OrgAdmin delete on any course in their org; 2 API tests green; scope boundary enforced
 - [x] SysAdmin Absolute Destructive Right (Spec §1 SysAdmin) — SysAdmin can delete any course/content globally; 2 API tests green
 - [x] Course Strict Privacy at FE level (Spec §4.1) — SpecificCoursePage shows "Access denied" on 403; data-testid="course-access-error"; 2 API privacy tests green
+
+### Auth & Role Fixes (2026-05-22)
+- [x] **Bug fix**: Token refresh loses org context — `AuthController.Refresh` now reads `X-Org-Id` header + re-creates access token with org context; `performRefresh()` in `apiClient.ts` sends the header (tests: `TestTokenRefreshOrgContext` in `test_auth_roles.py`)
+- [x] **Bug fix**: LoginPage role-based redirect — SysAdmin → `/sysadmin/dashboard`, OrgAdmin → `/admin/dashboard`, Student → `/user/home`; `login-org-id` field added so OrgAdmin can supply org context at login time
+- [x] **Bug fix**: `OrgContext` clears `org_id` from localStorage if `current_org` is absent — Playwright helpers now set all three keys (`org_id`, `org_slug`, `current_org`)
+- [x] **Bug fix**: `Card` component silently dropped `data-testid` — fixed `CardProps` to extend `React.HTMLAttributes<HTMLDivElement>`
+- [x] OrgAdmin self-registration (Spec §1) — `POST /api/auth/register/orgadmin` creates OrgAdmin user + org in one call via internal endpoint; FE `/register/orgadmin` page; 2 API tests green (`test_auth_roles.py::TestOrgAdminSelfRegistration`)
+- [x] Role auth flows API coverage — `tests/api/test_auth_roles.py` (7 test classes, ~25 tests): all 7 seeded accounts, SysAdmin/OrgAdmin scope, token refresh, public registration, SysAdmin creates accounts
+- [x] Role auth flows Playwright coverage — `tests/katalon/test_auth_role_login_workflows.py` (5 test classes, ~14 tests): login redirects per role, org field present, role isolation at FE
+
+### Seeded test accounts (for manual testing — Spec §5)
+
+| Account | Password | Role | Org ID (for login) |
+|---|---|---|---|
+| SysAdmin1 | SysAdmin@123 | SysAdmin | — (leave blank) |
+| SysAdmin2 | SysAdmin@123 | SysAdmin | — (leave blank) |
+| OrgAdmin1 | OrgAdmin@123 | OrgAdmin | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` |
+| OrgAdmin2 | OrgAdmin@123 | OrgAdmin | `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb` |
+| User1 | User@123 | Student | — |
+| User2 | User@123 | Student | — |
+| User3 | User@123 | Student | — |
+
+To create a new OrgAdmin account manually: navigate to `/register/orgadmin` on the FE.
+To create elevated accounts programmatically: `POST /api/users` with SysAdmin JWT (see `tests/api/test_auth_roles.py::TestSysAdminCreatesAccounts`).

@@ -21,14 +21,9 @@ SYSADMIN_PASS = "SysAdmin@123"
 
 
 def _ui_login_sysadmin(page):
-    """Login as SysAdmin1 via the real FE form. Lands on /user/home."""
-    page.goto(f"{FE_BASE}/login")
-    page.wait_for_load_state("networkidle")
-    page.locator("[data-testid='login-identifier']").fill(SYSADMIN_USER)
-    page.locator("[data-testid='login-password']").fill(SYSADMIN_PASS)
-    page.locator("[data-testid='login-submit']").click()
-    page.wait_for_url("**/user/**", timeout=15000)
-    page.wait_for_load_state("networkidle")
+    """Login as SysAdmin1 via the real FE form. Lands on /sysadmin/dashboard."""
+    from _helpers import ui_login_sysadmin
+    ui_login_sysadmin(page, SYSADMIN_USER, SYSADMIN_PASS)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -42,10 +37,10 @@ def _ui_login_sysadmin(page):
 class TestSysAdminLogin:
     """SysAdmin can log in and access protected /sysadmin/* routes."""
 
-    def test_sysadmin_login_lands_on_user_home(self, page):
-        """SysAdmin1 logs in → redirected to /user/* (not /login)."""
+    def test_sysadmin_login_lands_on_sysadmin_dashboard(self, page):
+        """SysAdmin1 logs in → redirected to /sysadmin/* (not /login or /user/*)."""
         _ui_login_sysadmin(page)
-        assert "/login" not in page.url, "SysAdmin still on login page after login"
+        assert "/sysadmin/" in page.url, f"SysAdmin should be on /sysadmin/*, got: {page.url}"
 
     def test_sysadmin_can_navigate_to_users_page(self, page):
         """After login, SysAdmin navigates to /sysadmin/users — user list renders."""

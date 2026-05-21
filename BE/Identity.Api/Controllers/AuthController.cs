@@ -112,16 +112,31 @@ namespace Identity.Api.Controllers
             if (result == null)
                 return Unauthorized(new ApiResponse(Success: false, Message: "Invalid or expired refresh token."));
 
+            // Preserve org context through refresh: if X-Org-Id header is present and the user
+            // is a member of that org, re-embed org_id in the new access token.
+            Guid? orgId = null;
+            if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
+                && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
+            {
+                if (result.User.Role == "SysAdmin" || await _orgClient.IsUserMemberAsync(result.User.Id, parsedOrgId))
+                    orgId = parsedOrgId;
+            }
+
+            // Re-create access token with org context when needed
+            var access = orgId.HasValue
+                ? _tokenService.CreateAccessToken(result.User, orgId)
+                : result.AccessToken;
+
             return Ok(new ApiResponse<LoginResponseDto>(
                 Success: true,
                 Data: new LoginResponseDto(
-                    AccessToken: result.AccessToken.Token,
+                    AccessToken: access.Token,
                     RefreshToken: result.RefreshToken.Token,
-                    AccessTokenExpiresInSeconds: result.AccessToken.ExpiresInSeconds,
+                    AccessTokenExpiresInSeconds: access.ExpiresInSeconds,
                     RefreshTokenExpiresAt: result.RefreshToken.ExpiresAtUtc,
                     Message: "Token refreshed.",
                     User: new UserInfoDto(result.User.Id, result.User.Username, result.User.Email, result.User.Role),
-                    OrgId: result.OrgId?.ToString()
+                    OrgId: orgId?.ToString()
                 ),
                 Message: "Token refreshed."
             ));
@@ -231,6 +246,63 @@ namespace Identity.Api.Controllers
                 Success: true,
                 Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
                 Message: "Language preference updated."
+            ));
+        }
+
+        // Spec 1 — OrgAdmin self-registration. Creates a new OrgAdmin user + a new Organization in one call.
+        // The org creation is delegated to Organization.Api via internal endpoint.
+        [HttpPost("register/orgadmin")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public async Task<IActionResult> RegisterOrgAdmin([FromBody] OrgAdminRegisterRequestDto request, CancellationToken ct)
+        {
+            if (await _userRepository.UserExistsByUsernameAsync(request.Username))
+                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
+            if (await _userRepository.UserExistsByEmailAsync(request.Email))
+                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
+
+            UserModel newUser;
+            try
+            {
+                newUser = new UserModel
+                {
+                    Username = request.Username,
+                    Email = request.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                    Role = "OrgAdmin"
+                };
+                await _userRepository.AddAsync(newUser);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
+            {
+                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("email") == true)
+            {
+                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
+            }
+
+            // Create the org and link the new user as OrgAdmin in Organization.Api
+            var orgResult = await _orgClient.CreateOrgWithAdminAsync(
+                request.OrganizationName, request.OrganizationSlug, newUser.Id, ct);
+
+            if (orgResult == null)
+            {
+                // Org creation failed — roll back the user to avoid orphaned OrgAdmin accounts
+                await _userRepository.DeleteAsync(newUser.Id);
+                return StatusCode(502, new ApiResponse(Success: false, Message: "Organization could not be created. Please try again."));
+            }
+
+            return Ok(new ApiResponse<OrgAdminRegisterResponseDto>(
+                Success: true,
+                Data: new OrgAdminRegisterResponseDto(
+                    UserId: newUser.Id,
+                    Username: newUser.Username,
+                    Email: newUser.Email,
+                    OrgId: orgResult.OrgId.ToString(),
+                    OrgName: orgResult.Name,
+                    OrgSlug: orgResult.Slug
+                ),
+                Message: "OrgAdmin account and organization created successfully."
             ));
         }
 

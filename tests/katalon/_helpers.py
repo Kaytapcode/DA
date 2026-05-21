@@ -37,14 +37,38 @@ def register_user(suffix="e2e"):
     return creds
 
 
-def ui_login(page, identifier, password):
-    """Drive the real FE login form; wait until redirected into /user/*."""
+def ui_login(page, identifier, password, wait_pattern="**/user/**"):
+    """Drive the real FE login form; wait until redirected into the given URL pattern.
+
+    Use wait_pattern="**/sysadmin/**" for SysAdmin logins,
+    "**/admin/**" for OrgAdmin logins, or the default "**/user/**" for Students.
+    """
     page.goto(f"{FE_BASE}/login")
     page.wait_for_load_state("networkidle")
     page.locator("[data-testid='login-identifier']").fill(identifier)
     page.locator("[data-testid='login-password']").fill(password)
     page.locator("[data-testid='login-submit']").click()
-    page.wait_for_url("**/user/**", timeout=15000)
+    page.wait_for_url(wait_pattern, timeout=15000)
+    page.wait_for_load_state("networkidle")
+
+
+def ui_login_sysadmin(page, identifier, password):
+    """Login as SysAdmin via FE form; waits for redirect to /sysadmin/** ."""
+    ui_login(page, identifier, password, wait_pattern="**/sysadmin/**")
+
+
+def ui_login_orgadmin(page, identifier, password, org_id=None):
+    """Login as OrgAdmin via FE form (with optional org_id field); waits for /admin/**."""
+    page.goto(f"{FE_BASE}/login")
+    page.wait_for_load_state("networkidle")
+    page.locator("[data-testid='login-identifier']").fill(identifier)
+    page.locator("[data-testid='login-password']").fill(password)
+    if org_id:
+        org_field = page.locator("[data-testid='login-org-id']")
+        if org_field.count() > 0:
+            org_field.fill(org_id)
+    page.locator("[data-testid='login-submit']").click()
+    page.wait_for_url("**/admin/**", timeout=15000)
     page.wait_for_load_state("networkidle")
 
 
