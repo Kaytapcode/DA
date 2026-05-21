@@ -125,6 +125,14 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
+    // Seed spec-required test organizations and OrgAdmin memberships (Section 5)
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<Organization.Api.Data.OrganizationDbContext>();
+        await db.Database.MigrateAsync();
+        await Organization.Api.Data.DbInitializer.SeedAsync(db);
+    }
+
     app.Run();
 }
 catch (Exception ex)

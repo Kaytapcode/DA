@@ -15,12 +15,24 @@ namespace Identity.Api.Controllers
         private readonly IUserRepository _userRepository;
         private readonly ITokenService _tokenService;
         private readonly IOrganizationServiceClient _orgClient;
+        private readonly AuthDbContext _db;
+        private readonly IEmailService _emailService;
+        private readonly IWebHostEnvironment _env;
 
-        public AuthController(IUserRepository userRepository, ITokenService tokenService, IOrganizationServiceClient orgClient)
+        public AuthController(
+            IUserRepository userRepository,
+            ITokenService tokenService,
+            IOrganizationServiceClient orgClient,
+            AuthDbContext db,
+            IEmailService emailService,
+            IWebHostEnvironment env)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;
             _orgClient = orgClient;
+            _db = db;
+            _emailService = emailService;
+            _env = env;
         }
 
         [HttpPost("register")]
@@ -220,6 +232,70 @@ namespace Identity.Api.Controllers
                 Data: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
                 Message: "Language preference updated."
             ));
+        }
+
+        // Spec 1 — Forgot Password. Generates a time-limited reset token and "sends" it to the user's email.
+        // In Development mode the raw token is also returned in the response body for testability.
+        [HttpPost("forgot-password")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken ct)
+        {
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == request.Email, ct);
+
+            // Always return 200 to prevent email enumeration
+            if (user == null)
+                return Ok(new ApiResponse(Success: true, Message: "If that email is registered, a reset link has been sent."));
+
+            // Invalidate any previous unused tokens for this user
+            var old = await _db.PasswordResetTokens
+                .Where(t => t.UserId == user.Id && t.UsedAt == null && t.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync(ct);
+            _db.PasswordResetTokens.RemoveRange(old);
+
+            // Generate raw token and store its hash
+            var rawToken = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
+                .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            var hash = Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawToken)));
+
+            _db.PasswordResetTokens.Add(new PasswordResetTokenModel
+            {
+                UserId = user.Id,
+                TokenHash = hash,
+                ExpiresAt = DateTime.UtcNow.AddMinutes(30),
+            });
+            await _db.SaveChangesAsync(ct);
+
+            await _emailService.SendPasswordResetAsync(user.Email, user.Username, rawToken, ct);
+
+            // In Development, expose the token directly so automated tests can consume it
+            if (_env.IsDevelopment())
+                return Ok(new { Success = true, Message = "Reset token generated (dev mode).", DevToken = rawToken });
+
+            return Ok(new ApiResponse(Success: true, Message: "If that email is registered, a reset link has been sent."));
+        }
+
+        // Spec 1 — Reset Password. Validates the token and sets a new password.
+        [HttpPost("reset-password")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken ct)
+        {
+            var hash = Convert.ToHexString(
+                System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.Token)));
+
+            var tokenRecord = await _db.PasswordResetTokens
+                .Include(t => t.User)
+                .FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
+
+            if (tokenRecord == null || tokenRecord.UsedAt != null || tokenRecord.ExpiresAt <= DateTime.UtcNow)
+                return BadRequest(new ApiResponse(Success: false, Message: "Invalid or expired reset token."));
+
+            tokenRecord.User!.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+            tokenRecord.User.UpdatedAt = DateTime.UtcNow;
+            tokenRecord.UsedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(ct);
+            return Ok(new ApiResponse(Success: true, Message: "Password has been reset successfully."));
         }
     }
 }

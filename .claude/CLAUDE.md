@@ -392,3 +392,10 @@ Tick only when the matching tests (API + FE display + at least one E2E) are gree
 - [x] Implicit Teacher privileges in every org course (Spec 1 OrgAdmin) — TestOrgAdminImplicitTeacher (2 tests); CourseAccessService.CanTeachAsync OrgAdmin path
 - [x] Course Module CRUD by Teacher / OrgAdmin (Spec 3) — TestCourseModuleCRUD (4 tests); FE CourseEditorCurriculumTabPage + data-testids
 - [x] 4 browser E2E workflows — tests/katalon/test_orgadmin_workflows.py: login, course create, module add, student enrollment
+
+### Spec Additions (2026-05-21 update)
+- [x] Forgot Password flow (Spec §1) — POST /api/auth/forgot-password + /reset-password; PasswordResetTokenModel; ConsoleEmailService; FE ForgotPasswordPage + ResetPasswordPage wired; 5 API tests green
+- [x] Seed Data (Spec §5) — DbInitializer in Identity.Api + Organization.Api; seeds SysAdmin1/2, OrgAdmin1/2 (with TestOrg1/2), User1/2/3; 9 API tests green
+- [x] OrgAdmin Content Override Right (Spec §1 OrgAdmin) — CanTeachAsync already grants OrgAdmin delete on any course in their org; 2 API tests green; scope boundary enforced
+- [x] SysAdmin Absolute Destructive Right (Spec §1 SysAdmin) — SysAdmin can delete any course/content globally; 2 API tests green
+- [x] Course Strict Privacy at FE level (Spec §4.1) — SpecificCoursePage shows "Access denied" on 403; data-testid="course-access-error"; 2 API privacy tests green

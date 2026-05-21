@@ -1252,7 +1252,15 @@ export const SpecificCoursePage: React.FC = () => {
         if (res.success && res.data) setCourse(res.data)
         else throw new Error(res.message || 'Course not found')
       })
-      .catch((err) => { if (!cancelled) setError(err instanceof Error ? err.message : 'Course not found') })
+      .catch((err: unknown) => {
+        if (cancelled) return
+        // Spec §4.1: Distinguish access-denied from not-found for a meaningful FE message
+        const msg: string = (err as { message?: string })?.message ?? 'Course not found'
+        const isForbidden = msg.toLowerCase().includes('forbid') || msg.toLowerCase().includes('access')
+        setError(isForbidden
+          ? 'Access denied. You are not enrolled in this course.'
+          : 'Course not found.')
+      })
       .finally(() => { if (!cancelled) setIsLoading(false) })
 
     void fetchModules(courseId)
@@ -1292,13 +1300,13 @@ export const SpecificCoursePage: React.FC = () => {
           </div>
         )}
         {error && !isLoading && (
-          <Card className="border border-error/30 p-4">
-            <p className="text-sm text-error">{error}</p>
+          <Card className="border border-error/30 p-4" data-testid="course-access-error">
+            <p className="text-sm text-error" data-testid="course-access-error-msg">{error}</p>
           </Card>
         )}
 
         {!isLoading && course && (
-          <Card className="overflow-hidden border border-[#e7ebf6] p-0 shadow-[0_20px_50px_rgba(69,84,153,0.12)]">
+          <Card className="overflow-hidden border border-[#e7ebf6] p-0 shadow-[0_20px_50px_rgba(69,84,153,0.12)]" data-testid="course-content-panel">
             <div className="grid gap-0 lg:grid-cols-[1.7fr_0.95fr]">
               <div className="space-y-6 bg-gradient-to-br from-[#f8fbff] via-white to-[#eef3ff] p-8 lg:p-10">
                 <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7b86a3]">
