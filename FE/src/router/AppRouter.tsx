@@ -9,7 +9,9 @@ import {
   ResetPasswordPage,
   TwoFactorPage,
   ForgotPasswordPage,
-  HomePage
+  HomePage,
+  SysAdminLoginPage,
+  SsoCompleteProfilePage,
 } from '@pages/auth'
 import {
   CourseListPage,
@@ -74,6 +76,8 @@ export const AppRouter: React.FC = () => {
           <Route path="/" element={<GuestHomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/admin/login" element={<SysAdminLoginPage />} />
+          <Route path="/sso/complete-profile" element={<SsoCompleteProfilePage />} />
           <Route path="/register/orgadmin" element={<RegisterOrgAdminPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />

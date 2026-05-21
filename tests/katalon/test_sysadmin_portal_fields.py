@@ -251,33 +251,33 @@ class TestSysAdminOrgDirectoryFields:
 
     def test_page_heading(self, sysadmin_page: Page):
         """'Organization Directory' heading is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Organization Directory")).to_be_visible()
 
     def test_page_subtitle(self, sysadmin_page: Page):
         """Page subtitle 'Directory of all organizations in the platform' is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Directory of all organizations in the platform")).to_be_visible()
 
     def test_org_search_input_present(self, sysadmin_page: Page):
         """Org search input (data-testid='org-search-input') is present."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         field = sysadmin_page.locator("[data-testid='org-search-input']")
         expect(field).to_be_visible()
 
     def test_org_search_input_placeholder(self, sysadmin_page: Page):
         """Org search field placeholder is 'Search organizations...'."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         field = sysadmin_page.locator("[data-testid='org-search-input']")
         expect(field).to_have_attribute("placeholder", "Search organizations...")
 
     def test_org_refresh_button_present(self, sysadmin_page: Page):
         """Refresh button (data-testid='org-refresh-btn') is present."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         btn = sysadmin_page.locator("[data-testid='org-refresh-btn']")
         expect(btn).to_be_visible()
@@ -285,7 +285,7 @@ class TestSysAdminOrgDirectoryFields:
 
     def test_org_list_renders(self, sysadmin_page: Page):
         """Org list container (data-testid='org-list') appears with seeded orgs."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.wait_for_selector("[data-testid='org-list']", timeout=10000)
         org_items = sysadmin_page.locator("[data-testid='org-item']")
@@ -293,7 +293,7 @@ class TestSysAdminOrgDirectoryFields:
 
     def test_org_item_shows_name(self, sysadmin_page: Page):
         """Each org card shows its name (data-testid='org-item-name')."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.wait_for_selector("[data-testid='org-item']", timeout=10000)
         name_cells = sysadmin_page.locator("[data-testid='org-item-name']")
@@ -301,7 +301,7 @@ class TestSysAdminOrgDirectoryFields:
 
     def test_org_item_shows_slug(self, sysadmin_page: Page):
         """Each org card shows its slug (data-testid='org-item-slug')."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.wait_for_selector("[data-testid='org-item']", timeout=10000)
         slug_cells = sysadmin_page.locator("[data-testid='org-item-slug']")
@@ -309,7 +309,7 @@ class TestSysAdminOrgDirectoryFields:
 
     def test_testorg1_visible_in_list(self, sysadmin_page: Page):
         """Seeded TestOrg1 appears in the organization directory."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/organizations")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.wait_for_selector("[data-testid='org-list']", timeout=10000)
         expect(sysadmin_page.locator("[data-testid='org-item-name']").filter(has_text="TestOrg1")).to_be_visible(timeout=8000)
@@ -421,48 +421,48 @@ class TestSysAdminAnalyticsFields:
 
     def test_global_content_page_heading(self, sysadmin_page: Page):
         """'Global Content Courses' heading is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Global Content Courses")).to_be_visible()
 
     def test_total_courses_stat_label(self, sysadmin_page: Page):
         """'Total Courses' stat label is visible on the analytics card."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Total Courses")).to_be_visible()
 
     def test_modules_stat_label(self, sysadmin_page: Page):
         """'Modules' stat label is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Modules")).to_be_visible()
 
     def test_quizzes_stat_label(self, sysadmin_page: Page):
         """'Quizzes' stat label is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Quizzes")).to_be_visible()
 
     def test_decks_stat_label(self, sysadmin_page: Page):
         """'Decks' stat label is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Decks")).to_be_visible()
 
     def test_videos_stat_label(self, sysadmin_page: Page):
         """'Videos' stat label is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Videos")).to_be_visible()
 
     def test_documents_stat_label(self, sysadmin_page: Page):
         """'Documents' stat label is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Documents")).to_be_visible()
 
     def test_organizations_stat_label(self, sysadmin_page: Page):
         """'Organizations' stat label is visible."""
-        sysadmin_page.goto(f"{FE_BASE}/sysadmin/content")
+        sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
         expect(sysadmin_page.locator("text=Organizations")).to_be_visible()
