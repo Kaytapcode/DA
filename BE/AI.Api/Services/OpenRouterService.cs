@@ -279,39 +279,43 @@ JSON ({needed} new questions):";
 
         private QuizGenerationResponse ParseQuizResponse(string jsonContent)
         {
-            var cleanedJson = jsonContent.Trim();
+            // Step 1 — strip markdown fences, then extract the JSON payload from any
+            // surrounding text the model added (e.g. "Here are the questions:\n\n{...}").
+            var cleanedJson = ExtractJsonPayload(jsonContent);
 
-            // Strip markdown fences if the model wrapped the JSON anyway
-            if (cleanedJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-                cleanedJson = cleanedJson[7..];
-            else if (cleanedJson.StartsWith("```"))
-                cleanedJson = cleanedJson[3..];
-            if (cleanedJson.EndsWith("```"))
-                cleanedJson = cleanedJson[..^3];
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            cleanedJson = cleanedJson.Trim();
-
-            // Try strict parse first
+            // Step 2 — try parsing as {"questions":[...]}
             try
             {
-                var quizData = JsonSerializer.Deserialize<QuizData>(
-                    cleanedJson,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-                );
-
+                var quizData = JsonSerializer.Deserialize<QuizData>(cleanedJson, opts);
                 if (quizData?.Questions is { Count: > 0 })
                 {
-                    _logger.LogInformation("Parsed {Count} questions (strict)", quizData.Questions.Count);
+                    _logger.LogInformation("Parsed {Count} questions (strict wrapper)", quizData.Questions.Count);
                     return BuildResponse(quizData.Questions);
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Strict JSON parse failed — attempting recovery");
+                _logger.LogWarning(ex, "Wrapper-object parse failed — trying bare array");
             }
 
-            // Recovery: the response was truncated mid-JSON.
-            // Extract all complete question objects using a bracket-depth scanner.
+            // Step 3 — try parsing as a bare array [...] (some models skip the wrapper)
+            try
+            {
+                var directList = JsonSerializer.Deserialize<List<QuizQuestion>>(cleanedJson, opts);
+                if (directList is { Count: > 0 })
+                {
+                    _logger.LogInformation("Parsed {Count} questions (bare array)", directList.Count);
+                    return BuildResponse(directList);
+                }
+            }
+            catch (JsonException ex)
+            {
+                _logger.LogWarning(ex, "Bare-array parse failed — attempting bracket-depth recovery");
+            }
+
+            // Step 4 — bracket-depth recovery for truncated JSON
             var recovered = RecoverPartialQuestions(cleanedJson);
             if (recovered.Count > 0)
             {
@@ -319,17 +323,65 @@ JSON ({needed} new questions):";
                 return BuildResponse(recovered);
             }
 
-            _logger.LogError("Could not parse any questions from response: {Content}", cleanedJson[..Math.Min(500, cleanedJson.Length)]);
+            _logger.LogError("Could not parse any questions. Raw (first 500 chars): {Content}",
+                cleanedJson[..Math.Min(500, cleanedJson.Length)]);
             throw new InvalidOperationException("Failed to parse AI response as JSON. The model may have returned an unexpected format.");
         }
 
-        private static QuizGenerationResponse BuildResponse(List<QuizQuestion> questions) => new()
+        /// <summary>
+        /// Strips markdown fences and skips any leading prose, returning the raw JSON
+        /// substring starting at the first '{' or '['.
+        /// </summary>
+        private static string ExtractJsonPayload(string raw)
         {
-            Success = true,
-            QuestionsCount = questions.Count,
-            Questions = questions,
-            Message = $"Successfully generated {questions.Count} quiz questions"
-        };
+            var s = raw.Trim();
+
+            // Check for a markdown code block anywhere in the response
+            var fenceMatch = System.Text.RegularExpressions.Regex.Match(
+                s, @"```(?:json|JSON)?\s*([\s\S]*?)```");
+            if (fenceMatch.Success)
+                s = fenceMatch.Groups[1].Value.Trim();
+
+            // Strip any remaining opening fence that wasn't closed
+            if (s.StartsWith("```json", StringComparison.OrdinalIgnoreCase)) s = s[7..].TrimStart();
+            else if (s.StartsWith("```")) s = s[3..].TrimStart();
+            if (s.EndsWith("```")) s = s[..^3].TrimEnd();
+
+            // Skip any prose the model prepended before the actual JSON token
+            int start = -1;
+            for (int i = 0; i < s.Length; i++)
+            {
+                if (s[i] == '{' || s[i] == '[') { start = i; break; }
+            }
+            if (start > 0) s = s[start..];
+
+            return s.Trim();
+        }
+
+        private QuizGenerationResponse BuildResponse(List<QuizQuestion> questions)
+        {
+            // Spec invariant 3: AI explanations are mandatory. Fill any gaps so parsing
+            // never silently produces an explanation-free AI question.
+            int filled = 0;
+            foreach (var q in questions)
+            {
+                if (string.IsNullOrWhiteSpace(q.Explanation))
+                {
+                    q.Explanation = "(Explanation not provided by model — verify before publishing)";
+                    filled++;
+                }
+            }
+            if (filled > 0)
+                _logger.LogWarning("{Count} questions had empty explanations — placeholder inserted", filled);
+
+            return new()
+            {
+                Success = true,
+                QuestionsCount = questions.Count,
+                Questions = questions,
+                Message = $"Successfully generated {questions.Count} quiz questions"
+            };
+        }
 
         /// <summary>
         /// Scans the raw JSON string and extracts every complete {...} object found inside
@@ -426,16 +478,18 @@ JSON ({needed} new questions):";
     public class QuizQuestion
     {
         [JsonPropertyName("question")]
-        public required string Question { get; set; }
+        public string Question { get; set; } = string.Empty;
 
         [JsonPropertyName("options")]
-        public required List<string> Options { get; set; }
+        public List<string> Options { get; set; } = [];
 
         [JsonPropertyName("correct_index")]
         public int CorrectIndex { get; set; }
 
+        // Nullable so a missing field doesn't abort the whole deserialization;
+        // AI-generated quizzes validate non-empty after parsing.
         [JsonPropertyName("explanation")]
-        public required string Explanation { get; set; }
+        public string? Explanation { get; set; }
     }
 
     public class QuizGenerationResponse
@@ -447,9 +501,9 @@ JSON ({needed} new questions):";
         public int QuestionsCount { get; set; }
 
         [JsonPropertyName("questions")]
-        public required List<QuizQuestion> Questions { get; set; }
+        public List<QuizQuestion> Questions { get; set; } = [];
 
         [JsonPropertyName("message")]
-        public required string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }
