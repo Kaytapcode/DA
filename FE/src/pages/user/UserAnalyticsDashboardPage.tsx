@@ -7,8 +7,8 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Grid,
-  Stack,
+  Grid as MuiGrid,
+  Stack as MuiStack,
   Tab,
   Tabs,
   Typography,
@@ -16,6 +16,13 @@ import {
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { UserShell, useUserLanguage } from './UserShell'
 import { apiClient } from '@/utils/apiClient'
+
+// MUI v9 removed system shorthands from Stack and removed item/container from Grid.
+// These wrappers restore compat without touching the rest of the large file.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Stack: React.FC<any> = (props) => <MuiStack {...props} />
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Grid: React.FC<any> = (props) => <MuiGrid {...props} />
 
 type AnalyticsPeriod = 'day' | 'month' | 'year'
 
@@ -609,7 +616,7 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                           {isVi ? 'Xem them' : 'View more'}
                         </Button>
                       </Stack>
-                      <Box mt={2}>
+                      <Box sx={{ mt: 2 }}>
                         <ActivityBarChart buckets={buckets} period={period} isVi={isVi} />
                       </Box>
                     </CardContent>

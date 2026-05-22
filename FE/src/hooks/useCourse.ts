@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { apiClient, ApiResponse, PaginatedResponse } from '@/utils/apiClient';
+import { apiClient, ApiResponse } from '@/utils/apiClient';
 
 export interface Course {
   id: string;
@@ -87,7 +87,7 @@ export const useCourse = (): UseCourseReturn => {
 
         if (response.success && Array.isArray(response.data)) {
           setCourses(response.data as CourseList[]);
-          setTotalCount(response.totalCount ?? 0);
+          setTotalCount((response as any).totalCount ?? response.data?.length ?? 0);
         } else {
           throw new Error(response.message || 'Failed to fetch courses');
         }

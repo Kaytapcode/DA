@@ -1,6 +1,5 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MaterialIcon } from '@components/ui/MaterialIcon';
 import { useDarkMode } from '@hooks/useDarkMode';
 import { useAuthContext } from '@/contexts/AuthContext';
 
@@ -20,17 +19,12 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   title = 'Dashboard',
-  profilePath = '/profile',
   notificationsPath = '/notifications',
   logoutPath = '/login',
-  userDisplayName = 'User',
-  userRole = 'user',
   notificationCount = 0,
-  showSearch = false,
   showUserMenu = true,
-  showThemeToggle = true,
 }) => {
-  const { isDarkMode, toggleDarkMode } = useDarkMode()
+  const { isDarkMode: _isDarkMode } = useDarkMode()
   const { logout } = useAuthContext();
   const navigate = useNavigate();
 

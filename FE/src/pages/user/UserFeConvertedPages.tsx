@@ -83,7 +83,7 @@ export const UserLearningDashboardPage: React.FC = () => {
       subtitleEn="Track progress and resume your courses"
       subtitleVi="Theo doi tien do va tiep tuc khoa hoc"
     >
-      {/* {error && !isLoading && <p className="mb-4 text-sm text-error">{error}</p>} */}
+      {error && !isLoading && <p className="mb-4 text-sm text-error">{error}</p>}
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <Card className="p-6">
           <div className="mb-4 flex items-center justify-between">
@@ -162,8 +162,6 @@ export const DocumentViewerPage: React.FC = () => {
     fetchList,
     openDocument,
   } = useDocumentViewer()
-  const [saved, setSaved] = useState(false)
-  const [shareToast, setShareToast] = useState(false)
   const [resolvedCollectionTitle, setResolvedCollectionTitle] = useState<string | null>(null)
   const docActivityRef = React.useRef<string | null>(null)
   // Always-current snapshot of the document list — updated synchronously before effects run.
@@ -258,29 +256,6 @@ export const DocumentViewerPage: React.FC = () => {
     }
   }
 
-  const handleDownload = () => {
-    if (!loaded) return
-    const link = document.createElement('a')
-    link.href = loaded.blobUrl
-    link.download = loaded.fileName || 'document'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
-
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setShareToast(true)
-      setTimeout(() => setShareToast(false), 1800)
-    } catch {
-      // clipboard blocked — silent
-    }
-  }
-
-  const chipBase = 'inline-flex items-center gap-2 rounded-full border border-outline-variant bg-surface px-4 py-2 text-sm font-medium text-on-surface shadow-sm hover:bg-surface-container-low transition-colors'
-  const iconBtn = 'inline-flex items-center gap-1.5 rounded-full border border-outline-variant px-3 py-1.5 text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors'
-
   return (
     <UserShell
       titleEn="Document Viewer"
@@ -351,37 +326,6 @@ export const DocumentViewerPage: React.FC = () => {
               </span>
             )}
           </div>
-          {/* <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={handleDownload}
-              disabled={!loaded || isDocLoading}
-            >
-              <MaterialIcon icon="download" size="xs" className="mr-1.5" />
-              {isVi ? 'Tai xuong' : 'Download'}
-            </Button>
-            <button type="button" className={iconBtn} disabled>
-              <MaterialIcon icon="thumb_up" size="xs" />
-              <span>0</span>
-            </button>
-            <button type="button" className={iconBtn} disabled>
-              <MaterialIcon icon="thumb_down" size="xs" />
-              <span>0</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSaved((s) => !s)}
-              className={`${iconBtn} ${saved ? 'border-primary text-primary' : ''}`}
-            >
-              <MaterialIcon icon={saved ? 'bookmark' : 'bookmark_border'} size="xs" />
-              <span>{isVi ? 'Luu' : 'Save'}</span>
-            </button>
-            <button type="button" onClick={handleShare} className={iconBtn}>
-              <MaterialIcon icon="share" size="xs" />
-              <span>{shareToast ? (isVi ? 'Da sao chep' : 'Copied') : (isVi ? 'Chia se' : 'Share')}</span>
-            </button>
-          </div> */}
           <div className="min-h-[90vh] rounded-2xl bg-surface-container-low">
             {isDocLoading ? (
               <div className="flex h-[90vh] items-center justify-center">
