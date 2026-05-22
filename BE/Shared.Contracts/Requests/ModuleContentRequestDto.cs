@@ -32,4 +32,8 @@ namespace Shared.Contracts.Requests
     public record SetContentStatusRequestDto(
         [Required] string Status  // DRAFT | PUBLISHED
     );
+
+    public record LinkContentRequestDto(
+        [Required] Guid ContentId
+    );
 }

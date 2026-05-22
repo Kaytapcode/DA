@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { MainLayout } from '@layouts/MainLayout'
 import { SysAdminNavbar } from '@components/layout/sysadmin/SysAdminNavbar'
 import { SysAdminSidebar } from '@components/layout/sysadmin/SysAdminSidebar'
@@ -45,7 +46,7 @@ const SysShell: React.FC<SysShellProps> = ({ titleEn, titleVi, subtitleEn, subti
 
 export const GlobalContentCoursesPage: React.FC = () => {
   const isVi = useLang()
-  const { data, isLoading, error } = useSysAdminAnalytics()
+  const { data, isLoading } = useSysAdminAnalytics()
 
   const stat = (n: number | undefined | null) => (n ?? 0).toLocaleString()
 
@@ -509,39 +510,22 @@ export const PlatformSettingsLogsPage: React.FC = () => {
     <SysShell
       titleEn="Platform Settings & Logs"
       titleVi="Cai dat nen tang va nhat ky"
-      subtitleEn="Audit controls, access rules, and logs"
-      subtitleVi="Kiem soat audit, quyen truy cap va nhat ky"
+      subtitleEn="Audit controls and system event logs"
+      subtitleVi="Kiem soat audit va nhat ky he thong"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 space-y-4">
-          <h3 className="font-bold text-on-surface">{isVi ? 'Cai dat bao mat' : 'Security Settings'}</h3>
-          {[
-            isVi ? 'Bat MFA bat buoc' : 'Enforce mandatory MFA',
-            isVi ? 'Khoa IP nghiem ngat' : 'Strict IP allowlist',
-            isVi ? 'Tu dong logout 24h' : 'Auto logout after 24h',
-          ].map((item) => (
-            <label key={item} className="p-3 rounded-lg bg-surface-container-low flex justify-between items-center">
-              <span>{item}</span>
-              <input type="checkbox" defaultChecked className="h-4 w-4" />
-            </label>
-          ))}
-          <Button className="w-full">{isVi ? 'Luu cai dat' : 'Save Settings'}</Button>
-        </Card>
-        <Card className="p-6">
-          <h3 className="font-bold text-on-surface mb-4">{isVi ? 'Nhat ky gan day' : 'Recent Logs'}</h3>
-          <div className="space-y-3">
-            {[
-              '2026-04-03 09:10 Admin changed policy',
-              '2026-04-03 08:42 New org created',
-              '2026-04-02 23:11 Suspicious login blocked',
-            ].map((log) => (
-              <div key={log} className="p-3 rounded-lg bg-surface-container-low text-sm text-on-surface-variant">
-                {log}
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+      <Card className="p-6 flex items-start gap-4">
+        <MaterialIcon icon="info" className="text-primary mt-0.5 flex-shrink-0" />
+        <div>
+          <h3 className="font-bold text-on-surface mb-1">
+            {isVi ? 'Tinh nang nay chua kha dung' : 'Feature not yet available'}
+          </h3>
+          <p className="text-sm text-on-surface-variant">
+            {isVi
+              ? 'Nhat ky he thong va cai dat bao mat se duoc trien khai trong giai doan sau. Hien tai, quan tri vien co the su dung API logs tu server hoac cong cu giam sat he thong.'
+              : 'System logs and security settings will be implemented in a future release. Currently, administrators can use server-side API logs or system monitoring tools.'}
+          </p>
+        </div>
+      </Card>
     </SysShell>
   )
 }
@@ -587,33 +571,107 @@ export const SystemadminOrganizationDirectoryAltPage: React.FC = () => {
 
 export const UserDetailsSystemadminPage: React.FC = () => {
   const isVi = useLang()
+  const [searchParams] = useSearchParams()
+  const userId = searchParams.get('userId')
+  const [user, setUser] = useState<UserItem | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [newRole, setNewRole] = useState<RoleOption>('Student')
+  const [saving, setSaving] = useState(false)
+  const [actionMsg, setActionMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!userId) return
+    setIsLoading(true)
+    setError(null)
+    apiClient.get<UserItem>(`/users/${userId}`)
+      .then((res) => {
+        if (res.success && res.data) { setUser(res.data); setNewRole(res.data.role as RoleOption) }
+        else throw new Error(res.message || 'Not found')
+      })
+      .catch((e: any) => setError(e?.message || 'Failed to load user'))
+      .finally(() => setIsLoading(false))
+  }, [userId])
+
+  const handleRoleUpdate = async () => {
+    if (!user) return
+    setSaving(true); setActionMsg(null)
+    try {
+      const res = await apiClient.patch(`/users/${user.id}`, { role: newRole })
+      if (res.success) { setActionMsg(isVi ? 'Da cap nhat vai tro.' : 'Role updated.'); setUser({ ...user, role: newRole }) }
+      else setError(res.message || 'Failed to update.')
+    } catch (e: any) { setError(e?.message || 'Failed.') }
+    finally { setSaving(false) }
+  }
 
   return (
     <SysShell
       titleEn="User Details"
       titleVi="Chi tiet nguoi dung"
-      subtitleEn="Deep profile, role assignments, and audit trail"
-      subtitleVi="Ho so chi tiet, phan quyen va lich su audit"
+      subtitleEn="Profile, role assignment, and management actions"
+      subtitleVi="Ho so, phan quyen va cac hanh dong quan ly"
     >
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-6">
-          <h3 className="font-bold text-on-surface mb-4">Alex Johnson</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-3 rounded-lg bg-surface-container-low">Email: alex@lumina.ai</div>
-            <div className="p-3 rounded-lg bg-surface-container-low">Role: Org Admin</div>
-            <div className="p-3 rounded-lg bg-surface-container-low">Last Login: 2h ago</div>
-            <div className="p-3 rounded-lg bg-surface-container-low">Status: Active</div>
-          </div>
-        </Card>
+      {!userId && (
         <Card className="p-6">
-          <h3 className="font-bold text-on-surface mb-3">{isVi ? 'Hanh dong nhanh' : 'Quick Actions'}</h3>
-          <div className="space-y-2">
-            <Button className="w-full" variant="secondary">{isVi ? 'Dat lai mat khau' : 'Reset Password'}</Button>
-            <Button className="w-full" variant="secondary">{isVi ? 'Cap nhat vai tro' : 'Update Role'}</Button>
-            <Button className="w-full">{isVi ? 'Mo khoa tai khoan' : 'Unlock Account'}</Button>
-          </div>
+          <p className="text-on-surface-variant">
+            {isVi
+              ? 'Nang cap chi tiet nguoi dung: them ?userId=<id> vao URL hoac dieu huong tu trang Quan ly nguoi dung.'
+              : 'Navigate here with ?userId=<id> in the URL, or use User Management to pick a user.'}
+          </p>
         </Card>
-      </div>
+      )}
+      {userId && isLoading && (
+        <div className="flex justify-center py-8"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>
+      )}
+      {userId && error && !isLoading && (
+        <Card className="p-4 border border-error/30"><p className="text-sm text-error">{error}</p></Card>
+      )}
+      {user && !isLoading && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2 p-6 space-y-3">
+            <h3 className="font-bold text-on-surface text-lg">{user.username}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+              <div className="p-3 rounded-lg bg-surface-container-low">
+                <span className="text-on-surface-variant">{isVi ? 'Email: ' : 'Email: '}</span>{user.email}
+              </div>
+              <div className="p-3 rounded-lg bg-surface-container-low">
+                <span className="text-on-surface-variant">{isVi ? 'Vai tro: ' : 'Role: '}</span>
+                <Badge variant={user.role === 'SysAdmin' ? 'warning' : 'secondary'} size="sm">{user.role}</Badge>
+              </div>
+              <div className="p-3 rounded-lg bg-surface-container-low">
+                <span className="text-on-surface-variant">{isVi ? 'Tao luc: ' : 'Created: '}</span>
+                {new Date(user.createdAt).toLocaleDateString()}
+              </div>
+              <div className="p-3 rounded-lg bg-surface-container-low">
+                <span className="text-on-surface-variant">ID: </span>
+                <span className="font-mono text-xs">{user.id}</span>
+              </div>
+            </div>
+          </Card>
+          <Card className="p-6 space-y-3">
+            <h3 className="font-bold text-on-surface">{isVi ? 'Hanh dong quan ly' : 'Management'}</h3>
+            {actionMsg && <p className="text-sm text-success">{actionMsg}</p>}
+            <div>
+              <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                {isVi ? 'Doi vai tro' : 'Change Role'}
+              </label>
+              <select
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value as RoleOption)}
+                className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface mb-2"
+              >
+                <option value="Student">Student</option>
+                <option value="Teacher">Teacher</option>
+                <option value="OrgAdmin">OrgAdmin</option>
+                <option value="SysAdmin">SysAdmin</option>
+              </select>
+              <Button className="w-full" onClick={handleRoleUpdate} disabled={saving || newRole === user.role}>
+                {saving ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu vai tro' : 'Save Role')}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </SysShell>
   )
 }

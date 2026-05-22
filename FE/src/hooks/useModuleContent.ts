@@ -36,6 +36,7 @@ interface UseModuleContentReturn {
   deleteContent: (courseId: string, moduleId: string, contentId: string) => Promise<void>;
   moveContent: (courseId: string, moduleId: string, contentId: string, newIndex: number) => Promise<void>;
   setContentStatus: (courseId: string, moduleId: string, contentId: string, status: 'DRAFT' | 'PUBLISHED') => Promise<void>;
+  linkContent: (courseId: string, moduleId: string, contentId: string) => Promise<ContentItem | null>;
 }
 
 export const useModuleContent = (): UseModuleContentReturn => {
@@ -177,10 +178,31 @@ export const useModuleContent = (): UseModuleContentReturn => {
     }
   }, []);
 
+  const linkContent = useCallback(async (
+    courseId: string, moduleId: string, contentId: string
+  ): Promise<ContentItem | null> => {
+    try {
+      const res = await apiClient.post<ContentItem>(
+        `/courses/${courseId}/modules/${moduleId}/contents/link`,
+        { contentId }
+      );
+      if (res.success && res.data) {
+        setModules(prev => prev.map(m => m.id === moduleId
+          ? { ...m, contents: [...(m.contents ?? []), res.data!] }
+          : m
+        ));
+        return res.data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   return {
     modules, isLoading, error,
     fetchModules, fetchContents,
     createModule, deleteModule, moveModule,
-    createContent, deleteContent, moveContent, setContentStatus,
+    createContent, deleteContent, moveContent, setContentStatus, linkContent,
   };
 };

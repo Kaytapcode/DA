@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -7,7 +8,16 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
+import { tokenStore } from '@/utils/tokenStore'
 import { useUserLanguage } from './UserShell'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
+interface LibraryDoc {
+  id: string
+  fileName: string
+  fileType: string
+}
 
 type CreateMode = 'manual' | 'ai'
 type AiStep = 'input' | 'review'
@@ -102,6 +112,10 @@ export const QuizCreatePage: React.FC = () => {
 	const [isDragging, setIsDragging] = useState(false)
 	const [questionCount, setQuestionCount] = useState<'normal' | 'many' | 'more'>('normal')
 	const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal')
+	const [aiInputMode, setAiInputMode] = useState<'upload' | 'library'>('upload')
+	const [libraryDocs, setLibraryDocs] = useState<LibraryDoc[]>([])
+	const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+	const [selectedLibraryDocId, setSelectedLibraryDocId] = useState<string | null>(null)
 
 	// ---- Manual mode helpers ----
 	const updateQuestion = (idx: number, patch: Partial<QuestionDraft>) =>
@@ -180,6 +194,44 @@ export const QuizCreatePage: React.FC = () => {
 			setError(err?.message || err?.data?.message || 'Failed to create quiz')
 		} finally {
 			setIsSubmitting(false)
+		}
+	}
+
+	// ---- AI mode — library helpers ----
+	const loadLibraryDocs = async () => {
+		setIsLoadingLibrary(true)
+		try {
+			const res = await apiClient.get<LibraryDoc[]>('/documents')
+			if (res.success && res.data) setLibraryDocs(res.data)
+		} catch { /* silently fail */ }
+		finally { setIsLoadingLibrary(false) }
+	}
+
+	const selectLibraryDoc = async (doc: LibraryDoc) => {
+		setIsLoadingLibrary(true)
+		setError(null)
+		setSelectedLibraryDocId(doc.id)
+		try {
+			const token = tokenStore.getAccessToken()
+			const orgId = localStorage.getItem('org_id')
+			const orgSlug = localStorage.getItem('org_slug')
+			const res = await axios.get(`${API_BASE}/documents/${doc.id}`, {
+				responseType: 'blob',
+				headers: {
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+					...(orgId ? { 'X-Org-Id': orgId } : {}),
+					...(orgSlug ? { 'X-Org-Slug': orgSlug } : {}),
+				},
+			})
+			const mime = String(res.headers['content-type'] || '').split(';')[0].trim() || 'application/pdf'
+			const file = new File([res.data as Blob], doc.fileName, { type: mime })
+			setAiFile(file)
+			setAiDocTitle(doc.fileName.replace(/\.[^.]+$/, ''))
+		} catch {
+			setError(t('Không thể tải tài liệu từ thư viện.', 'Could not load document from library.'))
+			setSelectedLibraryDocId(null)
+		} finally {
+			setIsLoadingLibrary(false)
 		}
 	}
 
@@ -581,48 +633,145 @@ export const QuizCreatePage: React.FC = () => {
 										</div>
 									</div>
 
-									{/* File upload */}
+									{/* Source mode toggle: Upload vs Library */}
 									<div>
-										<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-											{t('File tài liệu', 'Document File')} <span className="text-red-500">*</span>
+										<label className="mb-2 block text-sm font-semibold text-[#111b2d]">
+											{t('Nguồn tài liệu', 'Document Source')} <span className="text-red-500">*</span>
 										</label>
-										<div
-											className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 transition ${
-												isDragging
-													? 'border-[#1463ff] bg-blue-100'
-													: 'border-[#d7dfeb] bg-[#f6f8fb] hover:border-[#1463ff] hover:bg-blue-50'
-											}`}
-											onClick={() => fileInputRef.current?.click()}
-											onDragOver={handleDragOver}
-											onDragLeave={handleDragLeave}
-											onDrop={handleDrop}
-										>
-											<MaterialIcon icon="upload_file" size="lg" className="text-[#1463ff]" />
-											{aiFile ? (
-												<>
-													<p className="text-sm font-semibold text-[#111b2d]">{aiFile.name}</p>
-													<p className="text-xs text-[#60708a]">
-														{(aiFile.size / 1024).toFixed(1)} KB — {t('Nhấn để thay đổi', 'Click to change')}
-													</p>
-												</>
-											) : (
-												<>
-													<p className="text-sm font-semibold text-[#111b2d]">
-														{t('Nhấn hoặc kéo thả file vào đây', 'Click or drag & drop a file here')}
-													</p>
-													<p className="text-xs text-[#60708a]">
-														{t('Hỗ trợ PDF và TXT, tối đa 10 MB', 'Supports PDF and TXT, max 10 MB')}
-													</p>
-												</>
-											)}
+										<div className="flex gap-2 mb-3">
+											<button
+												type="button"
+												onClick={() => { setAiInputMode('upload'); setError(null) }}
+												className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+													aiInputMode === 'upload'
+														? 'border-[#1463ff] bg-[#1463ff] text-white'
+														: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+												}`}
+											>
+												<MaterialIcon icon="upload_file" size="xs" />
+												{t('Tải file mới', 'Upload File')}
+											</button>
+											<button
+												type="button"
+												onClick={() => {
+													setAiInputMode('library')
+													setError(null)
+													if (libraryDocs.length === 0) void loadLibraryDocs()
+												}}
+												className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+													aiInputMode === 'library'
+														? 'border-[#1463ff] bg-[#1463ff] text-white'
+														: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+												}`}
+											>
+												<MaterialIcon icon="library_books" size="xs" />
+												{t('Chọn từ thư viện', 'From My Library')}
+											</button>
 										</div>
-										<input
-											ref={fileInputRef}
-											type="file"
-											accept=".pdf,.txt,application/pdf,text/plain"
-											className="hidden"
-											onChange={handleFileChange}
-										/>
+
+										{/* Upload tab */}
+										{aiInputMode === 'upload' && (
+											<>
+												<div className="flex items-center gap-2 mb-1">
+													<span className="text-sm font-semibold text-[#111b2d]">
+														{t('File tài liệu', 'Document File')}
+													</span>
+													<span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+														PDF · TXT · max 10 MB
+													</span>
+												</div>
+												<div
+													className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 transition ${
+														isDragging
+															? 'border-[#1463ff] bg-blue-100'
+															: 'border-[#d7dfeb] bg-[#f6f8fb] hover:border-[#1463ff] hover:bg-blue-50'
+													}`}
+													onClick={() => fileInputRef.current?.click()}
+													onDragOver={handleDragOver}
+													onDragLeave={handleDragLeave}
+													onDrop={handleDrop}
+												>
+													<MaterialIcon icon="upload_file" size="lg" className="text-[#1463ff]" />
+													{aiFile && aiInputMode === 'upload' ? (
+														<>
+															<p className="text-sm font-semibold text-[#111b2d]">{aiFile.name}</p>
+															<p className="text-xs text-[#60708a]">
+																{(aiFile.size / 1024).toFixed(1)} KB — {t('Nhấn để thay đổi', 'Click to change')}
+															</p>
+														</>
+													) : (
+														<>
+															<p className="text-sm font-semibold text-[#111b2d]">
+																{t('Nhấn hoặc kéo thả file vào đây', 'Click or drag & drop a file here')}
+															</p>
+															<p className="text-xs text-[#60708a]">
+																{t('Chỉ hỗ trợ PDF và TXT, tối đa 10 MB', 'PDF and TXT only, max 10 MB')}
+															</p>
+														</>
+													)}
+												</div>
+												<input
+													ref={fileInputRef}
+													type="file"
+													accept=".pdf,.txt,application/pdf,text/plain"
+													className="hidden"
+													onChange={handleFileChange}
+												/>
+											</>
+										)}
+
+										{/* Library tab */}
+										{aiInputMode === 'library' && (
+											<>
+												{isLoadingLibrary && !aiFile && (
+													<div className="flex justify-center py-4">
+														<div className="h-6 w-6 animate-spin rounded-full border-b-2 border-[#1463ff]" />
+													</div>
+												)}
+												{!isLoadingLibrary && libraryDocs.length === 0 && (
+													<p className="rounded-xl border border-[#d7dfeb] p-6 text-center text-sm text-[#60708a]">
+														{t(
+															'Chưa có tài liệu nào trong thư viện. Hãy chuyển sang tab "Tải file mới".',
+															'No documents in your library yet. Switch to "Upload File" tab.'
+														)}
+													</p>
+												)}
+												{libraryDocs.length > 0 && (
+													<div className="max-h-56 overflow-y-auto rounded-xl border border-[#d7dfeb] bg-white">
+														{libraryDocs.map((doc) => (
+															<button
+																key={doc.id}
+																type="button"
+																onClick={() => void selectLibraryDoc(doc)}
+																disabled={isLoadingLibrary}
+																className={`flex w-full items-center gap-3 border-b border-[#f0f2f5] px-4 py-3 text-left text-sm transition last:border-b-0 hover:bg-blue-50 disabled:opacity-60 ${
+																	selectedLibraryDocId === doc.id
+																		? 'bg-blue-50 font-semibold text-[#1463ff]'
+																		: 'text-[#111b2d]'
+																}`}
+															>
+																<MaterialIcon
+																	icon={doc.fileType?.toLowerCase() === 'pdf' ? 'picture_as_pdf' : 'description'}
+																	size="xs"
+																	className="flex-shrink-0 text-[#1463ff]"
+																/>
+																<span className="flex-1 truncate">{doc.fileName}</span>
+																<span className="flex-shrink-0 text-xs text-[#9aa5b5] uppercase">{doc.fileType}</span>
+																{selectedLibraryDocId === doc.id && (
+																	<MaterialIcon icon="check_circle" size="xs" className="flex-shrink-0 text-[#1463ff]" />
+																)}
+															</button>
+														))}
+													</div>
+												)}
+												{aiFile && selectedLibraryDocId && (
+													<p className="mt-2 text-xs text-[#60708a]">
+														{t('Đã chọn: ', 'Selected: ')}<strong>{aiFile.name}</strong>
+														{' '}({(aiFile.size / 1024).toFixed(1)} KB)
+													</p>
+												)}
+											</>
+										)}
 									</div>
 
 										<div className="flex justify-end">

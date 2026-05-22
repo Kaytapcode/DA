@@ -14,6 +14,7 @@ import { useCourse } from '@/hooks/useCourse'
 import { useOrganization } from '@/hooks/useOrganization'
 import { useCourseEnrollment, type CourseEnrollment } from '@/hooks/useCourseEnrollment'
 import { useOrgContext } from '@/contexts/OrgContext'
+import { apiClient } from '@/utils/apiClient'
 
 const useLang = () => getCurrentLanguage() === 'vi'
 
@@ -389,7 +390,7 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
     modules, isLoading, error,
     fetchModules, fetchContents,
     createModule, deleteModule, moveModule,
-    createContent, deleteContent, moveContent, setContentStatus,
+    createContent, deleteContent, moveContent, setContentStatus, linkContent,
   } = useModuleContent()
 
   const [newModuleTitle, setNewModuleTitle] = useState('')
@@ -398,9 +399,37 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
   const [newContentTitle, setNewContentTitle] = useState('')
   const [newContentType, setNewContentType] = useState('VIDEO')
 
+  // Link existing resource state
+  const [contentAddMode, setContentAddMode] = useState<'create' | 'link'>('create')
+  const [libraryResources, setLibraryResources] = useState<Array<{ id: string; title: string; contentId?: string }>>([])
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+  const [linkingContentId, setLinkingContentId] = useState<string | null>(null)
+
   useEffect(() => {
     if (courseId) fetchModules(courseId)
   }, [courseId, fetchModules])
+
+  const loadLibraryByType = async (type: string) => {
+    setIsLoadingLibrary(true)
+    setLibraryResources([])
+    try {
+      let endpoint = ''
+      if (type === 'VIDEO') endpoint = '/videos'
+      else if (type === 'PDF') endpoint = '/documents'
+      else if (type === 'QUIZ') endpoint = '/quizzes'
+      else if (type === 'FLASHCARD') endpoint = '/flashcard-decks'
+      if (!endpoint) return
+      const res = await apiClient.get<any[]>(endpoint)
+      if (res.success && res.data) {
+        setLibraryResources(res.data.map((r: any) => ({
+          id: r.contentId ?? r.id,
+          title: r.title ?? r.fileName ?? r.name ?? '(no title)',
+        })))
+      }
+    } catch { /* silent */ } finally {
+      setIsLoadingLibrary(false)
+    }
+  }
 
   const handleAddModule = async () => {
     if (!newModuleTitle.trim() || !courseId) return
@@ -415,6 +444,15 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
     setNewContentTitle('')
     setNewContentType('VIDEO')
     setAddingContentForModule(null)
+  }
+
+  const handleLinkContent = async (moduleId: string, contentId: string) => {
+    if (!courseId) return
+    setLinkingContentId(contentId)
+    await linkContent(courseId, moduleId, contentId)
+    setLinkingContentId(null)
+    setAddingContentForModule(null)
+    setLibraryResources([])
   }
 
   return (
@@ -472,15 +510,30 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
               {/* Add Content Dialog (inline) */}
               {addingContentForModule && (
                 <Card className="p-4 border-primary space-y-3">
-                  <p className="font-semibold text-sm">{isVi ? 'Them bai hoc moi' : 'Add New Content'}</p>
-                  <Input
-                    value={newContentTitle}
-                    onChange={(e) => setNewContentTitle(e.target.value)}
-                    placeholder={isVi ? 'Tieu de bai hoc' : 'Content title'}
-                  />
+                  <div className="flex items-center justify-between">
+                    <p className="font-semibold text-sm">{isVi ? 'Them bai hoc' : 'Add Content'}</p>
+                    <div className="flex gap-1 text-xs">
+                      <button
+                        className={`px-3 py-1 rounded-full border transition-colors ${contentAddMode === 'create' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
+                        onClick={() => { setContentAddMode('create'); setLibraryResources([]) }}
+                      >
+                        {isVi ? 'Tao moi' : 'Create New'}
+                      </button>
+                      <button
+                        className={`px-3 py-1 rounded-full border transition-colors ${contentAddMode === 'link' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
+                        onClick={() => { setContentAddMode('link'); loadLibraryByType(newContentType) }}
+                      >
+                        {isVi ? 'Tu thu vien' : 'From Library'}
+                      </button>
+                    </div>
+                  </div>
+
                   <select
                     value={newContentType}
-                    onChange={(e) => setNewContentType(e.target.value)}
+                    onChange={(e) => {
+                      setNewContentType(e.target.value)
+                      if (contentAddMode === 'link') loadLibraryByType(e.target.value)
+                    }}
                     className="w-full p-2 rounded border border-outline bg-surface text-on-surface text-sm"
                   >
                     <option value="VIDEO">VIDEO</option>
@@ -488,14 +541,60 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                     <option value="QUIZ">QUIZ</option>
                     <option value="FLASHCARD">FLASHCARD</option>
                   </select>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => handleAddContent(addingContentForModule)}>
-                      {isVi ? 'Them' : 'Add'}
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => setAddingContentForModule(null)}>
-                      {isVi ? 'Huy' : 'Cancel'}
-                    </Button>
-                  </div>
+
+                  {contentAddMode === 'create' && (
+                    <>
+                      <Input
+                        value={newContentTitle}
+                        onChange={(e) => setNewContentTitle(e.target.value)}
+                        placeholder={isVi ? 'Tieu de bai hoc' : 'Content title'}
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleAddContent(addingContentForModule)}>
+                          {isVi ? 'Them' : 'Add'}
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => { setAddingContentForModule(null); setLibraryResources([]) }}>
+                          {isVi ? 'Huy' : 'Cancel'}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+
+                  {contentAddMode === 'link' && (
+                    <>
+                      {isLoadingLibrary && (
+                        <div className="flex justify-center py-3">
+                          <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-primary" />
+                        </div>
+                      )}
+                      {!isLoadingLibrary && libraryResources.length === 0 && (
+                        <p className="text-xs text-on-surface-variant py-2">
+                          {isVi ? 'Khong co tai nguyen nao trong thu vien.' : 'No resources found in your library.'}
+                        </p>
+                      )}
+                      {!isLoadingLibrary && libraryResources.length > 0 && (
+                        <div className="max-h-48 overflow-y-auto rounded border border-outline-variant divide-y divide-outline-variant">
+                          {libraryResources.map((r) => (
+                            <button
+                              key={r.id}
+                              onClick={() => handleLinkContent(addingContentForModule, r.id)}
+                              disabled={linkingContentId === r.id}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center justify-between gap-2"
+                            >
+                              <span className="truncate">{r.title}</span>
+                              {linkingContentId === r.id
+                                ? <span className="text-xs text-on-surface-variant">{isVi ? 'Dang lien ket...' : 'Linking...'}</span>
+                                : <span className="text-xs text-primary">{isVi ? 'Chon' : 'Select'}</span>
+                              }
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <Button size="sm" variant="secondary" onClick={() => { setAddingContentForModule(null); setLibraryResources([]) }}>
+                        {isVi ? 'Huy' : 'Cancel'}
+                      </Button>
+                    </>
+                  )}
                 </Card>
               )}
 
@@ -535,10 +634,19 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
   )
 }
 
+interface OrgMemberBasic {
+  userId: string
+  username: string
+  email: string
+  role: string
+}
+
 export const CourseEditorMemberRolesTabPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('courseId')
+  const { org } = useOrgContext()
+  const orgId = org?.id ?? localStorage.getItem('org_id') ?? ''
 
   const { enrollments, isLoading, error, create, updateRole, remove } = useCourseEnrollment(courseId)
   const [newUserId, setNewUserId] = useState('')
@@ -546,13 +654,37 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
 
+  // Org member search for enrollment
+  const [orgMembers, setOrgMembers] = useState<OrgMemberBasic[]>([])
+  const [memberSearch, setMemberSearch] = useState('')
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false)
+  const [selectedMember, setSelectedMember] = useState<OrgMemberBasic | null>(null)
+
+  useEffect(() => {
+    if (!orgId) return
+    setIsLoadingMembers(true)
+    apiClient.get<OrgMemberBasic[]>(`/orgs/${orgId}/members`)
+      .then((res) => { if (res.success && res.data) setOrgMembers(res.data) })
+      .catch(() => {})
+      .finally(() => setIsLoadingMembers(false))
+  }, [orgId])
+
+  const filteredMembers = orgMembers.filter((m) => {
+    const t = memberSearch.trim().toLowerCase()
+    if (!t) return true
+    return m.username.toLowerCase().includes(t) || m.email.toLowerCase().includes(t)
+  })
+
   const handleAdd = async () => {
-    if (!newUserId.trim()) return
+    const userId = selectedMember?.userId ?? newUserId.trim()
+    if (!userId) return
     setSubmitting(true)
-    const ok = await create(newUserId.trim(), newRole)
+    const ok = await create(userId, newRole)
     if (ok) {
       setNewUserId('')
       setNewRole('Student')
+      setSelectedMember(null)
+      setMemberSearch('')
     }
     setSubmitting(false)
   }
@@ -597,15 +729,67 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
       {courseId && (
         <Card className="p-6">
           <h3 className="mb-4 font-bold text-on-surface">
-            {isVi ? 'Them nguoi vao khoa hoc' : 'Enroll a user'}
+            {isVi ? 'Them nguoi vao khoa hoc' : 'Enroll a member'}
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_auto] gap-3">
-            <Input
-              data-testid="enrollment-userid-input"
-              value={newUserId}
-              onChange={(e) => setNewUserId(e.target.value)}
-              placeholder={isVi ? 'User ID (UUID)' : 'User ID (UUID)'}
-            />
+          {isLoadingMembers && (
+            <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-3">
+              <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
+              {isVi ? 'Dang tai danh sach thanh vien...' : 'Loading org members...'}
+            </div>
+          )}
+          {!isLoadingMembers && orgMembers.length > 0 && (
+            <div className="mb-3 space-y-2">
+              <Input
+                placeholder={isVi ? 'Tim thanh vien...' : 'Search org members...'}
+                value={memberSearch}
+                onChange={(e) => { setMemberSearch(e.target.value); setSelectedMember(null) }}
+              />
+              {memberSearch && !selectedMember && (
+                <div className="max-h-40 overflow-y-auto rounded-lg border border-outline-variant">
+                  {filteredMembers.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-on-surface-variant">
+                      {isVi ? 'Khong tim thay.' : 'No match.'}
+                    </p>
+                  ) : (
+                    filteredMembers.map((m) => (
+                      <button
+                        key={m.userId}
+                        type="button"
+                        onClick={() => { setSelectedMember(m); setMemberSearch(m.username); setNewUserId(m.userId) }}
+                        className="flex w-full items-center gap-3 border-b border-outline-variant/30 px-4 py-2 text-left text-sm hover:bg-surface-container-low last:border-b-0"
+                      >
+                        <span className="font-medium text-on-surface">{m.username}</span>
+                        <span className="text-on-surface-variant">{m.email}</span>
+                        <Badge variant="secondary" size="sm" className="ml-auto">{m.role}</Badge>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {!isLoadingMembers && orgMembers.length === 0 && (
+            <p className="mb-3 text-sm text-on-surface-variant">
+              {isVi ? 'Chua co thanh vien nao trong to chuc.' : 'No org members yet. Add members on the Members page first.'}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-3 items-center">
+            {selectedMember && (
+              <div className="flex items-center gap-2 rounded-lg bg-surface-container-low px-3 py-2 text-sm">
+                <span className="font-medium text-on-surface">{selectedMember.username}</span>
+                <button type="button" onClick={() => { setSelectedMember(null); setMemberSearch(''); setNewUserId('') }}
+                  className="text-on-surface-variant hover:text-error">✕</button>
+              </div>
+            )}
+            {!selectedMember && (
+              <Input
+                data-testid="enrollment-userid-input"
+                value={newUserId}
+                onChange={(e) => setNewUserId(e.target.value)}
+                placeholder={isVi ? 'User ID (UUID) — tu nhap neu can' : 'User ID (UUID) — manual entry'}
+                className="flex-1 min-w-[200px]"
+              />
+            )}
             <select
               data-testid="enrollment-role-select"
               className="px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
@@ -615,15 +799,14 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
               <option value="Student">Student</option>
               <option value="Teacher">Teacher</option>
             </select>
-            <Button data-testid="enrollment-submit-btn" onClick={() => void handleAdd()} disabled={submitting || !newUserId.trim()}>
+            <Button
+              data-testid="enrollment-submit-btn"
+              onClick={() => void handleAdd()}
+              disabled={submitting || (!selectedMember && !newUserId.trim())}
+            >
               {submitting ? (isVi ? 'Dang them...' : 'Adding...') : (isVi ? 'Them' : 'Enroll')}
             </Button>
           </div>
-          <p className="mt-2 text-xs text-on-surface-variant">
-            {isVi
-              ? 'Tim ID nguoi dung tai trang "Quan ly thanh vien" cua to chuc.'
-              : 'Find user IDs on the organization Members page.'}
-          </p>
         </Card>
       )}
 

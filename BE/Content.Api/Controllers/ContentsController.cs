@@ -154,6 +154,25 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse(true, $"Content status set to {request.Status}."));
         }
 
+        // POST /api/courses/{courseId}/modules/{moduleId}/contents/link
+        // Links an existing content item (quiz/video/doc/deck) owned by the user to this module
+        // without creating a new ContentModel stub. Accepts { contentId } in the body.
+        [HttpPost("link")]
+        [Authorize(Policy = "RequireTeacher")]
+        public async Task<IActionResult> LinkExistingContent(Guid courseId, Guid moduleId, [FromBody] LinkContentRequestDto request)
+        {
+            if (!await VerifyAccessAsync(courseId))
+                return NotFound(new ApiResponse(false, "Course not found."));
+            if (!await _access.CanTeachAsync(courseId))
+                return Forbid();
+
+            var content = await _contentRepo.LinkExistingAsync(request.ContentId, moduleId);
+            if (content == null)
+                return NotFound(new ApiResponse(false, "Content not found."));
+
+            return Ok(new ApiResponse<ContentResponseDto>(true, ToContentDto(content, 0), "Content linked to module."));
+        }
+
         // T3.7: PATCH /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}/order
         [HttpPatch("{contentId:guid}/order")]
         [Authorize(Policy = "RequireTeacher")]
