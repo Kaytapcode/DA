@@ -35,8 +35,11 @@ export const UserProfilePage: React.FC = () => {
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [savingPw, setSavingPw] = useState(false)
 
-  // Language state
-  const [language, setLanguage] = useState<'vi' | 'ja' | 'en'>('en')
+  // Language state — initialize from localStorage for immediate display without async flash
+  const [language, setLanguage] = useState<'vi' | 'ja' | 'en'>(() => {
+    const stored = localStorage.getItem('lumina_language')
+    return (stored === 'vi' || stored === 'ja' || stored === 'en') ? stored : 'en'
+  })
   const [langMsg, setLangMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [savingLang, setSavingLang] = useState(false)
 
@@ -44,8 +47,14 @@ export const UserProfilePage: React.FC = () => {
     if (!user) return
     setUsername(user.username ?? '')
     setEmail(user.email ?? '')
-    const lang = (user as { language?: string }).language
-    if (lang === 'vi' || lang === 'ja' || lang === 'en') setLanguage(lang)
+    // Sync language from server on mount — authoritative source
+    apiClient.get('/auth/me').then(resp => {
+      const lang = resp.data?.data?.language
+      if (lang === 'vi' || lang === 'ja' || lang === 'en') {
+        setLanguage(lang)
+        localStorage.setItem('lumina_language', lang)
+      }
+    }).catch(() => {})
   }, [user])
 
   const handleProfileSave = async (e: React.FormEvent) => {
@@ -106,6 +115,7 @@ export const UserProfilePage: React.FC = () => {
       const resp = await apiClient.patch('/auth/me/language', { language: newLang })
       if (resp.success) {
         setLanguage(newLang)
+        localStorage.setItem('lumina_language', newLang)
         setLangMsg({ type: 'success', text: 'Language preference updated.' })
       } else {
         setLangMsg({ type: 'error', text: resp.message ?? 'Update failed.' })
