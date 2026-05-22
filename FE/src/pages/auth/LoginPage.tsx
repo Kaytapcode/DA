@@ -33,7 +33,7 @@ export const LoginPage: React.FC = () => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleFieldChange = (field: keyof LoginFormData, value: string) => {
+  const handleFieldChange = (field: keyof FormErrors, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => {
