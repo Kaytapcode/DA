@@ -308,14 +308,14 @@ class TestSysAdminOrgDirectoryFields:
         assert slug_cells.count() >= 1
 
     def test_testorg1_visible_in_list(self, sysadmin_page: Page):
-        """Seeded TestOrg1 appears in the organization directory (searched by name)."""
+        """Seeded 'Test Organization 1' appears in the org directory (searched by name)."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.wait_for_selector("[data-testid='org-list']", timeout=10000)
-        # Use search to filter since list is sorted newest-first and seed orgs may be far back
-        sysadmin_page.locator("[data-testid='org-search-input']").fill("TestOrg1")
+        # Use search — seed org is "Test Organization 1" (slug: test-org-1)
+        sysadmin_page.locator("[data-testid='org-search-input']").fill("Test Organization 1")
         sysadmin_page.wait_for_timeout(500)
-        expect(sysadmin_page.locator("[data-testid='org-item-name']").filter(has_text="TestOrg1")).to_be_visible(timeout=8000)
+        expect(sysadmin_page.locator("[data-testid='org-item-name']").filter(has_text="Test Organization 1")).to_be_visible(timeout=8000)
 
 
 # ---------------------------------------------------------------------------

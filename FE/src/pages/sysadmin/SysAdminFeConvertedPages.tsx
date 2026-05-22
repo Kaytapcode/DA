@@ -390,7 +390,7 @@ export const OrganizationDirectoryPage: React.FC = () => {
   const [organizations, setOrganizations] = useState<{ id: string; name: string; slug: string; memberCount?: number }[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const PAGE_SIZE = 100
+  const PAGE_SIZE = 500
 
   const fetchOrganizations = React.useCallback(async () => {
     setIsLoading(true)
