@@ -22,6 +22,18 @@ namespace Organization.Api.Controllers
             _orgRepository = orgRepository;
         }
 
+        // GET /api/internal/orgs/admin/{userId} -> orgId for the OrgAdmin's own organization
+        // Used by Identity.Api login to auto-resolve org context without requiring the user to type an OrgID.
+        [HttpGet("admin/{userId:guid}")]
+        public async Task<IActionResult> GetAdminOrg(Guid userId, CancellationToken ct)
+        {
+            var membership = await _memberRepository.GetOrgAdminOrgAsync(userId, ct);
+            if (membership == null)
+                return NotFound(new ApiResponse(false, "No OrgAdmin membership found for this user."));
+
+            return Ok(new ApiResponse<AdminOrgDto>(true, new AdminOrgDto(membership.OrgId, membership.Role), null));
+        }
+
         // GET /api/internal/orgs/{orgId}/members/{userId} -> { isMember, role }
         [HttpGet("{orgId:guid}/members/{userId:guid}")]
         public async Task<IActionResult> CheckMembership(Guid orgId, Guid userId, CancellationToken ct)
@@ -64,6 +76,7 @@ namespace Organization.Api.Controllers
     }
 
     public record MembershipCheckDto(bool IsMember, string? Role);
+    public record AdminOrgDto(Guid OrgId, string Role);
     public record SetupOrgRequest(string Name, string Slug, Guid AdminUserId);
     public record OrgSetupResultDto(Guid OrgId, string Name, string Slug);
 }

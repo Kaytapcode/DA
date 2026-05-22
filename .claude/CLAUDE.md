@@ -87,6 +87,9 @@ Direct from [System_specification](../SystemDoc/System_specification):
 8. **OrgAdmin has implicit Teacher privileges in every course of their org** — enforced by authorization, not by copying rows.
 9. **i18n preference (vi / ja / en) persists on the user profile** and applies on next login from any device.
 10. **Progress tracking is automatic** — `student_progress` rows are created/updated as a side effect of viewing a resource or submitting a quiz; the client never sets them directly.
+11. **Unified registration form** (Spec §1 update) — a single public `/register` page with explicit role selector. "User" option shows standard fields only; "OrgAdmin" option additionally reveals Organization Name + Business Domain/Slug fields. Separate `/register/orgadmin` path no longer needed.
+12. **SSO is available for User and OrgAdmin** (Spec §1) — Google and Microsoft OAuth2/OpenID Connect. SysAdmin cannot use SSO. First-time SSO login routes through a Role Selection Intermediary Page.
+13. **SysAdmin login is through a dedicated portal**, not the public form. SysAdmin cannot self-register and cannot use SSO.
 
 ## 6. Testing — how this project is verified
 
@@ -140,6 +143,42 @@ These are first-class, not afterthoughts. For each resource type, at least one t
 - Log in as a non-owner and assert the edit control is hidden/disabled.
 
 If a needed `data-testid` is missing on FE, adding it is part of the feature's scope — not a separate ticket.
+
+### 6.5 Per-field and per-text verification (mandatory for all auth/role flows)
+
+**The root cause of all past auth bugs was insufficient FE test coverage.** Every form and page in the OrgAdmin and SysAdmin flows must be tested at the field level, not just at the flow level.
+
+For every auth or role-specific page, tests MUST assert:
+
+**Form field completeness:**
+- Every `<input>`, `<select>`, `<textarea>` the spec requires is present and has the correct `data-testid`.
+- Every `<label>` displays the correct text (exact wording from the spec or approved UX copy).
+- Required fields show an error when submitted empty.
+- Optional fields allow submission when left blank.
+- Password fields: toggle shows/hides the value; length/complexity validation fires.
+- Error messages match the expected text exactly (e.g. "Username already exists." not just any error text).
+
+**Page-level text checks:**
+- Page title / heading text matches the design (use `page.get_by_text()` or assert `inner_text()` directly).
+- Static copy ("Create OrgAdmin Account", "Sign In", "Organization ID (optional — OrgAdmin only)") is exactly as designed.
+- Success/info banners appear with correct text after an action.
+
+**Redirect and post-action state:**
+- After successful registration → lands on the correct next page.
+- After successful login → URL is the correct role-specific dashboard.
+- After failed action → stays on the same page; error is visible.
+- After reload → persisted data matches what was saved.
+
+**Specific auth flows requiring per-field tests (write separate test files):**
+
+| Flow | File | Must test |
+|---|---|---|
+| Unified Registration (User path) | `test_registration_user_flow.py` | Role selector present, selecting User hides org fields, all fields + labels + placeholders, empty-submit errors, duplicate username error, success redirect to /login |
+| Unified Registration (OrgAdmin path) | `test_registration_orgadmin_flow.py` | Selecting OrgAdmin reveals org fields (org-name, org-slug), auto-slug derived from org name, all validation errors, success redirect to /login with orgId pre-filled |
+| Login — all roles | `test_login_all_roles.py` | Every field + label, org-id field present, SysAdmin login → /sysadmin/dashboard, OrgAdmin login WITH org → /admin/dashboard, User login → /user/home, wrong creds error text |
+| SysAdmin full portal | `test_sysadmin_portal_fields.py` | User list columns (username, email, role), create-user modal fields, org directory columns, analytics stat labels, AI key config form fields |
+| OrgAdmin full portal | `test_orgadmin_portal_fields.py` | Course list columns, create-course modal fields, member list columns, role assignment dropdown options, analytics stat labels |
+| SSO flow | `test_sso_flow.py` | SSO buttons visible on login page (Google, Microsoft), first-time SSO → Role Selection page appears, role selector present, OrgAdmin fields revealed |
 
 ### 6.5 Katalon Recorder usage
 
@@ -240,7 +279,11 @@ When asked to implement or modify a feature:
 3. Confirm Phase 0 is complete. If a needed fixture/marker/testid convention is missing, finish that first.
 4. Follow the workflow in Section 6.2: tests first, against the live stack, then code.
 5. Never bypass role guards (Section 5) to make a test pass.
-6. Keep the Section 11 checklist honest — only tick boxes whose tests are green on the current branch.
+6. Keep the Section 12 checklist honest — only tick boxes whose tests are green on the current branch.
+7. **Never hardcode dummy data.** Every number, list, or value shown on screen must come from a real API call. If the API does not exist yet, render an empty state or loading skeleton — never fabricated data.
+8. **Self-test before marking done.** After implementing any feature: (a) verify the automated test passes against the live stack, AND (b) manually exercise the golden path in a browser. If you cannot run the browser manually, describe exactly what the dev must verify and why, and do not tick the checklist box until confirmed.
+9. **Demo flows are the acceptance contract.** Every implemented feature must have an entry in `DEMO_FLOWS.md` describing the exact steps to verify it. Write or update the entry before writing tests. The dev reviews `DEMO_FLOWS.md`, approves the flow, then automation tests encode it. Only after automated tests pass AND the dev manually confirms the flow is the feature marked `[x]` in the checklist.
+10. **PDF-only file upload must be labelled.** Any UI that accepts file uploads must clearly note accepted formats (e.g. "PDF only" or "PDF, TXT") next to the upload target. Never accept a file silently then fail at the server.
 
 ## 10a. Continuous execution across sessions
 
@@ -405,21 +448,38 @@ Tick only when the matching tests (API + FE display + at least one E2E) are gree
 - [x] **Bug fix**: LoginPage role-based redirect — SysAdmin → `/sysadmin/dashboard`, OrgAdmin → `/admin/dashboard`, Student → `/user/home`; `login-org-id` field added so OrgAdmin can supply org context at login time
 - [x] **Bug fix**: `OrgContext` clears `org_id` from localStorage if `current_org` is absent — Playwright helpers now set all three keys (`org_id`, `org_slug`, `current_org`)
 - [x] **Bug fix**: `Card` component silently dropped `data-testid` — fixed `CardProps` to extend `React.HTMLAttributes<HTMLDivElement>`
-- [x] OrgAdmin self-registration (Spec §1) — `POST /api/auth/register/orgadmin` creates OrgAdmin user + org in one call via internal endpoint; FE `/register/orgadmin` page; 2 API tests green (`test_auth_roles.py::TestOrgAdminSelfRegistration`)
+- [x] OrgAdmin self-registration BE endpoint (Spec §1) — `POST /api/auth/register/orgadmin` creates OrgAdmin user + org atomically; `POST /api/internal/orgs/setup` in Organization.Api; API tests in `test_auth_roles.py::TestOrgAdminSelfRegistration`
 - [x] Role auth flows API coverage — `tests/api/test_auth_roles.py` (7 test classes, ~25 tests): all 7 seeded accounts, SysAdmin/OrgAdmin scope, token refresh, public registration, SysAdmin creates accounts
 - [x] Role auth flows Playwright coverage — `tests/katalon/test_auth_role_login_workflows.py` (5 test classes, ~14 tests): login redirects per role, org field present, role isolation at FE
 
+### Spec §1 Update (2026-05-22) — Unified Registration + SSO
+- [x] **Unified Registration Form** (Spec §1 update) — `/register` now single page with role selector; `test_registration_unified_form.py` (5 classes). BE `POST /api/auth/register/orgadmin` done.
+- [ ] **SSO Login — Google & Microsoft** (Spec §1) — OAuth2/OpenID Connect buttons on login page (stubs done with data-testids). Full OAuth2 flow requires external OAuth app credentials from dev. `test_sso_flow.py` covers button presence.
+- [x] **SSO Role Selection Intermediary Page** (Spec §1) — `/sso/complete-profile` implemented; role selector, org fields, auto-slug, no SysAdmin option. `test_sso_flow.py::TestSsoRoleSelectionPage` (13 tests).
+- [x] **SysAdmin dedicated login portal** (Spec §1) — `/admin/login` separate form: no SSO buttons, no Register link, rejects non-SysAdmin. `test_sysadmin_login_portal.py` (3 classes, ~18 tests).
+- [x] **Per-field Playwright tests — Login page** — `test_login_all_roles.py`: every field label, placeholder, error text, redirect per role (5 classes, ~40 tests).
+- [x] **Per-field Playwright tests — SysAdmin portal** — `test_sysadmin_portal_fields.py`: user list columns, create-user modal fields, org directory columns, analytics stat labels, AI key form (5 classes, ~35 tests).
+- [x] **Per-field Playwright tests — OrgAdmin portal** — `test_orgadmin_portal_fields.py`: course list columns, create-course modal, member list columns, role dropdown options, analytics labels (5 classes, ~35 tests).
+
 ### Seeded test accounts (for manual testing — Spec §5)
 
-| Account | Password | Role | Org ID (for login) |
+| Account | Password | Role | How to log in |
 |---|---|---|---|
-| SysAdmin1 | SysAdmin@123 | SysAdmin | — (leave blank) |
-| SysAdmin2 | SysAdmin@123 | SysAdmin | — (leave blank) |
-| OrgAdmin1 | OrgAdmin@123 | OrgAdmin | `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` |
-| OrgAdmin2 | OrgAdmin@123 | OrgAdmin | `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb` |
-| User1 | User@123 | Student | — |
-| User2 | User@123 | Student | — |
-| User3 | User@123 | Student | — |
+| SysAdmin1 | SysAdmin@123 | SysAdmin | Go to `/login`, enter username + password, **leave Org ID blank** → lands on `/sysadmin/dashboard` |
+| SysAdmin2 | SysAdmin@123 | SysAdmin | Same as above |
+| OrgAdmin1 | OrgAdmin@123 | OrgAdmin | Go to `/login`, enter username + password + Org ID `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa` → lands on `/admin/dashboard` |
+| OrgAdmin2 | OrgAdmin@123 | OrgAdmin | Go to `/login`, enter username + password + Org ID `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb` → lands on `/admin/dashboard` |
+| User1 | User@123 | Student | Go to `/login`, enter username + password, **leave Org ID blank** → lands on `/user/home` |
+| User2 | User@123 | Student | Same as above |
+| User3 | User@123 | Student | Same as above |
 
-To create a new OrgAdmin account manually: navigate to `/register/orgadmin` on the FE.
+To create a new OrgAdmin account manually: use the unified `/register` page, select "OrgAdmin" role, fill in org details.
 To create elevated accounts programmatically: `POST /api/users` with SysAdmin JWT (see `tests/api/test_auth_roles.py::TestSysAdminCreatesAccounts`).
+
+**OrgAdmin1's organization (TestOrg1):**
+- Org ID: `aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`
+- Org Slug: `test-org-1`
+
+**OrgAdmin2's organization (TestOrg2):**
+- Org ID: `bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb`
+- Org Slug: `test-org-2`

@@ -8,6 +8,8 @@ namespace Organization.Api.Data
         Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId, CancellationToken ct = default);
         Task<MemberModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId, CancellationToken ct = default);
+        /// <summary>Returns the OrgAdmin membership row for a user (where Role == "OrgAdmin"), or null if not found.</summary>
+        Task<MemberModel?> GetOrgAdminOrgAsync(Guid userId, CancellationToken ct = default);
         Task<MemberModel> CreateAsync(MemberModel member, CancellationToken ct = default);
         Task<MemberModel> UpdateAsync(MemberModel member, CancellationToken ct = default);
         Task DeleteAsync(Guid id, CancellationToken ct = default);
@@ -59,6 +61,10 @@ namespace Organization.Api.Data
             _context.Members.Remove(member);
             await _context.SaveChangesAsync(ct);
         }
+
+        public async Task<MemberModel?> GetOrgAdminOrgAsync(Guid userId, CancellationToken ct = default)
+            => await _context.Members.FirstOrDefaultAsync(m =>
+                m.UserId == userId && (m.Role == "OrgAdmin" || m.Role == "Owner"), ct);
 
         public async Task<bool> IsUserOrgAdminAsync(Guid userId, Guid orgId, CancellationToken ct = default)
             => await _context.Members.AnyAsync(m =>

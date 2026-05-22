@@ -78,9 +78,15 @@ namespace Identity.Api.Controllers
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 return Unauthorized(new ApiResponse(Success: false, Message: "Invalid login credentials."));
 
-            // Resolve org context from X-Org-Id header if provided, verifying membership inter-service.
+            // Resolve org context.
+            // OrgAdmin: auto-lookup their org (they manage exactly one; no OrgID input needed).
+            // Others: accept an explicit X-Org-Id header (verified against membership).
             Guid? orgId = null;
-            if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
+            if (user.Role == "OrgAdmin")
+            {
+                orgId = await _orgClient.GetOrgIdForAdminAsync(user.Id);
+            }
+            else if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
                 && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
             {
                 if (user.Role == "SysAdmin" || await _orgClient.IsUserMemberAsync(user.Id, parsedOrgId))

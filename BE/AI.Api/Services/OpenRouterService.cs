@@ -79,12 +79,13 @@ namespace AI.Api.Services
                 // First pass — ask for the maximum so natural under-delivery still lands in range
                 var activeModel = model;
                 var activeContent = documentContent;
-                _logger.LogInformation("Generating quiz: target={Max}, difficulty={Diff}, model={Model}", maxQ, difficulty, activeModel);
+                var (temp, topP) = DifficultyParams(difficulty);
+                _logger.LogInformation("Generating quiz: target={Max}, difficulty={Diff}, temp={Temp}, model={Model}", maxQ, difficulty, temp, activeModel);
                 string firstRaw;
                 try
                 {
                     firstRaw = await CallApiAsync(client, activeModel,
-                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), maxTokens);
+                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), maxTokens, temp, topP);
                 }
                 catch (Exception ex) when (IsTransient(ex) && activeModel != fallbackModel)
                 {
@@ -93,7 +94,7 @@ namespace AI.Api.Services
                     var retryTokens = ReduceTokens(maxTokens);
                     _logger.LogWarning(ex, "Primary model failed/timed out — retrying with fallback model {Model}", activeModel);
                     firstRaw = await CallApiAsync(client, activeModel,
-                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), retryTokens);
+                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), retryTokens, temp, topP);
                 }
                 var questions = ParseQuizResponse(firstRaw).Questions;
                 _logger.LogInformation("First pass returned {Count} questions (need {Min}–{Max})", questions.Count, minQ, maxQ);
@@ -107,7 +108,7 @@ namespace AI.Api.Services
                     {
                         var topUpTokens = needed * 350 + 500;
                         var topUpRaw = await CallApiAsync(client, activeModel,
-                            BuildTopUpPrompt(activeContent, documentTitle, difficulty, needed, questions.Count), topUpTokens);
+                            BuildTopUpPrompt(activeContent, documentTitle, difficulty, needed, questions.Count), topUpTokens, temp, topP);
                         var extra = ParseQuizResponse(topUpRaw).Questions;
                         questions.AddRange(extra);
                         _logger.LogInformation("After top-up: {Count} questions total", questions.Count);
@@ -131,7 +132,7 @@ namespace AI.Api.Services
             }
         }
 
-        private async Task<string> CallApiAsync(HttpClient client, string model, string userPrompt, int maxTokens)
+        private async Task<string> CallApiAsync(HttpClient client, string model, string userPrompt, int maxTokens, double temperature = 0.6, double topP = 0.85)
         {
             var request = new OpenRouterRequest
             {
@@ -141,12 +142,12 @@ namespace AI.Api.Services
                     new OpenRouterMessage
                     {
                         Role = "system",
-                        Content = "You are an expert educator. Generate quiz questions based ONLY on the provided document content. Return ONLY valid JSON — no markdown, no extra text."
+                        Content = "You are an expert educator creating multiple-choice quiz questions from a provided document. Output ONLY valid JSON matching the exact schema requested — no markdown, no code fences, no explanatory text before or after the JSON object."
                     },
                     new OpenRouterMessage { Role = "user", Content = userPrompt }
                 },
-                Temperature = 0.7,
-                TopP = 0.9,
+                Temperature = temperature,
+                TopP = topP,
                 MaxTokens = maxTokens
             };
 
@@ -199,35 +200,67 @@ namespace AI.Api.Services
         private static int ReduceTokens(int maxTokens) =>
             Math.Max(1200, (int)Math.Round(maxTokens * 0.7));
 
+        // Standardised difficulty criteria sent in the prompt (not user-editable).
+        // Easy fails most often, so its criteria are written to force short, unambiguous questions
+        // and very different distractors — reducing the chance the model writes free-form text.
         private static string DifficultyLine(string difficulty) => difficulty switch
         {
-            "easy" => "EASY: straightforward recall — test direct facts and basic definitions. Keep wording simple.",
-            "hard" => "HARD: analysis and critical thinking — synthesise information, compare concepts, apply ideas to new situations.",
-            _      => "NORMAL: mix of recall and comprehension — test understanding and application of key concepts."
+            "easy" =>
+                "EASY — Recognition and recall level:\n" +
+                "  • Questions must directly extract a fact, term, or definition stated in the document.\n" +
+                "  • Stem example pattern: \"According to the document, what is X?\" or \"Which of the following best defines Y?\"\n" +
+                "  • Wrong options (distractors) must be clearly and obviously different from the correct answer — do NOT use near-synonyms or partially-correct options.\n" +
+                "  • Keep question stems SHORT (one sentence). Avoid multi-clause sentences.\n" +
+                "  • Do NOT ask inferential or synthesis questions at this level.",
+            "hard" =>
+                "HARD — Synthesis and evaluation level:\n" +
+                "  • Questions must require the learner to synthesise information from multiple parts of the document, or reason about a hypothetical scenario using document knowledge.\n" +
+                "  • Example patterns: \"Based on X from the document, what would most likely happen if Y?\", \"Which conclusion is best supported by both concept A and concept B in the document?\"\n" +
+                "  • Wrong options must be extremely plausible — differ from the correct answer by only one subtle detail, or be correct in a different context.\n" +
+                "  • Avoid questions that can be answered by reading a single sentence.",
+            _ =>
+                "NORMAL — Application and analysis level:\n" +
+                "  • Questions require the learner to connect information from 2–3 different sentences or paragraphs in the document.\n" +
+                "  • Example pattern: \"Why does X lead to Y according to the document?\", \"Which of the following is consistent with the document's explanation of Z?\"\n" +
+                "  • Wrong options must be plausible and similar to the correct answer, but clearly incorrect when the document is read carefully.\n" +
+                "  • Avoid pure recall (too easy) and avoid hypothetical scenarios (too hard)."
+        };
+
+        private static (double Temperature, double TopP) DifficultyParams(string difficulty) => difficulty switch
+        {
+            // Easy: low temperature → more predictable, consistent JSON structure
+            "easy" => (0.35, 0.80),
+            // Hard: slightly higher temperature → more creative distractors
+            "hard" => (0.70, 0.90),
+            // Normal: balanced
+            _ => (0.55, 0.85),
         };
 
         private static string BuildQuizPrompt(string documentContent, string documentTitle, string difficulty, int targetQ) =>
             $@"TASK: Generate exactly {targetQ} multiple-choice questions from the document below.
-REQUIRED COUNT: {targetQ}. You MUST output all {targetQ} questions — do NOT stop early.
-DIFFICULTY: {DifficultyLine(difficulty)}
+REQUIRED COUNT: {targetQ}. Output all {targetQ} questions without stopping early.
+
+DIFFICULTY CRITERIA ({difficulty.ToUpper()}):
+{DifficultyLine(difficulty)}
+
 DOCUMENT TITLE: {documentTitle}
 
-RULES:
-1. Every question must be answerable solely from the document — zero hallucination.
-2. Output ALL questions, options, and explanations in the SAME LANGUAGE as the source document.
-   Detect the document language and match it exactly (e.g. Vietnamese document → Vietnamese output;
-   Japanese document → Japanese output; English document → English output).
-3. Each question has EXACTLY 4 options (A, B, C, D).
-4. Exactly ONE option is correct; the other three are plausible distractors.
-5. The ""explanation"" field is MANDATORY and must quote or paraphrase the document.
-6. Continue generating until you have written all {targetQ} questions.
+STRICT RULES (violating any rule makes the output unusable):
+1. Base every question solely on the document — zero hallucination.
+2. Detect the document language. Output ALL text (questions, options, explanations) in THAT SAME language.
+   Vietnamese doc → Vietnamese output. Japanese doc → Japanese output. English doc → English output.
+3. Each question has EXACTLY 4 options stored in the ""options"" array (index 0–3).
+4. Exactly ONE option is correct. Set ""correct_index"" to its 0-based index (0, 1, 2, or 3).
+5. The ""explanation"" field MUST be non-empty and must reference or quote the document.
+6. Generate all {targetQ} questions before outputting anything.
 
-Return ONLY this JSON — no markdown fences, no extra text:
+OUTPUT FORMAT — return ONLY the JSON object below, starting with {{ and ending with }}.
+No markdown fences. No code blocks. No preamble. No trailing commentary. Just the JSON:
 {{
   ""questions"": [
     {{
       ""question"": ""..."",
-      ""options"": [""A..."", ""B..."", ""C..."", ""D...""],
+      ""options"": [""A. ..."", ""B. ..."", ""C. ..."", ""D. ...""],
       ""correct_index"": 0,
       ""explanation"": ""...""
     }}
@@ -237,32 +270,33 @@ Return ONLY this JSON — no markdown fences, no extra text:
 DOCUMENT:
 ---
 {documentContent}
----
-
-JSON ({targetQ} questions):";
+---";
 
         private static string BuildTopUpPrompt(string documentContent, string documentTitle, string difficulty, int needed, int alreadyHave) =>
             $@"TASK: Generate exactly {needed} MORE multiple-choice questions from the document below.
-CONTEXT: {alreadyHave} questions have already been generated. These {needed} must cover DIFFERENT aspects of the document.
-REQUIRED COUNT: {needed}. Output all {needed} — do NOT stop early.
-DIFFICULTY: {DifficultyLine(difficulty)}
+CONTEXT: {alreadyHave} questions already exist. These {needed} must cover DIFFERENT aspects of the document.
+REQUIRED COUNT: {needed}. Output all {needed} without stopping early.
+
+DIFFICULTY CRITERIA ({difficulty.ToUpper()}):
+{DifficultyLine(difficulty)}
+
 DOCUMENT TITLE: {documentTitle}
 
-RULES:
-1. Every question must be answerable solely from the document — zero hallucination.
-2. Output ALL questions, options, and explanations in the SAME LANGUAGE as the source document.
-   Detect the document language and match it exactly.
-3. Each question has EXACTLY 4 options (A, B, C, D).
-4. Exactly ONE option is correct; the other three are plausible distractors.
-5. The ""explanation"" field is MANDATORY and must quote or paraphrase the document.
-6. Do NOT repeat topics already likely covered — choose different sections/concepts.
+STRICT RULES:
+1. Base every question solely on the document — zero hallucination.
+2. Detect the document language. Output ALL text in THAT SAME language.
+3. Each question has EXACTLY 4 options in the ""options"" array (index 0–3).
+4. Exactly ONE option is correct; set ""correct_index"" to its 0-based index.
+5. The ""explanation"" field MUST be non-empty and reference the document.
+6. Cover DIFFERENT document sections from what was already generated.
 
-Return ONLY this JSON — no markdown fences, no extra text:
+OUTPUT FORMAT — return ONLY the JSON object, starting with {{ and ending with }}.
+No markdown fences. No code blocks. No preamble. No trailing text. Just JSON:
 {{
   ""questions"": [
     {{
       ""question"": ""..."",
-      ""options"": [""A..."", ""B..."", ""C..."", ""D...""],
+      ""options"": [""A. ..."", ""B. ..."", ""C. ..."", ""D. ...""],
       ""correct_index"": 0,
       ""explanation"": ""...""
     }}
@@ -272,9 +306,7 @@ Return ONLY this JSON — no markdown fences, no extra text:
 DOCUMENT:
 ---
 {documentContent}
----
-
-JSON ({needed} new questions):";
+---";
 
 
         private QuizGenerationResponse ParseQuizResponse(string rawContent)

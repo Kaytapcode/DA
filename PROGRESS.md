@@ -1,82 +1,80 @@
 # Progress
 
-**Current phase:** Spec §1 Update — Unified Registration + SSO + Per-field tests
+**Current phase:** Wave 1 complete → Bug fixes + UX improvements
 **Branch:** K-B
-**Next action:** Run all new katalon tests against live stack (start FE dev server + all BE services), then confirm `test_sysadmin_login_portal.py` and `test_sso_flow.py` green. Remaining open item: SSO full OAuth2 (requires dev to provide Google/Microsoft OAuth credentials).
+**Next action:** Restart Identity.Api + Organization.Api + AI.Api với code mới → Test các luồng trong DEMO_FLOWS.md thủ công → Xác nhận OrgAdmin login không cần OrgID, AI quiz difficulty hoạt động đúng.
 
-## Session 2026-05-22 (continued) — Unified Registration + Per-field tests
+## Session 2026-05-22 (round 2) — Bug fixes + UX hardening
 
-**New FE feature:**
-- `FE/src/pages/auth/RegisterPage.tsx` — completely rewritten as unified form with role selector (User/OrgAdmin radio cards), OrgAdmin org-name/slug fields revealed on selection, auto-slug derivation, Google + Microsoft SSO stubs
-- `FE/src/pages/auth/LoginPage.tsx` — Google + Microsoft SSO buttons added, org-id pre-fill from `?orgId=` query param
-- `SystemDoc/System_specification` — new spec §1: Unified Public Registration Form + SSO
+### Thay đổi trong session này:
 
-**New tests (per-field coverage — user request "test từng ô nhập liệu từng chữ"):**
-- `tests/katalon/test_registration_unified_form.py` — 5 classes (~17 tests): role selector, field visibility, validation, success flows
-- `tests/katalon/test_login_all_roles.py` — 5 classes (~40 tests): every label/placeholder/error text, role-specific redirects
-- `tests/katalon/test_sysadmin_portal_fields.py` — 5 classes (~35 tests): user list columns, create-user modal, org directory, AI key form
-- `tests/katalon/test_orgadmin_portal_fields.py` — 5 classes (~35 tests): course management, member management, role assignment dropdown
+**CLAUDE.md:**
+- Thêm rule 7–10 vào Section 10: no hardcode, self-test, demo flows contract, PDF label requirement.
 
-**Remaining checklist items (Spec §1 Update):**
-- [x] Unified Registration Form — FE + tests + BE done
-- [ ] SSO Login (Google/Microsoft) — stubs added; full OAuth2 requires external credentials from dev
-- [x] SSO Role Selection Intermediary Page (`/sso/complete-profile`) — done; `test_sso_flow.py`
-- [x] SysAdmin dedicated login portal (`/admin/login`) — done; `test_sysadmin_login_portal.py`
+**DEMO_FLOWS.md (mới):**
+- File `DEMO_FLOWS.md` tại root — danh sách đầy đủ 19 luồng demo cho dev duyệt.
+- Gợi ý tinh gọn hệ thống (bỏ System Health widget, tạm hoãn banner, tạm hoãn SSO).
 
-## Session 2026-05-22 — Auth/Role fixes + OrgAdmin self-registration
+**BE fixes:**
 
-**Bugs found and fixed:**
-1. **Token refresh loses org context** — `AuthController.Refresh` now reads `X-Org-Id` header; `performRefresh()` in FE sends it too
-2. **LoginPage wrong redirect** — SysAdmin → `/sysadmin/dashboard`, OrgAdmin → `/admin/dashboard`; `login-org-id` field added
-3. **OrgContext cleared org_id** — Playwright helper `_set_org_context()` sets all 3 localStorage keys
-4. **Card component dropped data-testid** — Fixed `CardProps` to extend `HTMLAttributes<HTMLDivElement>`
+1. **AI Quiz difficulty (BE/AI.Api/Services/OpenRouterService.cs):**
+   - `DifficultyLine()` — criteria chi tiết 3 cấp: Easy = nhận biết/trích xuất trực tiếp; Normal = kết nối 2-3 đoạn; Hard = tổng hợp/tình huống giả định
+   - `DifficultyParams()` — temperature theo cấp: Easy (0.35, 0.80), Normal (0.55, 0.85), Hard (0.70, 0.90)
+   - `BuildQuizPrompt()` — cấu trúc rõ hơn, JSON-only rules, output format có `A. ...` prefix
+   - `CallApiAsync()` — nhận temperature + topP params
+   - System message cập nhật: nhấn mạnh JSON-only, no markdown, no extra text
 
-**New BE feature:**
-- `POST /api/auth/register/orgadmin` — OrgAdmin self-registration (creates user + org atomically)
-  - `BE/Identity.Api/Controllers/AuthController.cs` — new `RegisterOrgAdmin` action
-  - `BE/Organization.Api/Controllers/InternalOrgController.cs` — `POST /api/internal/orgs/setup`
-  - `BE/Identity.Api/Services/OrganizationServiceClient.cs` — `CreateOrgWithAdminAsync()`
-  - `BE/Shared.Contracts/Requests/OrgAdminRegisterRequestDto.cs` — new DTO
-  - `BE/Shared.Contracts/Responses/OrgAdminRegisterResponseDto.cs` — new DTO
+2. **OrgAdmin auto-org login:**
+   - `BE/Organization.Api/Data/MemberRepository.cs` — thêm `GetOrgAdminOrgAsync(userId)`
+   - `BE/Organization.Api/Controllers/InternalOrgController.cs` — thêm `GET /api/internal/orgs/admin/{userId}`
+   - `BE/Identity.Api/Services/OrganizationServiceClient.cs` — thêm `GetOrgIdForAdminAsync(userId)`
+   - `BE/Identity.Api/Controllers/AuthController.cs` — Login tự động resolve org cho OrgAdmin (không cần X-Org-Id header)
 
-**New FE feature:**
-- `/register/orgadmin` — `FE/src/pages/auth/RegisterOrgAdminPage.tsx`
-- Login page pre-fills org ID from `?orgId=` query param (after OrgAdmin registration redirect)
+**FE fixes:**
 
-**New tests:**
-- `tests/api/test_auth_roles.py` — 7 test classes (~25 API tests): all seeded accounts, role flows, token refresh, self-registration
-- `tests/katalon/test_auth_role_login_workflows.py` — 5 test classes (~14 Playwright tests): login redirects per role, role isolation
-- Updated `tests/katalon/_helpers.py` — `ui_login_sysadmin()`, `ui_login_orgadmin()` helpers
-- Updated `tests/katalon/test_sysadmin_ui_workflows.py` — `_ui_login_sysadmin` now waits for `/sysadmin/**`
+3. **LoginPage.tsx:**
+   - Xóa trường Org ID (OrgAdmin tự resolve từ BE)
+   - Xóa `useSearchParams` và `useEffect` cho orgId pre-fill
+   - Form đơn giản: chỉ còn identifier + password
 
-## Session 2026-05-21 — E2E test expansion + data-testid fixes
+4. **SysAdminDashboardPage.tsx:**
+   - Thay toàn bộ hardcode bằng `useSysAdminAnalytics()` hook
+   - Hiện: Total Orgs, Total Users, Total Courses, Total Quizzes (top stats) + 6 content stats phụ
+   - Bỏ: System Health widget (CPU/RAM/Disk — không phải LMS metric)
 
-**Root cause found and fixed:** `Card` component did not extend `React.HTMLAttributes<HTMLDivElement>`, causing all `data-testid` attributes on `<Card>` elements to be silently dropped. This was why `course-access-error`, `course-content-panel`, and `org-item` were invisible to Playwright.
+5. **OrgAdminDashboardPage.tsx:**
+   - Recent Courses: dùng `useCourse()` hook thay cho dummy data
+   - Link trực tiếp vào course editor
+   - Quick Actions: link thật đến `/admin/courses`, `/admin/members`, `/admin/analytics`
 
-**Bug fixed:** `OrgContext` reads `current_org` from localStorage and overwrites `org_id` with `null` if no org is stored — simulating org context in tests now sets both `current_org` (full object) and `org_id`.
+6. **AppRouter.tsx:**
+   - `/user/home`, `/user/dashboard`, `/user/learning`, `/user/courses`, `/user/course/:courseId`, `/user/organizations` → chỉ Student + Teacher
+   - `ProtectedRoute` tự redirect SysAdmin/OrgAdmin đến dashboard đúng
+   - Thêm component `RoleBasedRedirect` + route `/dashboard`
 
-**New browser E2E tests added (53 total katalon tests, all green):**
-- `test_flashcard_study_workflows.py` — 8 tests (counter, flip, next, shuffle, mastered, reset, collections CRUD)
-- `test_forgot_password_workflows.py` — 9 tests (form, success anti-enumeration, login link, reset form, invalid token, full cycle, single-use)
-- `test_student_course_workflows.py` — 4 tests (unenrolled sees access-denied, enrolled sees content panel, module title visible, quiz play renders)
-- `test_sysadmin_ui_workflows.py` — 8 tests (login, navigate to users, user list, search, create user, org directory, org search, global analytics)
+7. **AiKeysPage.tsx:**
+   - Disabled "Add new key" form
+   - Thay bằng read-only info: stepfun/step-3.5-flash via OpenRouter, cấu hình qua environment variables
 
-## Live-stack test summary
+**Build status:** Organization.Api ✅ | Identity.Api ✅ | AI.Api ✅ | FE pre-existing TS errors (Navbar.tsx, UserAnalyticsDashboardPage.tsx — không liên quan đến thay đổi này)
 
-| Suite | Count | Status |
-|---|---|---|
-| Wave 1 API (tests/api/) | 122 | PASS |
-| Wave 1 UI display (tests/ui/) | 37 | PASS |
-| Wave 2 API (tests/api/test_orgadmin_wave2.py) | 22 | PASS |
-| Spec Additions (tests/api/test_spec_additions.py) | 20 | PASS |
-| Auth role API tests (tests/api/test_auth_roles.py) | ~25 | Pending live run |
-| katalon E2E — orgadmin workflows | 4 | PASS |
-| katalon E2E — login workflow | 2 | PASS |
-| katalon E2E — document/profile/quiz/video | 12 | PASS |
-| katalon E2E — flashcard + forgot-password + student course + sysadmin | 29 | PASS |
-| katalon E2E — auth role login workflows | ~14 | Pending live run |
+## Các vấn đề còn lại cần làm
 
-Note: `api/test_organization_course.py` has 8 pre-existing failures (old test file using outdated API contract — missing slug field, wrong course API path). These predate this project's test infrastructure.
+- [ ] OrgAdmin: thêm user vào org từ danh sách user hệ thống (search + add)
+- [ ] OrgAdmin: thêm user vào course từ danh sách thành viên org
+- [ ] SSO: blocked — cần OAuth credentials (Google + Microsoft)
+- [ ] i18n: áp dụng đồng bộ trên toàn bộ UI
+- [ ] Fix pre-existing TypeScript errors (Navbar.tsx, UserFeConvertedPages.tsx, UserAnalyticsDashboardPage.tsx)
+- [ ] Test DEMO_FLOWS.md end-to-end sau khi restart services
 
 ## Open questions for dev
-None.
+
+- Bạn muốn gợi ý tinh gọn nào trong DEMO_FLOWS.md được áp dụng? (bỏ System Health, tạm hoãn banner, tạm hoãn Copy resource?)
+- OrgAdmin thêm user vào org: flow nên là "search user có sẵn trong hệ thống" hay "invite qua email"?
+
+## Recently completed (last 5)
+- 2026-05-22 — DEMO_FLOWS.md tạo xong, 19 luồng demo + status table + feature streamlining suggestions
+- 2026-05-22 — AI quiz difficulty: 3-level criteria chi tiết + temperature tuning per level
+- 2026-05-22 — OrgAdmin login: xóa OrgID requirement, BE auto-resolve qua Organization.Api
+- 2026-05-22 — SysAdmin dashboard: xóa toàn bộ hardcode, dùng analytics API thật
+- 2026-05-22 — AppRouter: role guard fix — SysAdmin/OrgAdmin không thể backward-nav vào /user/* pages

@@ -1,6 +1,17 @@
 ﻿import React, { Suspense } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
+import { useAuthContext } from '@/contexts/AuthContext'
+
+// Redirects to the correct role-specific dashboard after login or backward nav
+const RoleBasedRedirect: React.FC = () => {
+  const { user } = useAuthContext()
+  const dest =
+    user?.role === 'SysAdmin' ? '/sysadmin/dashboard' :
+    user?.role === 'OrgAdmin' ? '/admin/dashboard' :
+    '/user/home'
+  return <Navigate to={dest} replace />
+}
 import { OrgLayout } from '@layouts/OrgLayout'
 import {
   LoginPage,
@@ -83,31 +94,49 @@ export const AppRouter: React.FC = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/2fa" element={<TwoFactorPage />} />
 
-          {/* ── User Routes (any authenticated user) ──────────── */}
+          {/* Role-based root redirect for already-authenticated users */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <RoleBasedRedirect />
+            </ProtectedRoute>
+          } />
+
+          {/* ── User Routes ─────────────────────────────────────── */}
+          {/* Dashboard / home pages: Student and Teacher only.
+              OrgAdmin → /admin/dashboard, SysAdmin → /sysadmin/dashboard (ProtectedRoute auto-redirects). */}
           <Route path="/user/home" element={
-            <ProtectedRoute roles={['Student', 'Teacher', 'OrgAdmin', 'SysAdmin']}>
+            <ProtectedRoute roles={['Student', 'Teacher']}>
               <UserHomePageLightPage />
             </ProtectedRoute>
           } />
           <Route path="/user/dashboard" element={
-            <ProtectedRoute>
+            <ProtectedRoute roles={['Student', 'Teacher']}>
               <UserAnalyticsDashboardPage />
             </ProtectedRoute>
           } />
           <Route path="/user/dashboard-legacy" element={
-            <ProtectedRoute><UserDashboardPage /></ProtectedRoute>
+            <ProtectedRoute roles={['Student', 'Teacher']}><UserDashboardPage /></ProtectedRoute>
           } />
           <Route path="/user/courses" element={
-            <ProtectedRoute><CourseListPage /></ProtectedRoute>
+            <ProtectedRoute roles={['Student', 'Teacher']}><CourseListPage /></ProtectedRoute>
           } />
+          <Route path="/user/learning" element={
+            <ProtectedRoute roles={['Student', 'Teacher']}><LearningHistoryPage /></ProtectedRoute>
+          } />
+          <Route path="/user/course/:courseId" element={
+            <ProtectedRoute roles={['Student', 'Teacher']}><SpecificCoursePage /></ProtectedRoute>
+          } />
+          <Route path="/user/organizations" element={
+            <ProtectedRoute roles={['Student', 'Teacher']}><OrganizationListPage /></ProtectedRoute>
+          } />
+
+          {/* Content creation / personal library: accessible to all authenticated users
+              (OrgAdmin and SysAdmin may also author personal content per spec). */}
           <Route path="/user/profile" element={
             <ProtectedRoute><UserProfilePage /></ProtectedRoute>
           } />
           <Route path="/user/settings" element={
             <ProtectedRoute><UserProfilePage /></ProtectedRoute>
-          } />
-          <Route path="/user/learning" element={
-            <ProtectedRoute><LearningHistoryPage /></ProtectedRoute>
           } />
           <Route path="/user/library" element={
             <ProtectedRoute><UserContentLibraryPage /></ProtectedRoute>
@@ -142,9 +171,6 @@ export const AppRouter: React.FC = () => {
           <Route path="/user/messages" element={
             <ProtectedRoute><NotificationPage /></ProtectedRoute>
           } />
-          <Route path="/user/organizations" element={
-            <ProtectedRoute><OrganizationListPage /></ProtectedRoute>
-          } />
           <Route path="/user/collections" element={
             <ProtectedRoute><CollectionsPage /></ProtectedRoute>
           } />
@@ -153,9 +179,6 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/user/browse" element={
             <ProtectedRoute><BrowsePublicPage /></ProtectedRoute>
-          } />
-          <Route path="/user/course/:courseId" element={
-            <ProtectedRoute><SpecificCoursePage /></ProtectedRoute>
           } />
 
           {/* ── OrgAdmin Routes (OrgAdmin, Teacher, SysAdmin) ─── */}

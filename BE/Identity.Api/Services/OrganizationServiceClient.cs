@@ -7,6 +7,8 @@ namespace Identity.Api.Services
     {
         Task<bool> IsUserMemberAsync(Guid userId, Guid orgId, CancellationToken ct = default);
         Task<OrgSetupResult?> CreateOrgWithAdminAsync(string name, string slug, Guid adminUserId, CancellationToken ct = default);
+        /// <summary>Returns the OrgID that this user administers, or null if not an OrgAdmin.</summary>
+        Task<Guid?> GetOrgIdForAdminAsync(Guid userId, CancellationToken ct = default);
     }
 
     public class OrganizationServiceClient : IOrganizationServiceClient
@@ -53,7 +55,22 @@ namespace Identity.Api.Services
             }
         }
 
+        public async Task<Guid?> GetOrgIdForAdminAsync(Guid userId, CancellationToken ct = default)
+        {
+            try
+            {
+                var url = $"{_baseUrl}/api/internal/orgs/admin/{userId}";
+                var response = await _http.GetFromJsonAsync<ApiResponse<AdminOrgDto>>(url, ct);
+                return response?.Data?.OrgId;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private record MembershipCheckDto(bool IsMember, string? Role);
+        private record AdminOrgDto(Guid OrgId, string Role);
     }
 
     public record OrgSetupResult(Guid OrgId, string Name, string Slug);
