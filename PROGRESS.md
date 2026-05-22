@@ -2,7 +2,7 @@
 
 **Current phase:** Wave 1 + Wave 2 COMPLETE — all tests green
 **Branch:** K-B
-**Next action:** Run `python run_tests.py` for the combined 4-suite report; then optionally do final manual DEMO_FLOWS.md walkthrough.
+**Next action:** SSO full OAuth flow (blocked — needs Google/Microsoft OAuth app credentials from dev). All other Wave 1 and NFR items are done.
 
 ## Final test results (2026-05-23)
 
@@ -10,10 +10,20 @@
 |---|---|---|
 | API (`tests/api/`) | 90 | 0 |
 | UI (`tests/ui/`) | 37 | 0 |
-| Katalon (`tests/katalon/`) | 274 | 0 |
-| **Total** | **401** | **0** |
+| Katalon (`tests/katalon/`) | 320 | 0 |
+| **Total** | **447** | **0** |
 
-All Wave 1 (User + SysAdmin) and Wave 2 (OrgAdmin) checklist items are green.
+All Wave 1 (User + SysAdmin), Wave 2 (OrgAdmin), and NFR checklist items are green.
+
+## NFR tests added (2026-05-23)
+
+46 new tests in `tests/katalon/test_nonfunctional_requirements.py` covering all 4 NFRs from `SystemDoc/Nonfunctional_Requirement.md`:
+- **NFR1 Usability** — language options, core navigation, inline form validation
+- **NFR2 Maintainability** — all 6 services reachable, structured RFC9110 error responses, UUID API contracts
+- **NFR3 Availability** — API response times < 5s, FE page load < 5s, no 5xx on page load
+- **NFR4 Compatibility** — language toggle < 1s, no horizontal overflow at 375px/768px/1280px viewports
+
+FE bug fixed alongside: `UserProfilePage.tsx` language preference now initializes from `localStorage` for immediate display and persists to `localStorage` on save.
 
 ## Session 2026-05-23 — katalon test fix loop
 
@@ -29,7 +39,7 @@ All Wave 1 (User + SysAdmin) and Wave 2 (OrgAdmin) checklist items are green.
 ## Remaining items
 
 - [ ] SSO (Google + Microsoft OAuth2): stubs done, full OAuth flow blocked — requires OAuth app credentials from dev
-- [ ] i18n: apply consistently across all pages
+- [ ] i18n: apply consistently across all pages (currently mixed vi/en in many places)
 
 ## Open questions for dev
 
@@ -37,8 +47,8 @@ All Wave 1 (User + SysAdmin) and Wave 2 (OrgAdmin) checklist items are green.
 - Do you want the download/share/save toolbar restored in the Document Viewer?
 
 ## Recently completed (last 5)
-- 2026-05-23 — 274/274 katalon + 90/90 API + 37/37 UI — all green
+- 2026-05-23 — NFR tests: 46/46 pass (Usability/Maintainability/Availability/Compatibility)
+- 2026-05-23 — FE fix: language preference persists via localStorage in UserProfilePage
+- 2026-05-23 — 320/320 katalon + 90/90 API + 37/37 UI — all green
 - 2026-05-23 — OrgContext race condition fix (org_id cleared on init)
 - 2026-05-23 — SSO stub buttons restored to LoginPage
-- 2026-05-23 — katalon test strict-mode and selector fixes (26 failures → 0)
-- 2026-05-22 — All TypeScript errors cleared (0 errors in `npx tsc --noEmit`)
