@@ -6,6 +6,7 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { MainLayout } from '@layouts/MainLayout'
+import { useUserLanguage } from './UserShell'
 
 interface Course {
   id: string
@@ -22,6 +23,7 @@ interface Course {
  * User Course List Page
  */
 export const CourseListPage: React.FC = () => {
+  const isVi = useUserLanguage()
   // Sample course shells shown until real course data is wired in; replace with /api/courses fetch.
   const courses: Course[] = [
     {
@@ -55,17 +57,17 @@ export const CourseListPage: React.FC = () => {
 
   return (
     <MainLayout
-      navbar={<UserNavbar title="My Courses" />}
+      navbar={<UserNavbar title={isVi ? 'Khoá học của tôi' : 'My Courses'} />}
       sidebar={<UserSidebar />}
     >
       <div className="p-8">
         <div className="max-w-6xl mx-auto space-y-8">
           {/* Header */}
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#7380a0]">Courses</p>
-            <h2 className="mt-2 text-4xl font-black text-on-surface font-headline">Your Learning Path</h2>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#7380a0]">{isVi ? 'Khoá học' : 'Courses'}</p>
+            <h2 className="mt-2 text-4xl font-black text-on-surface font-headline">{isVi ? 'Lộ trình học tập' : 'Your Learning Path'}</h2>
             <p className="mt-3 max-w-2xl text-on-surface-variant">
-              Continue your courses, open the detailed lesson view, and jump back into the next module.
+              {isVi ? 'Tiếp tục khoá học, xem bài học chi tiết và quay lại module tiếp theo.' : 'Continue your courses, open the detailed lesson view, and jump back into the next module.'}
             </p>
           </div>
 
@@ -73,46 +75,46 @@ export const CourseListPage: React.FC = () => {
           <Card className="overflow-hidden border border-[#e3e8f3] p-0 shadow-[0_20px_50px_rgba(58,78,153,0.12)]">
             <div className="grid gap-0 lg:grid-cols-[1.5fr_0.9fr]">
               <div className="space-y-5 bg-gradient-to-br from-[#f8fbff] via-white to-[#eef3ff] p-8">
-                <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7885a6]">Featured Course</div>
+                <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7885a6]">{isVi ? 'Khoá học nổi bật' : 'Featured Course'}</div>
                 <div>
                   <h3 className="max-w-2xl text-4xl font-black leading-[1.05] text-on-surface font-headline">
-                    <span className="text-[#4f6cf7]">Featured Course</span>
+                    <span className="text-[#4f6cf7]">{isVi ? 'Khoá học nổi bật' : 'Featured Course'}</span>
                   </h3>
                   <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                    A short description of the highlighted course will appear here once content is wired in.
+                    {isVi ? 'Mô tả ngắn về khoá học nổi bật sẽ hiển thị tại đây khi nội dung được kết nối.' : 'A short description of the highlighted course will appear here once content is wired in.'}
                   </p>
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <Button variant="primary">Continue Learning</Button>
+                  <Button variant="primary">{isVi ? 'Tiếp tục học' : 'Continue Learning'}</Button>
                   <Link
                     to="/user/course/sample-course-a"
                     className="inline-flex items-center justify-center rounded-lg border border-[#d6def0] bg-white px-6 py-2.5 text-base font-medium text-on-surface transition hover:bg-[#f6f8ff]"
                   >
-                    Open Course
+                    {isVi ? 'Mở khoá học' : 'Open Course'}
                   </Link>
                 </div>
               </div>
 
               <div className="flex items-center justify-center bg-white p-8 lg:p-10">
                 <div className="w-full max-w-[260px] rounded-[28px] border border-[#edf1f9] bg-white p-6 shadow-[0_18px_40px_rgba(57,74,150,0.08)]">
-                  <div className="text-xs font-black uppercase tracking-[0.22em] text-[#8a95af]">Current Progress</div>
+                  <div className="text-xs font-black uppercase tracking-[0.22em] text-[#8a95af]">{isVi ? 'Tiến độ hiện tại' : 'Current Progress'}</div>
                   <div className="mt-3 flex items-end justify-between gap-4">
                     <div>
                       <div className="text-4xl font-black text-on-surface">45%</div>
-                      <p className="mt-1 text-sm text-on-surface-variant">8 / 18 units completed</p>
+                      <p className="mt-1 text-sm text-on-surface-variant">{isVi ? '8 / 18 đơn vị hoàn thành' : '8 / 18 units completed'}</p>
                     </div>
                     <div className="rounded-2xl bg-[#eef2ff] px-3 py-2 text-center text-xs font-bold text-[#4f6cf7]">
                       8 / 18
                       <br />
-                      Units
+                      {isVi ? 'Bài' : 'Units'}
                     </div>
                   </div>
                   <div className="mt-5 h-2 rounded-full bg-[#e5eaf6]">
                     <div className="h-2 w-[45%] rounded-full bg-[#4f6cf7]" />
                   </div>
                   <Button className="mt-6 w-full justify-center" size="md">
-                    Continue Learning
+                    {isVi ? 'Tiếp tục học' : 'Continue Learning'}
                   </Button>
                 </div>
               </div>
@@ -121,10 +123,10 @@ export const CourseListPage: React.FC = () => {
 
           {/* Filters */}
           <div className="flex gap-3 overflow-x-auto pb-2">
-            <Button variant="primary">All Courses</Button>
-            <Button variant="secondary">In Progress</Button>
-            <Button variant="secondary">Completed</Button>
-            <Button variant="secondary">Wishlist</Button>
+            <Button variant="primary">{isVi ? 'Tất cả khoá học' : 'All Courses'}</Button>
+            <Button variant="secondary">{isVi ? 'Đang học' : 'In Progress'}</Button>
+            <Button variant="secondary">{isVi ? 'Hoàn thành' : 'Completed'}</Button>
+            <Button variant="secondary">{isVi ? 'Yêu thích' : 'Wishlist'}</Button>
           </div>
 
           {/* Courses Grid */}
@@ -143,7 +145,7 @@ export const CourseListPage: React.FC = () => {
                 {/* Progress Bar */}
                 <div className="mb-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-on-surface-variant">Progress</span>
+                    <span className="text-xs font-medium text-on-surface-variant">{isVi ? 'Tiến độ' : 'Progress'}</span>
                     <span className="text-xs font-bold text-on-surface">{course.progress}%</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-low">
@@ -156,12 +158,12 @@ export const CourseListPage: React.FC = () => {
 
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-outline-variant pt-4">
-                  <span className="text-xs text-on-surface-variant">{course.students} students</span>
+                  <span className="text-xs text-on-surface-variant">{course.students} {isVi ? 'học viên' : 'students'}</span>
                   <Link
                     to={`/user/course/${course.slug}`}
                     className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:bg-primary/90"
                   >
-                    Continue
+                    {isVi ? 'Tiếp tục' : 'Continue'}
                   </Link>
                 </div>
               </Card>
