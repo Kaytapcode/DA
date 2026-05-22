@@ -3,8 +3,15 @@ Root conftest — shared fixtures for all test directories (api/, ui/, e2e/, kat
 """
 
 import os
+import sys
 import pytest
 from pathlib import Path
+
+# Ensure tests/ dir is on sys.path so sub-packages (fixtures/) are importable
+# regardless of the cwd from which pytest is invoked.
+_TESTS_DIR = str(Path(__file__).parent)
+if _TESTS_DIR not in sys.path:
+    sys.path.insert(0, _TESTS_DIR)
 
 # Re-export API fixtures (APIClient, test_user, authenticated_client, etc.) from fixtures/
 from fixtures.conftest import *  # noqa: F401,F403

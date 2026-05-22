@@ -174,13 +174,16 @@ class TestOrgAdminAuthFlow:
         )
 
     def test_orgadmin1_login_without_org_context(self):
-        """OrgAdmin1 logs in WITHOUT X-Org-Id → succeeds, role=OrgAdmin, no orgId."""
+        """OrgAdmin1 logs in WITHOUT X-Org-Id → BE auto-resolves their org via GetOrgIdForAdminAsync."""
+        # Spec §1: OrgAdmin has a fixed org; system resolves org context automatically.
         r = _login(*ORGADMIN1)
         assert r.status_code == 200
         data = r.json()["data"]
         assert data["user"]["role"] == "OrgAdmin"
-        # No org context → orgId should be absent or null
-        assert data.get("orgId") is None or data.get("orgId") == ""
+        # Auto-resolved → orgId equals their seeded org (ORG1_ID)
+        assert data.get("orgId") == ORG1_ID, (
+            f"OrgAdmin1 should auto-get their org even without X-Org-Id header, got: {data.get('orgId')!r}"
+        )
 
     def test_orgadmin1_cannot_use_org2_context(self):
         """OrgAdmin1 cannot claim Org2 context — not a member."""
@@ -213,10 +216,11 @@ class TestOrgAdminAuthFlow:
         )
 
     def test_student_cannot_access_org_admin_analytics(self):
-        """Student token denied from OrgAdmin analytics endpoint."""
+        """Student token denied from OrgAdmin analytics endpoint. Spec §1 invariant 7."""
+        # Correct endpoint: GET /api/analytics/orgs/{orgId} (Content.Api AnalyticsController)
         token = _token(*USER1)
         r = requests.get(
-            f"{API_BASE}/api/analytics/orgadmin",
+            f"{API_BASE}/api/analytics/orgs/{ORG1_ID}",
             headers=_ah(token, ORG1_ID),
             timeout=10,
         )

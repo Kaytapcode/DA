@@ -51,16 +51,25 @@ namespace Organization.Api.Data
 
             foreach (var m in memberships)
             {
-                var exists = await db.Members.IgnoreQueryFilters()
-                    .AnyAsync(x => x.UserId == m.UserId && x.OrgId == m.OrgId);
-                if (exists) continue;
+                var existing = await db.Members.IgnoreQueryFilters()
+                    .FirstOrDefaultAsync(x => x.UserId == m.UserId && x.OrgId == m.OrgId);
+                if (existing != null)
+                {
+                    // Fix legacy seed that used "Admin" instead of "OrgAdmin"
+                    if (existing.Role == "Admin")
+                    {
+                        existing.Role = "OrgAdmin";
+                        db.Members.Update(existing);
+                    }
+                    continue;
+                }
 
                 db.Members.Add(new MemberModel
                 {
                     Id = Guid.NewGuid(),
                     UserId = m.UserId,
                     OrgId = m.OrgId,
-                    Role = "Admin",
+                    Role = "OrgAdmin",
                     JoinDate = DateTime.UtcNow,
                     CreatedAt = DateTime.UtcNow,
                 });

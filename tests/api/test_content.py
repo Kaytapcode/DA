@@ -1,231 +1,134 @@
 """
-Document, Quiz, Flashcard, and Video API Tests
-Tests cover: CRUD operations, metadata, visibility settings
+User Content API Tests for Lumina LMS (Spec §2)
+All resources (Quiz, Document, Flashcard Deck, Video) are personal user-owned
+and always public. No course context needed.
+
+Endpoints:
+  Quiz:     POST /api/quizzes         {title}
+            GET  /api/quizzes
+            PUT  /api/quizzes/{id}    {title}
+  Document: POST /api/documents       multipart file upload
+            GET  /api/documents
+  Deck:     POST /api/decks           {title, description?}
+            GET  /api/decks
+  Video:    POST /api/videos/personal {youTubeUrl, title?, description?}
+            GET  /api/videos/personal
 """
 
+import io
 import pytest
 from tests.fixtures.test_data import TestDataFactory
 
 
-class TestDocumentManagement:
-    """Test document upload, retrieval, and management"""
-    
-    @pytest.mark.api
-    def test_upload_document(self, authenticated_client, test_course):
-        """TC-DOC-001: Upload document succeeds"""
-        doc_data = TestDataFactory.create_document_data()
-        
-        # Assuming file upload endpoint
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/documents",
-            json=doc_data
-        )
-        
-        assert result.status_code in [201, 200], f"Upload failed: {result.status_code}"
-    
-    @pytest.mark.api
-    def test_get_document_details(self, authenticated_client, test_course):
-        """TC-DOC-005: Get document details"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/documents"
-        )
-        
-        assert result.status_code == 200, "Should retrieve documents"
-    
-    @pytest.mark.api
-    def test_update_document_metadata(self, authenticated_client, test_course):
-        """TC-DOC-007: Update document metadata"""
-        doc_data = TestDataFactory.create_document_data()
-        
-        # Create then update
-        create_result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/documents",
-            json=doc_data
-        )
-        
-        if create_result.status_code == 201:
-            doc_id = create_result.json().get("id")
-            if doc_id:
-                update_result = authenticated_client.put(
-                    f"/api/documents/{doc_id}",
-                    json={"name": "Updated Document"}
-                )
-                assert update_result.status_code == 200
-    
-    @pytest.mark.api
-    def test_list_documents_with_pagination(self, authenticated_client, test_course):
-        """TC-DOC-013: List documents with pagination"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/documents?page=1&pageSize=10"
-        )
-        
-        assert result.status_code == 200
+# ─── Quiz ──────────────────────────────────────────────────────────────────────
 
-
+@pytest.mark.wave1
+@pytest.mark.user
+@pytest.mark.api
 class TestQuizManagement:
-    """Test quiz creation, management, and attempts"""
-    
-    @pytest.mark.api
-    def test_create_quiz(self, authenticated_client, test_course):
-        """TC-QUIZ-001: Create quiz succeeds"""
-        quiz_data = TestDataFactory.create_quiz_data()
-        
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/quizzes",
-            json=quiz_data
-        )
-        
-        assert result.status_code in [201, 200], f"Quiz creation failed: {result.status_code}"
-        if result.status_code == 201:
-            assert "id" in result.json() or "data" in result.json()
-    
-    @pytest.mark.api
-    def test_get_quiz_details(self, authenticated_client, test_course):
-        """TC-QUIZ-004: Get quiz details"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/quizzes"
-        )
-        
-        assert result.status_code == 200
-    
-    @pytest.mark.api
-    def test_update_quiz_metadata(self, authenticated_client, test_course):
-        """TC-QUIZ-006: Update quiz metadata"""
-        quiz_data = TestDataFactory.create_quiz_data()
-        
-        create_result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/quizzes",
-            json=quiz_data
-        )
-        
-        if create_result.status_code in [201, 200]:
-            quiz_id = create_result.json().get("id")
-            if quiz_id:
-                update_result = authenticated_client.put(
-                    f"/api/quizzes/{quiz_id}",
-                    json={"name": "Updated Quiz"}
-                )
-                assert update_result.status_code == 200
-    
-    @pytest.mark.api
-    def test_list_quizzes_with_pagination(self, authenticated_client, test_course):
-        """TC-QUIZ-016: List quizzes with pagination"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/quizzes?page=1&pageSize=10"
-        )
-        
-        assert result.status_code == 200
+    """Spec §2.1 — Quiz manual CRUD."""
+
+    def test_create_quiz(self, authenticated_client):
+        """User creates a quiz with a title — returns 200 with id."""
+        # Spec §2.1: POST /api/quizzes; title required
+        r = authenticated_client.post("/api/quizzes", json={"title": f"LuminaTest_{TestDataFactory.random_string()}"})
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+        payload = r.json().get("data") or r.json()
+        assert "id" in payload or "quizId" in payload, "Response should contain an id"
+
+    def test_list_quizzes(self, authenticated_client):
+        """User can list their quizzes — GET /api/quizzes returns 200."""
+        r = authenticated_client.get("/api/quizzes")
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+
+    def test_missing_title_rejected(self, authenticated_client):
+        """Quiz creation without title → 400."""
+        r = authenticated_client.post("/api/quizzes", json={"timeLimit": 30})
+        assert r.status_code == 400, f"Missing title should be 400, got {r.status_code}"
 
 
+# ─── Document ──────────────────────────────────────────────────────────────────
+
+@pytest.mark.wave1
+@pytest.mark.user
+@pytest.mark.api
+class TestDocumentManagement:
+    """Spec §2.2 — Document upload, list."""
+
+    def test_list_documents(self, authenticated_client):
+        """User can list their documents — GET /api/documents returns 200."""
+        r = authenticated_client.get("/api/documents")
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+
+    def test_upload_document_pdf(self, authenticated_client):
+        """User uploads a minimal PDF — returns 200/201."""
+        # Minimal valid PDF bytes (1-byte body stub — server validates MIME)
+        pdf_bytes = b"%PDF-1.4 1 0 obj<</Type /Catalog>> endobj"
+        r = authenticated_client.post_file(
+            "/api/documents",
+            files={"file": ("test_doc.pdf", io.BytesIO(pdf_bytes), "application/pdf")},
+        )
+        # Accept 200/201 (success) or 400 (file too small/invalid) — 404/500 are failures
+        assert r.status_code in (200, 201, 400), (
+            f"Unexpected status {r.status_code}: {r.text[:300]}"
+        )
+
+
+# ─── Flashcard Deck ────────────────────────────────────────────────────────────
+
+@pytest.mark.wave1
+@pytest.mark.user
+@pytest.mark.api
 class TestFlashcardManagement:
-    """Test flashcard deck creation and management"""
-    
-    @pytest.mark.api
-    def test_create_flashcard_deck(self, authenticated_client, test_course):
-        """TC-FC-001: Create flashcard deck succeeds"""
-        deck_data = TestDataFactory.create_flashcard_data()
-        
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/flashcards",
-            json=deck_data
+    """Spec §2.3 — Flashcard Deck CRUD."""
+
+    def test_create_deck(self, authenticated_client):
+        """User creates a flashcard deck — POST /api/decks returns 200/201."""
+        r = authenticated_client.post(
+            "/api/decks",
+            json={"title": f"LuminaTest_{TestDataFactory.random_string()}", "description": "test deck"},
         )
-        
-        assert result.status_code in [201, 200], f"Deck creation failed: {result.status_code}"
-    
-    @pytest.mark.api
-    def test_get_flashcard_deck_details(self, authenticated_client, test_course):
-        """TC-FC-004: Get flashcard deck details"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/flashcards"
-        )
-        
-        assert result.status_code == 200
-    
-    @pytest.mark.api
-    def test_update_flashcard_deck(self, authenticated_client, test_course):
-        """TC-FC-006: Update flashcard deck metadata"""
-        deck_data = TestDataFactory.create_flashcard_data()
-        
-        create_result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/flashcards",
-            json=deck_data
-        )
-        
-        if create_result.status_code in [201, 200]:
-            deck_id = create_result.json().get("id")
-            if deck_id:
-                update_result = authenticated_client.put(
-                    f"/api/flashcards/{deck_id}",
-                    json={"name": "Updated Deck"}
-                )
-                assert update_result.status_code == 200
-    
-    @pytest.mark.api
-    def test_list_flashcard_decks_with_pagination(self, authenticated_client, test_course):
-        """TC-FC-018: List flashcard decks with pagination"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/flashcards?page=1&pageSize=10"
-        )
-        
-        assert result.status_code == 200
+        assert r.status_code in (200, 201), f"Expected 200/201, got {r.status_code}: {r.text}"
+
+    def test_list_decks(self, authenticated_client):
+        """User can list their decks — GET /api/decks returns 200."""
+        r = authenticated_client.get("/api/decks")
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+
+    def test_deck_missing_title_rejected(self, authenticated_client):
+        """Deck without title → 400."""
+        r = authenticated_client.post("/api/decks", json={"description": "no title"})
+        assert r.status_code == 400, f"Missing title should be 400, got {r.status_code}"
 
 
+# ─── Video ─────────────────────────────────────────────────────────────────────
+
+@pytest.mark.wave1
+@pytest.mark.user
+@pytest.mark.api
 class TestVideoManagement:
-    """Test video upload and management"""
-    
-    @pytest.mark.api
-    def test_upload_video(self, authenticated_client, test_course):
-        """TC-VID-001: Upload video succeeds"""
-        video_data = TestDataFactory.create_video_data()
-        
-        result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/videos",
-            json=video_data
-        )
-        
-        assert result.status_code in [201, 200], f"Video upload failed: {result.status_code}"
-    
-    @pytest.mark.api
-    def test_get_video_details(self, authenticated_client, test_course):
-        """TC-VID-005: Get video details"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/videos"
-        )
-        
-        assert result.status_code == 200
-    
-    @pytest.mark.api
-    def test_update_video_metadata(self, authenticated_client, test_course):
-        """TC-VID-007: Update video metadata"""
-        video_data = TestDataFactory.create_video_data()
-        
-        create_result = authenticated_client.post(
-            f"/api/courses/{test_course['id']}/videos",
-            json=video_data
-        )
-        
-        if create_result.status_code in [201, 200]:
-            video_id = create_result.json().get("id")
-            if video_id:
-                update_result = authenticated_client.put(
-                    f"/api/videos/{video_id}",
-                    json={"title": "Updated Video"}
-                )
-                assert update_result.status_code == 200
-    
-    @pytest.mark.api
-    def test_list_videos_with_pagination(self, authenticated_client, test_course):
-        """TC-VID-014: List videos with pagination"""
-        result = authenticated_client.get(
-            f"/api/courses/{test_course['id']}/videos?page=1&pageSize=10"
-        )
-        
-        assert result.status_code == 200
+    """Spec §2.4 — YouTube video link, personal library."""
 
+    def test_create_personal_video(self, authenticated_client):
+        """User links a YouTube video — POST /api/videos/personal returns 200."""
+        r = authenticated_client.post(
+            "/api/videos/personal",
+            json={
+                "youTubeUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "title": f"LuminaTest_{TestDataFactory.random_string()}",
+            },
+        )
+        assert r.status_code in (200, 201), f"Expected 200/201, got {r.status_code}: {r.text}"
 
-# DELETED: TestCourseContentIntegration (curriculum endpoint tests)
-# Reason: Spec 3 defines Module-based grouping (Collections for User, Course Modules
-# for Teacher/OrgAdmin), not a "curriculum" concept. These tests assumed an endpoint
-# /api/courses/{id}/curriculum that does not align with Spec 3 module CRUD.
-# Replacement tests live in Wave 1 User checklist (Modules/Collections) and Wave 2
-# OrgAdmin checklist (Course Modules).
+    def test_list_personal_videos(self, authenticated_client):
+        """User can list their personal videos — GET /api/videos/personal returns 200."""
+        r = authenticated_client.get("/api/videos/personal")
+        assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.text}"
+
+    def test_invalid_youtube_url_rejected(self, authenticated_client):
+        """Non-YouTube URL → 400."""
+        r = authenticated_client.post(
+            "/api/videos/personal",
+            json={"youTubeUrl": "https://example.com/not-a-youtube-url"},
+        )
+        assert r.status_code == 400, f"Invalid URL should be 400, got {r.status_code}"

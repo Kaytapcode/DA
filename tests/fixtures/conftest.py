@@ -159,23 +159,48 @@ class APIClient:
             payload = raw
         return {"response": response, "status_code": response.status_code, "data": payload}
     
-    def get_organization(self, org_id: int) -> Dict[str, Any]:
-        """Get organization details"""
+    def get_organization(self, org_id) -> Dict[str, Any]:
+        """Get organization details. Spec: GET /api/organizations/{id}"""
         response = self.get(f"/api/organizations/{org_id}")
-        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
-    
-    def create_course(self, org_id: int, name: str, description: str = "", icon: str = "") -> Dict[str, Any]:
-        """Create a new course"""
-        response = self.post(
-            f"/api/organizations/{org_id}/courses",
-            json={"name": name, "description": description, "icon": icon}
-        )
-        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
-    
-    def get_course(self, course_id: int) -> Dict[str, Any]:
-        """Get course details"""
+        raw = response.json() if response.text else {}
+        if isinstance(raw, dict) and "data" in raw and isinstance(raw.get("data"), dict):
+            payload = raw["data"]
+        else:
+            payload = raw
+        return {"response": response, "status_code": response.status_code, "data": payload}
+
+    def create_course(self, org_id, title: str, description: str = "") -> Dict[str, Any]:
+        """Create a new course. Spec: POST /api/courses with X-Org-Id header."""
+        # Must send X-Org-Id so the BE resolves org context
+        old_headers = dict(self.session.headers)
+        self.session.headers.update({"X-Org-Id": str(org_id)})
+        try:
+            response = self.post(
+                "/api/courses",
+                json={"orgId": str(org_id), "title": title, "description": description}
+            )
+        finally:
+            # Restore headers (remove X-Org-Id if it wasn't there before)
+            if "X-Org-Id" not in old_headers:
+                self.session.headers.pop("X-Org-Id", None)
+            else:
+                self.session.headers["X-Org-Id"] = old_headers["X-Org-Id"]
+        raw = response.json() if response.text else {}
+        if isinstance(raw, dict) and "data" in raw and isinstance(raw.get("data"), dict):
+            payload = raw["data"]
+        else:
+            payload = raw
+        return {"response": response, "status_code": response.status_code, "data": payload}
+
+    def get_course(self, course_id) -> Dict[str, Any]:
+        """Get course details. Spec: GET /api/courses/{id}"""
         response = self.get(f"/api/courses/{course_id}")
-        return {"response": response, "status_code": response.status_code, "data": response.json() if response.text else {}}
+        raw = response.json() if response.text else {}
+        if isinstance(raw, dict) and "data" in raw and isinstance(raw.get("data"), dict):
+            payload = raw["data"]
+        else:
+            payload = raw
+        return {"response": response, "status_code": response.status_code, "data": payload}
 
 
 # ============================================================================
