@@ -16,7 +16,7 @@ import re
 import uuid
 import requests
 import pytest
-from ._helpers import FE_BASE, API_BASE, unique_suffix
+from _helpers import FE_BASE, API_BASE, unique_suffix
 
 TIMEOUT = 10000
 

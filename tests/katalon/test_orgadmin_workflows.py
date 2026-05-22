@@ -12,7 +12,7 @@ Validates:
 import uuid
 import requests
 import pytest
-from ._helpers import FE_BASE, API_BASE, unique_suffix
+from _helpers import FE_BASE, API_BASE, unique_suffix
 
 SYSADMIN_USER = "SysAdmin1"
 SYSADMIN_PASS = "SysAdmin@123"
