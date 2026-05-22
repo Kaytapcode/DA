@@ -277,11 +277,16 @@ DOCUMENT:
 JSON ({needed} new questions):";
 
 
-        private QuizGenerationResponse ParseQuizResponse(string jsonContent)
+        private QuizGenerationResponse ParseQuizResponse(string rawContent)
         {
-            // Step 1 — strip markdown fences, then extract the JSON payload from any
-            // surrounding text the model added (e.g. "Here are the questions:\n\n{...}").
-            var cleanedJson = ExtractJsonPayload(jsonContent);
+            // Always log the raw model response for debugging. Truncated to 1000 chars.
+            _logger.LogInformation("AI raw response ({Len} chars): {Preview}",
+                rawContent.Length, rawContent[..Math.Min(1000, rawContent.Length)]);
+
+            // Step 1 — extract the JSON payload, stripping fences/prose before and after.
+            var cleanedJson = ExtractJsonPayload(rawContent);
+            _logger.LogInformation("Extracted JSON payload ({Len} chars): {Preview}",
+                cleanedJson.Length, cleanedJson[..Math.Min(500, cleanedJson.Length)]);
 
             var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
@@ -291,16 +296,16 @@ JSON ({needed} new questions):";
                 var quizData = JsonSerializer.Deserialize<QuizData>(cleanedJson, opts);
                 if (quizData?.Questions is { Count: > 0 })
                 {
-                    _logger.LogInformation("Parsed {Count} questions (strict wrapper)", quizData.Questions.Count);
+                    _logger.LogInformation("Parsed {Count} questions (wrapper object)", quizData.Questions.Count);
                     return BuildResponse(quizData.Questions);
                 }
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Wrapper-object parse failed — trying bare array");
+                _logger.LogWarning("Wrapper-object parse failed: {Msg}", ex.Message);
             }
 
-            // Step 3 — try parsing as a bare array [...] (some models skip the wrapper)
+            // Step 3 — try parsing as a bare array [...] (some models skip the wrapper object)
             try
             {
                 var directList = JsonSerializer.Deserialize<List<QuizQuestion>>(cleanedJson, opts);
@@ -312,50 +317,80 @@ JSON ({needed} new questions):";
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Bare-array parse failed — attempting bracket-depth recovery");
+                _logger.LogWarning("Bare-array parse failed: {Msg}", ex.Message);
             }
 
-            // Step 4 — bracket-depth recovery for truncated JSON
+            // Step 4 — bracket-depth recovery for truncated or partially-valid JSON
             var recovered = RecoverPartialQuestions(cleanedJson);
             if (recovered.Count > 0)
             {
-                _logger.LogWarning("Recovered {Count} complete questions from truncated JSON", recovered.Count);
+                _logger.LogWarning("Recovered {Count} questions from truncated JSON", recovered.Count);
                 return BuildResponse(recovered);
             }
 
-            _logger.LogError("Could not parse any questions. Raw (first 500 chars): {Content}",
-                cleanedJson[..Math.Min(500, cleanedJson.Length)]);
+            _logger.LogError("All parse attempts failed. Raw response:\n{Content}", rawContent);
             throw new InvalidOperationException("Failed to parse AI response as JSON. The model may have returned an unexpected format.");
         }
 
         /// <summary>
-        /// Strips markdown fences and skips any leading prose, returning the raw JSON
-        /// substring starting at the first '{' or '['.
+        /// Extracts the outermost JSON object or array from a model response that may
+        /// contain markdown fences, preamble prose, or trailing notes.
         /// </summary>
         private static string ExtractJsonPayload(string raw)
         {
             var s = raw.Trim();
 
-            // Check for a markdown code block anywhere in the response
+            // Priority 1: markdown code block (handles ``` anywhere, not just at start)
             var fenceMatch = System.Text.RegularExpressions.Regex.Match(
                 s, @"```(?:json|JSON)?\s*([\s\S]*?)```");
             if (fenceMatch.Success)
                 s = fenceMatch.Groups[1].Value.Trim();
+            else
+            {
+                // Remove unclosed opening fence if present
+                if (s.StartsWith("```json", StringComparison.OrdinalIgnoreCase)) s = s[7..].TrimStart();
+                else if (s.StartsWith("```")) s = s[3..].TrimStart();
+                if (s.EndsWith("```")) s = s[..^3].TrimEnd();
+                s = s.Trim();
+            }
 
-            // Strip any remaining opening fence that wasn't closed
-            if (s.StartsWith("```json", StringComparison.OrdinalIgnoreCase)) s = s[7..].TrimStart();
-            else if (s.StartsWith("```")) s = s[3..].TrimStart();
-            if (s.EndsWith("```")) s = s[..^3].TrimEnd();
-
-            // Skip any prose the model prepended before the actual JSON token
+            // Find the first '{' or '[' (skip leading prose)
             int start = -1;
             for (int i = 0; i < s.Length; i++)
             {
                 if (s[i] == '{' || s[i] == '[') { start = i; break; }
             }
-            if (start > 0) s = s[start..];
+            if (start < 0) return s; // no JSON token found
 
-            return s.Trim();
+            // Walk forward to find the matching closing bracket, respecting strings.
+            // This eliminates any trailing text/notes the model appended after the JSON.
+            char openChar = s[start];
+            char closeChar = openChar == '{' ? '}' : ']';
+            int depth = 0;
+            bool inStr = false;
+            bool esc = false;
+            int end = start;
+
+            for (int i = start; i < s.Length; i++)
+            {
+                char c = s[i];
+                if (esc)            { esc = false; continue; }
+                if (c == '\\' && inStr) { esc = true; continue; }
+                if (c == '"')       { inStr = !inStr; continue; }
+                if (inStr)          continue;
+
+                if (c == openChar)  depth++;
+                else if (c == closeChar)
+                {
+                    depth--;
+                    if (depth == 0) { end = i; break; }
+                }
+            }
+
+            // If depth > 0 the JSON was truncated; return what we have so recovery can try
+            return depth == 0
+                ? s[start..(end + 1)]
+                : s[start..];
         }
 
         private QuizGenerationResponse BuildResponse(List<QuizQuestion> questions)
