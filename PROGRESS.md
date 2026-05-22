@@ -1,80 +1,36 @@
 # Progress
 
-**Current phase:** Wave 1 complete → Bug fixes + UX improvements
+**Current phase:** Wave 1 complete → All TS errors fixed, UX gaps closed
 **Branch:** K-B
-**Next action:** Restart Identity.Api + Organization.Api + AI.Api với code mới → Test các luồng trong DEMO_FLOWS.md thủ công → Xác nhận OrgAdmin login không cần OrgID, AI quiz difficulty hoạt động đúng.
+**Next action:** Run full test suite against live stack (`cd tests && python run_tests.py`), then verify DEMO_FLOWS.md end-to-end manually.
 
-## Session 2026-05-22 (round 2) — Bug fixes + UX hardening
+## Session 2026-05-22 (round 3) — UX gaps + TS clean-up
 
-### Thay đổi trong session này:
+### Completed this round:
 
-**CLAUDE.md:**
-- Thêm rule 7–10 vào Section 10: no hardcode, self-test, demo flows contract, PDF label requirement.
+1. **Quiz create page** — AI tab: "PDF · TXT · max 10 MB" badge + "From My Library" tab (loads user docs, downloads blob, feeds into AI generation)
+2. **UserLookupController** — `GET /api/users/lookup` accessible to OrgAdmin + SysAdmin; gateway auto-routes via existing `/api/users/{**remainder}` pattern
+3. **MemberManagementPage** — "Add Member" expandable panel: search system users → select → role picker → POST `/orgs/{orgId}/members`
+4. **CourseEditorMemberRolesTabPage** — org member search dropdown replaces UUID-entry for enrollment
+5. **ContentRepository** — `LinkExistingAsync`: creates only ModuleContent join row (no new ContentModel); `ContentsController` exposes `POST .../contents/link`; `useModuleContent.linkContent()` hook wired
+6. **CourseEditorCurriculumTabPage** — "From Library" mode: picks content type → loads user resources → calls `linkContent` on click
+7. **SysAdminFeConvertedPages** — removed dummy data from UserDetails + Logs pages; UserDetails now loads real user by `?userId=` param with role-change action; Logs page shows "not implemented" placeholder
+8. **All pre-existing TypeScript errors cleared** — zero compiler errors after fixing Navbar, useCourse, UserAnalyticsDashboardPage (MUI v9 Grid/Stack shims), UserFeConvertedPages (dead code removal)
 
-**DEMO_FLOWS.md (mới):**
-- File `DEMO_FLOWS.md` tại root — danh sách đầy đủ 19 luồng demo cho dev duyệt.
-- Gợi ý tinh gọn hệ thống (bỏ System Health widget, tạm hoãn banner, tạm hoãn SSO).
+## Remaining items
 
-**BE fixes:**
-
-1. **AI Quiz difficulty (BE/AI.Api/Services/OpenRouterService.cs):**
-   - `DifficultyLine()` — criteria chi tiết 3 cấp: Easy = nhận biết/trích xuất trực tiếp; Normal = kết nối 2-3 đoạn; Hard = tổng hợp/tình huống giả định
-   - `DifficultyParams()` — temperature theo cấp: Easy (0.35, 0.80), Normal (0.55, 0.85), Hard (0.70, 0.90)
-   - `BuildQuizPrompt()` — cấu trúc rõ hơn, JSON-only rules, output format có `A. ...` prefix
-   - `CallApiAsync()` — nhận temperature + topP params
-   - System message cập nhật: nhấn mạnh JSON-only, no markdown, no extra text
-
-2. **OrgAdmin auto-org login:**
-   - `BE/Organization.Api/Data/MemberRepository.cs` — thêm `GetOrgAdminOrgAsync(userId)`
-   - `BE/Organization.Api/Controllers/InternalOrgController.cs` — thêm `GET /api/internal/orgs/admin/{userId}`
-   - `BE/Identity.Api/Services/OrganizationServiceClient.cs` — thêm `GetOrgIdForAdminAsync(userId)`
-   - `BE/Identity.Api/Controllers/AuthController.cs` — Login tự động resolve org cho OrgAdmin (không cần X-Org-Id header)
-
-**FE fixes:**
-
-3. **LoginPage.tsx:**
-   - Xóa trường Org ID (OrgAdmin tự resolve từ BE)
-   - Xóa `useSearchParams` và `useEffect` cho orgId pre-fill
-   - Form đơn giản: chỉ còn identifier + password
-
-4. **SysAdminDashboardPage.tsx:**
-   - Thay toàn bộ hardcode bằng `useSysAdminAnalytics()` hook
-   - Hiện: Total Orgs, Total Users, Total Courses, Total Quizzes (top stats) + 6 content stats phụ
-   - Bỏ: System Health widget (CPU/RAM/Disk — không phải LMS metric)
-
-5. **OrgAdminDashboardPage.tsx:**
-   - Recent Courses: dùng `useCourse()` hook thay cho dummy data
-   - Link trực tiếp vào course editor
-   - Quick Actions: link thật đến `/admin/courses`, `/admin/members`, `/admin/analytics`
-
-6. **AppRouter.tsx:**
-   - `/user/home`, `/user/dashboard`, `/user/learning`, `/user/courses`, `/user/course/:courseId`, `/user/organizations` → chỉ Student + Teacher
-   - `ProtectedRoute` tự redirect SysAdmin/OrgAdmin đến dashboard đúng
-   - Thêm component `RoleBasedRedirect` + route `/dashboard`
-
-7. **AiKeysPage.tsx:**
-   - Disabled "Add new key" form
-   - Thay bằng read-only info: stepfun/step-3.5-flash via OpenRouter, cấu hình qua environment variables
-
-**Build status:** Organization.Api ✅ | Identity.Api ✅ | AI.Api ✅ | FE pre-existing TS errors (Navbar.tsx, UserAnalyticsDashboardPage.tsx — không liên quan đến thay đổi này)
-
-## Các vấn đề còn lại cần làm
-
-- [ ] OrgAdmin: thêm user vào org từ danh sách user hệ thống (search + add)
-- [ ] OrgAdmin: thêm user vào course từ danh sách thành viên org
-- [ ] SSO: blocked — cần OAuth credentials (Google + Microsoft)
-- [ ] i18n: áp dụng đồng bộ trên toàn bộ UI
-- [ ] Fix pre-existing TypeScript errors (Navbar.tsx, UserFeConvertedPages.tsx, UserAnalyticsDashboardPage.tsx)
-- [ ] Test DEMO_FLOWS.md end-to-end sau khi restart services
+- [ ] SSO (Google + Microsoft OAuth2): blocked — requires OAuth app credentials from dev
+- [ ] i18n: apply consistently across all pages (currently mixed vi/en)
+- [ ] Run DEMO_FLOWS.md end-to-end against live stack to verify all 19 flows
 
 ## Open questions for dev
 
-- Bạn muốn gợi ý tinh gọn nào trong DEMO_FLOWS.md được áp dụng? (bỏ System Health, tạm hoãn banner, tạm hoãn Copy resource?)
-- OrgAdmin thêm user vào org: flow nên là "search user có sẵn trong hệ thống" hay "invite qua email"?
+- SSO: do you have Google/Microsoft OAuth app credentials to configure? Without them, the SSO buttons are stubs only.
+- Do you want the download/share/save toolbar restored in the Document Viewer? (was commented out — code removed in this session)
 
 ## Recently completed (last 5)
-- 2026-05-22 — DEMO_FLOWS.md tạo xong, 19 luồng demo + status table + feature streamlining suggestions
-- 2026-05-22 — AI quiz difficulty: 3-level criteria chi tiết + temperature tuning per level
-- 2026-05-22 — OrgAdmin login: xóa OrgID requirement, BE auto-resolve qua Organization.Api
-- 2026-05-22 — SysAdmin dashboard: xóa toàn bộ hardcode, dùng analytics API thật
-- 2026-05-22 — AppRouter: role guard fix — SysAdmin/OrgAdmin không thể backward-nav vào /user/* pages
+- 2026-05-22 — All TypeScript errors cleared (0 errors in `npx tsc --noEmit`)
+- 2026-05-22 — SysAdmin: dummy data removed from UserDetails + Logs pages
+- 2026-05-22 — Course content link-from-library: BE LinkExistingAsync + FE library picker
+- 2026-05-22 — OrgAdmin member add: UserLookupController + MemberManagementPage search+add
+- 2026-05-22 — AI quiz: PDF/TXT badge + "From My Library" document picker
