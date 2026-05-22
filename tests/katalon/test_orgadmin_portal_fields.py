@@ -88,7 +88,7 @@ class TestOrgAdminCourseManagementFields:
         """'Course Management' heading is visible."""
         orgadmin_page.goto(f"{FE_BASE}/admin/courses")
         orgadmin_page.wait_for_load_state("networkidle")
-        expect(orgadmin_page.locator("text=Course Management")).to_be_visible()
+        expect(orgadmin_page.locator("h2:has-text('Course Management'), h1:has-text('Course Management')").first).to_be_visible()
 
     def test_page_subtitle(self, orgadmin_page: Page):
         """Page subtitle about managing publishing and enrollment is visible."""

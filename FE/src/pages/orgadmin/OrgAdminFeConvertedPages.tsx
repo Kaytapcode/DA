@@ -146,12 +146,7 @@ export const CourseManagementPage: React.FC = () => {
           </div>
         )}
         {/* {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>} */}
-        {!isLoading && courses.length === 0 && !error && (
-          <p className="py-4 text-center text-sm text-on-surface-variant">
-            {isVi ? 'Chua co khoa hoc nao.' : 'No courses yet.'}
-          </p>
-        )}
-        {!isLoading && courses.length > 0 && (
+        {!isLoading && (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -164,6 +159,13 @@ export const CourseManagementPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
+                {courses.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-sm text-on-surface-variant">
+                      {isVi ? 'Chua co khoa hoc nao.' : 'No courses yet.'}
+                    </td>
+                  </tr>
+                )}
                 {courses.map((c) => (
                   <tr key={c.id} className="border-b border-outline-variant/40" data-testid={`course-row-${c.id}`}>
                     <td className="py-3 font-medium">

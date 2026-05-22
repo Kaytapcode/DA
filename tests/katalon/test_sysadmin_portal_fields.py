@@ -308,10 +308,13 @@ class TestSysAdminOrgDirectoryFields:
         assert slug_cells.count() >= 1
 
     def test_testorg1_visible_in_list(self, sysadmin_page: Page):
-        """Seeded TestOrg1 appears in the organization directory."""
+        """Seeded TestOrg1 appears in the organization directory (searched by name)."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.wait_for_selector("[data-testid='org-list']", timeout=10000)
+        # Use search to filter since list is sorted newest-first and seed orgs may be far back
+        sysadmin_page.locator("[data-testid='org-search-input']").fill("TestOrg1")
+        sysadmin_page.wait_for_timeout(500)
         expect(sysadmin_page.locator("[data-testid='org-item-name']").filter(has_text="TestOrg1")).to_be_visible(timeout=8000)
 
 
@@ -349,7 +352,7 @@ class TestSysAdminAiKeysFields:
         """'Provider' label and dropdown are visible in the add-key form."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/ai-keys")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=Provider")).to_be_visible()
+        expect(sysadmin_page.locator("label:has-text('Provider')").first).to_be_visible()
 
     def test_provider_dropdown_options(self, sysadmin_page: Page):
         """Provider dropdown contains OpenRouter, OpenAI, Anthropic options."""
@@ -371,7 +374,7 @@ class TestSysAdminAiKeysFields:
         """'API Key' label and input are visible."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/ai-keys")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=API Key")).to_be_visible()
+        expect(sysadmin_page.locator("label:has-text('API Key')").first).to_be_visible()
 
     def test_api_key_field_is_password_type(self, sysadmin_page: Page):
         """API Key input is type='password' so the key is masked."""

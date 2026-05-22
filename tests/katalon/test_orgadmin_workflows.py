@@ -111,7 +111,8 @@ def _ui_login_orgadmin(page, username: str, password: str, org_id: str):
     page.locator("[data-testid='login-identifier']").fill(username)
     page.locator("[data-testid='login-password']").fill(password)
     page.locator("[data-testid='login-submit']").click()
-    page.wait_for_url("**/user/**", timeout=15000)
+    # OrgAdmin role redirects to /admin/dashboard; wait for that
+    page.wait_for_url("**/admin/**", timeout=15000)
     page.wait_for_load_state("networkidle")
 
     # Inject org context so FE sends X-Org-Id header on subsequent requests

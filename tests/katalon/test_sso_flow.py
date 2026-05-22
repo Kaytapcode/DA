@@ -11,41 +11,40 @@ from ._helpers import FE_BASE
 @pytest.mark.ui
 @pytest.mark.wave1
 class TestLoginPageSsoButtons:
-    """SSO buttons on /login — currently hidden pending OAuth credentials.
-    Spec §1 requires Google + Microsoft SSO; buttons are temporarily removed.
-    Tests verify the ABSENCE of SSO UI (prevents regression when stubs reappear)."""
+    """SSO stub buttons on /login — visible per Spec §1.
+    Full OAuth flow requires external credentials; stubs show 'not yet configured' alert."""
 
     def test_google_sso_button_present(self, page: Page):
-        """SSO hidden: Google button (data-testid='login-sso-google') NOT present."""
+        """Google SSO stub button (data-testid='login-sso-google') is visible. Spec §1."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
         btn = page.locator("[data-testid='login-sso-google']")
-        expect(btn).not_to_be_visible()
+        expect(btn).to_be_visible()
 
     def test_google_sso_button_text(self, page: Page):
-        """SSO hidden: no Google text in SSO button area."""
+        """Google SSO button contains 'Google' text."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
-        expect(page.locator("[data-testid='login-sso-google']")).not_to_be_visible()
+        expect(page.locator("[data-testid='login-sso-google']")).to_contain_text("Google")
 
     def test_microsoft_sso_button_present(self, page: Page):
-        """SSO hidden: Microsoft button (data-testid='login-sso-microsoft') NOT present."""
+        """Microsoft SSO stub button (data-testid='login-sso-microsoft') is visible. Spec §1."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
         btn = page.locator("[data-testid='login-sso-microsoft']")
-        expect(btn).not_to_be_visible()
+        expect(btn).to_be_visible()
 
     def test_microsoft_sso_button_text(self, page: Page):
-        """SSO hidden: no Microsoft text in SSO button area."""
+        """Microsoft SSO button contains 'Microsoft' text."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
-        expect(page.locator("[data-testid='login-sso-microsoft']")).not_to_be_visible()
+        expect(page.locator("[data-testid='login-sso-microsoft']")).to_contain_text("Microsoft")
 
     def test_sso_divider_or_sign_in_with_text(self, page: Page):
-        """SSO hidden: 'Or Sign In With' divider is NOT present."""
+        """'Or Sign In With' divider is visible between form and SSO buttons. Spec §1."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
-        expect(page.locator("text=Or Sign In With")).not_to_be_visible()
+        expect(page.locator("text=Or Sign In With")).to_be_visible()
 
 
 @pytest.mark.katalon

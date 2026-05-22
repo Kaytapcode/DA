@@ -263,10 +263,7 @@ export const MemberManagementPage: React.FC = () => {
                   <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
                 </div>
               )}
-              {!isLoading && filtered.length === 0 && (
-                <p className="py-6 text-center text-sm text-on-surface-variant">No members found.</p>
-              )}
-              {!isLoading && filtered.length > 0 && (
+              {!isLoading && (
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-outline-variant">
@@ -278,6 +275,11 @@ export const MemberManagementPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-6 text-center text-sm text-on-surface-variant">No members found.</td>
+                      </tr>
+                    )}
                     {filtered.map((m) => (
                       <tr key={m.userId} className="border-b border-outline-variant hover:bg-surface-container-low">
                         <td className="px-6 py-4">{m.username || '—'}</td>
