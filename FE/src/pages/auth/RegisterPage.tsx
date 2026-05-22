@@ -371,31 +371,7 @@ export const RegisterPage: React.FC = () => {
               </button>
             </form>
 
-            {/* SSO */}
-            <div className="mt-8">
-              <div className="relative mb-5">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#e5e7eb]" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-white px-3 text-[#9ca3af] uppercase tracking-widest font-semibold">Or sign up with</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" data-testid="register-sso-google"
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb] transition disabled:opacity-50"
-                  disabled title="Google SSO — coming soon">
-                  <span className="material-symbols-outlined text-lg text-[#ea4335]">g_mobiledata</span>
-                  Google
-                </button>
-                <button type="button" data-testid="register-sso-microsoft"
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] hover:bg-[#f9fafb] transition disabled:opacity-50"
-                  disabled title="Microsoft SSO — coming soon">
-                  <span className="material-symbols-outlined text-lg text-[#0078d4]">window</span>
-                  Microsoft
-                </button>
-              </div>
-            </div>
+            {/* SSO section hidden — OAuth credentials not yet configured */}
 
             <div className="mt-6 text-center text-sm text-[#6b7280]">
               Already have an account?{' '}

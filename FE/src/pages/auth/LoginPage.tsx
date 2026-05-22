@@ -239,48 +239,7 @@ export const LoginPage: React.FC = () => {
               </button>
             </form>
 
-            {/* OAuth / Alternative Login — Spec §1: SSO for User and OrgAdmin (SysAdmin cannot use SSO) */}
-            <div className="mt-8">
-              <div className="relative mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#e5e7eb]"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-3 text-[#9ca3af] uppercase tracking-widest font-semibold text-xs">Or Sign In With</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  data-testid="login-sso-google"
-                  title="Google SSO — coming soon"
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-lg text-[#ea4335]">g_mobiledata</span>
-                  Google
-                </button>
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  data-testid="login-sso-microsoft"
-                  title="Microsoft SSO — coming soon"
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-lg text-[#0078d4]">window</span>
-                  Microsoft
-                </button>
-                {/* <button
-                  type="button"
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-lg">fingerprint</span>
-                  Passkey
-                </button> */}
-              </div>
-            </div>
+            {/* SSO section hidden — OAuth credentials not yet configured */}
 
             {/* Create Account Link */}
             <div className="mt-8 text-center">

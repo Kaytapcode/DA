@@ -228,8 +228,9 @@ namespace AI.Api.Services
 
         private static (double Temperature, double TopP) DifficultyParams(string difficulty) => difficulty switch
         {
-            // Easy: low temperature → more predictable, consistent JSON structure
-            "easy" => (0.35, 0.80),
+            // Easy: moderate temperature — 0.35 was too low and caused stepfun to sometimes
+            // stall, truncate, or return "correct_index" as a string instead of int.
+            "easy" => (0.50, 0.82),
             // Hard: slightly higher temperature → more creative distractors
             "hard" => (0.70, 0.90),
             // Normal: balanced
@@ -315,12 +316,22 @@ DOCUMENT:
             _logger.LogInformation("AI raw response ({Len} chars): {Preview}",
                 rawContent.Length, rawContent[..Math.Min(1000, rawContent.Length)]);
 
+            // Strip "thinking" / chain-of-thought preambles that some models emit before the JSON.
+            // Pattern: <think>...</think> or similar XML-ish wrappers.
+            rawContent = System.Text.RegularExpressions.Regex.Replace(
+                rawContent, @"<think>[\s\S]*?</think>", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
             // Step 1 — extract the JSON payload, stripping fences/prose before and after.
             var cleanedJson = ExtractJsonPayload(rawContent);
             _logger.LogInformation("Extracted JSON payload ({Len} chars): {Preview}",
                 cleanedJson.Length, cleanedJson[..Math.Min(500, cleanedJson.Length)]);
 
-            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            // Allow "correct_index": "0" (string) in addition to "correct_index": 0 (int).
+            var opts = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
+            };
 
             // Step 2 — try parsing as {"questions":[...]}
             try
