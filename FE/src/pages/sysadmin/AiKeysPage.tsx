@@ -22,13 +22,23 @@ interface AiKey {
   updatedAt: string | null
 }
 
+interface NewKeyForm {
+  provider: 'OpenRouter' | 'OpenAI' | 'Anthropic'
+  label: string
+  apiKey: string
+  isActive: boolean
+}
+
 export const AiKeysPage: React.FC = () => {
   const isVi = getCurrentLanguage() === 'vi'
   const [keys, setKeys] = useState<AiKey[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const [busyKeyId, setBusyKeyId] = useState<string | null>(null)
+
+  const [newKey, setNewKey] = useState<NewKeyForm>({ provider: 'OpenRouter', label: '', apiKey: '', isActive: true })
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
 
   const refresh = useCallback(async () => {
     setIsLoading(true)
@@ -45,6 +55,33 @@ export const AiKeysPage: React.FC = () => {
   }, [])
 
   useEffect(() => { void refresh() }, [refresh])
+
+  const handleSaveKey = async () => {
+    setSaveError(null)
+    if (!newKey.apiKey.trim()) {
+      setSaveError(isVi ? 'API key la bat buoc.' : 'API key is required')
+      return
+    }
+    setIsSaving(true)
+    try {
+      const res = await apiClient.post('/sysadmin/ai-keys', {
+        provider: newKey.provider,
+        label: newKey.label.trim() || null,
+        apiKey: newKey.apiKey.trim(),
+        isActive: newKey.isActive,
+      })
+      if (res.success) {
+        setNewKey({ provider: 'OpenRouter', label: '', apiKey: '', isActive: true })
+        await refresh()
+      } else {
+        setSaveError(res.message || 'Failed to save key')
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save key')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleToggle = async (key: AiKey) => {
     setBusyKeyId(key.id)
@@ -95,7 +132,77 @@ export const AiKeysPage: React.FC = () => {
 
           {error && <Card className="p-4 border border-error/30"><p className="text-sm text-error">{error}</p></Card>}
 
-          {/* Read-only model info — AI key editing is disabled; model is fixed via environment config */}
+          {/* Add new key form */}
+          <Card className="p-6">
+            <h3 className="font-bold text-on-surface mb-4">{isVi ? 'Them khoa moi' : 'Add new key'}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                  {isVi ? 'Nha cung cap' : 'Provider'}
+                </label>
+                <select
+                  className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
+                  value={newKey.provider}
+                  onChange={(e) => setNewKey({ ...newKey, provider: e.target.value as NewKeyForm['provider'] })}
+                >
+                  <option value="OpenRouter">OpenRouter</option>
+                  <option value="OpenAI">OpenAI</option>
+                  <option value="Anthropic">Anthropic</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                  {isVi ? 'Nhan (tuy chon)' : 'Label (optional)'}
+                </label>
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
+                  placeholder={isVi ? 'Nhan nhan dang...' : 'e.g. production-key'}
+                  value={newKey.label}
+                  onChange={(e) => setNewKey({ ...newKey, label: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-on-surface-variant mb-1">
+                  {isVi ? 'Khoa API' : 'API Key'}
+                </label>
+                <input
+                  type="password"
+                  className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface font-mono"
+                  placeholder="sk-..."
+                  value={newKey.apiKey}
+                  onChange={(e) => setNewKey({ ...newKey, apiKey: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="ai-key-active"
+                  checked={newKey.isActive}
+                  onChange={(e) => setNewKey({ ...newKey, isActive: e.target.checked })}
+                  className="h-4 w-4 rounded border-outline text-primary"
+                />
+                <label htmlFor="ai-key-active" className="text-sm text-on-surface cursor-pointer">
+                  {isVi ? 'Dat lam hoat dong' : 'Set as active'}
+                </label>
+              </div>
+            </div>
+            {saveError && (
+              <p className="mt-2 text-sm text-error">{saveError}</p>
+            )}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => void handleSaveKey()}
+                disabled={isSaving}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isSaving ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu khoa' : 'Save key')}
+              </button>
+            </div>
+          </Card>
+
+          {/* Current config info */}
           <Card className="p-6 border border-primary/20 bg-primary/5" data-testid="ai-config-info">
             <div className="flex items-start gap-4">
               <MaterialIcon icon="info" className="text-primary mt-1 flex-shrink-0" />

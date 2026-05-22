@@ -57,7 +57,7 @@ class TestSysAdminPortalStructure:
         """'Username' label is visible above the username field."""
         page.goto(f"{FE_BASE}/admin/login")
         page.wait_for_load_state("networkidle")
-        expect(page.locator("text=Username").first()).to_be_visible()
+        expect(page.locator("text=Username").first).to_be_visible()
 
     def test_password_field_present(self, page: Page):
         """Password input (data-testid='sysadmin-login-password') is present."""
@@ -77,7 +77,7 @@ class TestSysAdminPortalStructure:
         """'Password' label is visible above the password field."""
         page.goto(f"{FE_BASE}/admin/login")
         page.wait_for_load_state("networkidle")
-        expect(page.locator("text=Password").first()).to_be_visible()
+        expect(page.locator("text=Password").first).to_be_visible()
 
     def test_password_toggle_present(self, page: Page):
         """Password visibility toggle button is present."""

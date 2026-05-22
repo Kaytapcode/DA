@@ -124,7 +124,7 @@ class TestOrgAdminCourseManagementFields:
         orgadmin_page.goto(f"{FE_BASE}/admin/courses")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.locator("[data-testid='course-create-toggle-btn']").click()
-        expect(orgadmin_page.locator("text=Title").first()).to_be_visible()
+        expect(orgadmin_page.locator("text=Title").first).to_be_visible()
 
     def test_create_form_title_placeholder(self, orgadmin_page: Page):
         """Title input placeholder is 'e.g. React Programming'."""
@@ -230,13 +230,13 @@ class TestOrgAdminMemberManagementFields:
         """Role filter dropdown is present on the members page."""
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
-        expect(orgadmin_page.locator("select").first()).to_be_visible()
+        expect(orgadmin_page.locator("select").first).to_be_visible()
 
     def test_role_filter_has_all_option(self, orgadmin_page: Page):
         """Role filter dropdown includes 'All Roles' option."""
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
-        select = orgadmin_page.locator("select").first()
+        select = orgadmin_page.locator("select").first
         options = select.locator("option").all_inner_texts()
         assert "All Roles" in options
 
@@ -244,7 +244,7 @@ class TestOrgAdminMemberManagementFields:
         """Role filter dropdown includes Student, Teacher, OrgAdmin options."""
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
-        select = orgadmin_page.locator("select").first()
+        select = orgadmin_page.locator("select").first
         options = select.locator("option").all_inner_texts()
         assert "Student" in options
         assert "Teacher" in options
@@ -296,7 +296,7 @@ class TestOrgAdminMemberManagementFields:
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table", timeout=8000)
-        expect(orgadmin_page.locator(f"td:has-text('{ORGADMIN1_USER}')").first()).to_be_visible(timeout=8000)
+        expect(orgadmin_page.locator(f"td:has-text('{ORGADMIN1_USER}')").first).to_be_visible(timeout=8000)
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +325,7 @@ class TestOrgAdminRoleAssignmentDropdown:
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table tbody tr", timeout=10000)
-        row_select = orgadmin_page.locator("table tbody td select").first()
+        row_select = orgadmin_page.locator("table tbody td select").first
         options = row_select.locator("option").all_inner_texts()
         assert "Student" in options
 
@@ -334,7 +334,7 @@ class TestOrgAdminRoleAssignmentDropdown:
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table tbody tr", timeout=10000)
-        row_select = orgadmin_page.locator("table tbody td select").first()
+        row_select = orgadmin_page.locator("table tbody td select").first
         options = row_select.locator("option").all_inner_texts()
         assert "Teacher" in options
 
@@ -343,7 +343,7 @@ class TestOrgAdminRoleAssignmentDropdown:
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table tbody tr", timeout=10000)
-        row_select = orgadmin_page.locator("table tbody td select").first()
+        row_select = orgadmin_page.locator("table tbody td select").first
         options = row_select.locator("option").all_inner_texts()
         assert "OrgAdmin" in options
 
@@ -352,7 +352,7 @@ class TestOrgAdminRoleAssignmentDropdown:
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table tbody tr", timeout=10000)
-        expect(orgadmin_page.locator("table button:has-text('Remove')").first()).to_be_visible()
+        expect(orgadmin_page.locator("table button:has-text('Remove')").first).to_be_visible()
 
 
 # ---------------------------------------------------------------------------

@@ -62,7 +62,7 @@ class TestSysAdminUserManagementFields:
         """Page heading 'Global User Management' is visible."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/users")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=Global User Management")).to_be_visible()
+        expect(sysadmin_page.locator("text=Global User Management").first).to_be_visible()
 
     def test_search_input_present(self, sysadmin_page: Page):
         """Search input field with data-testid='user-search-input' is present."""
@@ -135,7 +135,7 @@ class TestSysAdminUserManagementFields:
         sysadmin_page.locator("[data-testid='user-search-input']").fill("User1")
         sysadmin_page.locator("[data-testid='user-search-btn']").click()
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("[data-testid='user-item-username']").filter(has_text="User1").first()).to_be_visible(timeout=8000)
+        expect(sysadmin_page.locator("[data-testid='user-item-username']").filter(has_text="User1").first).to_be_visible(timeout=8000)
 
     def test_delete_button_present_on_user_row(self, sysadmin_page: Page):
         """Delete button (data-testid='user-delete-btn') appears on user rows."""
@@ -177,21 +177,21 @@ class TestSysAdminCreateUserModal:
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/users")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.locator("[data-testid='user-create-btn']").click()
-        expect(sysadmin_page.locator("text=Email").first()).to_be_visible()
+        expect(sysadmin_page.locator("text=Email").first).to_be_visible()
 
     def test_create_modal_has_password_field(self, sysadmin_page: Page):
         """Create User modal contains a Password label and input."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/users")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.locator("[data-testid='user-create-btn']").click()
-        expect(sysadmin_page.locator("text=Password").first()).to_be_visible()
+        expect(sysadmin_page.locator("text=Password").first).to_be_visible()
 
     def test_create_modal_has_role_dropdown(self, sysadmin_page: Page):
         """Create User modal contains a Role label and dropdown."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/users")
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.locator("[data-testid='user-create-btn']").click()
-        expect(sysadmin_page.locator("text=Role").first()).to_be_visible()
+        expect(sysadmin_page.locator("text=Role").first).to_be_visible()
 
     def test_create_modal_role_options(self, sysadmin_page: Page):
         """Role dropdown contains Student, Teacher, OrgAdmin, SysAdmin options."""
@@ -233,7 +233,7 @@ class TestSysAdminCreateUserModal:
         sysadmin_page.wait_for_load_state("networkidle")
         sysadmin_page.locator("[data-testid='user-create-btn']").click()
         # Click Create with empty fields
-        sysadmin_page.locator("button:has-text('Create')").last().click()
+        sysadmin_page.locator("button:has-text('Create')").last.click()
         expect(sysadmin_page.locator("text=All fields are required.")).to_be_visible()
 
 
@@ -253,7 +253,7 @@ class TestSysAdminOrgDirectoryFields:
         """'Organization Directory' heading is visible."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/orgs")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=Organization Directory")).to_be_visible()
+        expect(sysadmin_page.locator("text=Organization Directory").first).to_be_visible()
 
     def test_page_subtitle(self, sysadmin_page: Page):
         """Page subtitle 'Directory of all organizations in the platform' is visible."""
@@ -331,7 +331,7 @@ class TestSysAdminAiKeysFields:
         """'AI API Keys' heading is visible."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/ai-keys")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=AI API Keys").first()).to_be_visible()
+        expect(sysadmin_page.locator("text=AI API Keys").first).to_be_visible()
 
     def test_page_subtitle(self, sysadmin_page: Page):
         """Subtitle about managing provider keys is visible."""
@@ -355,7 +355,7 @@ class TestSysAdminAiKeysFields:
         """Provider dropdown contains OpenRouter, OpenAI, Anthropic options."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/ai-keys")
         sysadmin_page.wait_for_load_state("networkidle")
-        select = sysadmin_page.locator("select").first()
+        select = sysadmin_page.locator("select").first
         options = select.locator("option").all_inner_texts()
         assert "OpenRouter" in options
         assert "OpenAI" in options
@@ -423,7 +423,7 @@ class TestSysAdminAnalyticsFields:
         """'Global Content Courses' heading is visible."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=Global Content Courses")).to_be_visible()
+        expect(sysadmin_page.locator("text=Global Content Courses").first).to_be_visible()
 
     def test_total_courses_stat_label(self, sysadmin_page: Page):
         """'Total Courses' stat label is visible on the analytics card."""
@@ -465,4 +465,4 @@ class TestSysAdminAnalyticsFields:
         """'Organizations' stat label is visible."""
         sysadmin_page.goto(f"{FE_BASE}/sysadmin/courses")
         sysadmin_page.wait_for_load_state("networkidle")
-        expect(sysadmin_page.locator("text=Organizations")).to_be_visible()
+        expect(sysadmin_page.locator("text=Organizations").first).to_be_visible()
