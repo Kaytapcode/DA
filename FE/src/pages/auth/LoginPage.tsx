@@ -1,10 +1,11 @@
-﻿import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+﻿import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface LoginFormData {
   identifier: string;
   password: string;
+  orgId: string;
 }
 
 interface FormErrors {
@@ -14,12 +15,19 @@ interface FormErrors {
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, isLoading } = useAuthContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
     identifier: '',
     password: '',
+    orgId: '',
   });
+
+  useEffect(() => {
+    const orgIdParam = searchParams.get('orgId');
+    if (orgIdParam) setFormData((prev) => ({ ...prev, orgId: orgIdParam }));
+  }, [searchParams]);
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -64,8 +72,11 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      // OrgAdmin org context is auto-resolved by the BE — no orgId needed here.
-      const authUser = await login(formData.identifier.trim(), formData.password);
+      const authUser = await login(
+        formData.identifier.trim(),
+        formData.password,
+        formData.orgId.trim() || undefined,
+      );
 
       // Route by role
       const dest =
@@ -221,6 +232,21 @@ export const LoginPage: React.FC = () => {
                   </button>
                 </div>
                 {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
+              </div>
+
+              {/* Organization ID (optional — OrgAdmin only) */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
+                  Organization ID <span className="font-normal normal-case tracking-normal text-[#9ca3af]">(optional — OrgAdmin only)</span>
+                </label>
+                <input
+                  type="text"
+                  data-testid="login-org-id"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={formData.orgId}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, orgId: e.target.value }))}
+                  className="w-full rounded-lg border border-[#e5e7eb] bg-white px-4 py-3 text-sm font-mono outline-none transition focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]"
+                />
               </div>
 
               {/* Sign In Button */}
