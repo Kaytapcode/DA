@@ -6,6 +6,8 @@ namespace Organization.Api.Data
     public interface IMemberRepository
     {
         Task<List<MemberModel>> GetByOrgIdAsync(Guid orgId, CancellationToken ct = default);
+        /// <summary>All membership rows for a user (every org they belong to, any role).</summary>
+        Task<List<MemberModel>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
         Task<MemberModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<MemberModel?> GetByUserAndOrgAsync(Guid userId, Guid orgId, CancellationToken ct = default);
         /// <summary>Returns the OrgAdmin membership row for a user (where Role == "OrgAdmin"), or null if not found.</summary>
@@ -30,6 +32,9 @@ namespace Organization.Api.Data
             => await _context.Members
                 .Where(m => m.OrgId == orgId)
                 .ToListAsync(ct);
+
+        public async Task<List<MemberModel>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
+            => await _context.Members.Where(m => m.UserId == userId).ToListAsync(ct);
 
         public async Task<MemberModel?> GetByIdAsync(Guid id, CancellationToken ct = default)
             => await _context.Members.FirstOrDefaultAsync(m => m.Id == id, ct);

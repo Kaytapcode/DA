@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { DocumentInlineViewer } from '@components/ui/DocumentInlineViewer'
+import { DocumentUploadModal } from '@components/DocumentUploadModal'
 import { UserShell, useUserLanguage } from './UserShell'
 import { useQuiz } from '@/hooks/useQuiz'
 import { useFlashcard } from '@/hooks/useFlashcard'
@@ -1179,11 +1180,22 @@ interface ItemProgressRow {
 
 export const SpecificCoursePage: React.FC = () => {
   const { courseId } = useParams()
-  const { modules, fetchModules, isLoading: modulesLoading } = useModuleContent()
+  const { modules, fetchModules, isLoading: modulesLoading, createModule, linkContent, error: moduleError } = useModuleContent()
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [progressByContent, setProgressByContent] = useState<Record<string, ItemProgressRow>>({})
+
+  // Per-course role of the current user (resolved from their own enrollment row). A 'Teacher'
+  // gets in-course editing tools (add module / link content) right here in the course view —
+  // the /admin editor is OrgAdmin-only, so teachers (global role Student) edit from this page.
+  const navigate = useNavigate()
+  const [myRole, setMyRole] = useState<string | null>(null)
+  const [newModuleTitle, setNewModuleTitle] = useState('')
+  const [addingModule, setAddingModule] = useState(false)
+  const [contentModuleId, setContentModuleId] = useState<string | null>(null) // chooser open for this module
+  const [uploadModuleId, setUploadModuleId] = useState<string | null>(null)   // doc upload modal for this module
+  const isTeacher = myRole === 'Teacher'
 
   useEffect(() => {
     if (!courseId) return
@@ -1226,6 +1238,49 @@ export const SpecificCoursePage: React.FC = () => {
 
     return () => { cancelled = true }
   }, [courseId, fetchModules])
+
+  // Resolve the caller's per-course role from their own enrollment row (GET returns only it for
+  // a non-privileged user; OrgAdmin sees all rows — we then match on the cached user id).
+  useEffect(() => {
+    if (!courseId) return
+    let cancelled = false
+    const myId = getCurrentUserId()
+    apiClient.get<Array<{ userId: string; role: string; status: string }>>(`/courses/${courseId}/enrollments`)
+      .then((res) => {
+        if (cancelled || !res.success || !res.data) return
+        const mine = res.data.find((e) => e.userId?.toLowerCase() === (myId ?? '').toLowerCase()) ?? (res.data.length === 1 ? res.data[0] : null)
+        if (mine && mine.status === 'Approved') setMyRole(mine.role)
+      })
+      .catch(() => { /* role tools are optional */ })
+    return () => { cancelled = true }
+  }, [courseId])
+
+  const handleTeacherAddModule = async () => {
+    if (!courseId || !newModuleTitle.trim()) return
+    const created = await createModule(courseId, newModuleTitle.trim())
+    if (created) {
+      setNewModuleTitle('')
+      setAddingModule(false)
+      await fetchModules(courseId)
+    }
+    // On failure the hook sets moduleError (shown in the add-module panel); keep the form open.
+  }
+
+  // Open the matching user CREATION page (same flow users use); content auto-links back here.
+  const teacherCreateContent = (type: string, moduleId: string) => {
+    const ctx = `?courseId=${courseId}&moduleId=${moduleId}&returnTo=course`
+    if (type === 'VIDEO') navigate(`/user/videos/new${ctx}`)
+    else if (type === 'QUIZ') navigate(`/user/quizzes/new${ctx}`)
+    else if (type === 'FLASHCARD') navigate(`/user/decks/new${ctx}`)
+    else if (type === 'PDF') setUploadModuleId(moduleId)
+  }
+
+  const handleTeacherDocUploaded = async (moduleId: string, doc?: { contentId?: string | null }) => {
+    if (courseId && doc?.contentId) await linkContent(courseId, moduleId, doc.contentId)
+    setUploadModuleId(null)
+    setContentModuleId(null)
+    if (courseId) await fetchModules(courseId)
+  }
 
   const totalContents = modules.reduce((sum: number, m: ModuleItem) => sum + (m.contents?.length ?? 0), 0)
   const completedContents = Object.values(progressByContent).filter((p) => p.isCompleted).length
@@ -1295,7 +1350,33 @@ export const SpecificCoursePage: React.FC = () => {
           <div className="space-y-5">
             <div className="flex items-center justify-between">
               <h4 className="text-2xl font-bold text-on-surface font-headline">Learning Path</h4>
+              {isTeacher && (
+                <Button size="sm" data-testid="teacher-add-module-toggle" onClick={() => setAddingModule((v) => !v)}>
+                  <MaterialIcon icon="add" size="xs" />
+                  Add module
+                </Button>
+              )}
             </div>
+            {isTeacher && addingModule && (
+              <Card className="border border-primary/30 p-4" data-testid="teacher-add-module-panel">
+                <p className="mb-2 text-sm font-semibold text-on-surface">Add a module (you teach this course)</p>
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    data-testid="teacher-module-title-input"
+                    value={newModuleTitle}
+                    onChange={(e) => setNewModuleTitle(e.target.value)}
+                    placeholder="Module title (min 3 characters)"
+                    className="flex-1 min-w-[220px] rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface"
+                    onKeyDown={(e) => { if (e.key === 'Enter') void handleTeacherAddModule() }}
+                  />
+                  <Button size="sm" data-testid="teacher-module-add-btn" onClick={() => void handleTeacherAddModule()} disabled={newModuleTitle.trim().length < 3}>
+                    Add
+                  </Button>
+                </div>
+                {/* Surface server/validation errors instead of silently closing the form. */}
+                {moduleError && <p className="mt-2 text-sm text-error" data-testid="teacher-module-error">{moduleError}</p>}
+              </Card>
+            )}
             {modulesLoading && (
               <div className="flex justify-center py-4">
                 <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
@@ -1310,6 +1391,41 @@ export const SpecificCoursePage: React.FC = () => {
                   <h5 className="text-lg font-bold text-on-surface">{m.title}</h5>
                   {m.description && <p className="mt-1 text-sm text-on-surface-variant">{m.description}</p>}
                 </div>
+                {isTeacher && (
+                  <div className="mb-3">
+                    {contentModuleId === m.id ? (
+                      <Card className="border border-primary/30 p-3" data-testid={`teacher-content-panel-${m.id}`}>
+                        <p className="mb-2 text-xs text-on-surface-variant">
+                          Create content (same flow you use as a user) — it'll be added to this module:
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {([
+                            { key: 'PDF', icon: 'picture_as_pdf', label: 'Document' },
+                            { key: 'VIDEO', icon: 'play_circle', label: 'Video' },
+                            { key: 'QUIZ', icon: 'quiz', label: 'Quiz' },
+                            { key: 'FLASHCARD', icon: 'style', label: 'Flashcards' },
+                          ] as const).map((tp) => (
+                            <button
+                              key={tp.key}
+                              data-testid={`teacher-create-${tp.key}`}
+                              onClick={() => teacherCreateContent(tp.key, m.id)}
+                              className="flex flex-col items-center gap-1 rounded-lg border border-outline-variant px-2 py-2 text-xs hover:border-primary hover:bg-surface-container-low"
+                            >
+                              <MaterialIcon icon={tp.icon} size="sm" />
+                              <span>{tp.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <button className="mt-2 text-xs text-on-surface-variant underline" onClick={() => setContentModuleId(null)}>Cancel</button>
+                      </Card>
+                    ) : (
+                      <Button size="sm" variant="secondary" data-testid={`teacher-add-content-btn-${m.id}`}
+                        onClick={() => setContentModuleId(m.id)}>
+                        <MaterialIcon icon="add" size="xs" /> Add content
+                      </Button>
+                    )}
+                  </div>
+                )}
                 <div className="space-y-2">
                   {(m.contents ?? []).length === 0 && (
                     <p className="text-xs text-on-surface-variant">No items yet.</p>
@@ -1355,6 +1471,14 @@ export const SpecificCoursePage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {uploadModuleId && (
+        <DocumentUploadModal
+          isOpen={!!uploadModuleId}
+          onClose={() => setUploadModuleId(null)}
+          onUploaded={(doc) => void handleTeacherDocUploaded(uploadModuleId, doc)}
+        />
+      )}
     </UserShell>
   )
 }

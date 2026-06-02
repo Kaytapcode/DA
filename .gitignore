@@ -50,7 +50,7 @@ Thumbs.db
 .claude/
 
 ## Documentation / Planning Files
-
+*.txt
 A7.txt
 A8.txt
 
@@ -77,3 +77,4 @@ A8.txt
 BE/Content.Api/uploads/
 tests/**/__pycache__/
 tests/reports/
+tests/_screens/

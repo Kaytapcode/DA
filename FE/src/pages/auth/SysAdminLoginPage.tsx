@@ -36,7 +36,7 @@ export const SysAdminLoginPage: React.FC = () => {
     if (!validate()) return;
 
     try {
-      const authUser = await login(username.trim(), password);
+      const { user: authUser } = await login(username.trim(), password);
       if (authUser?.role !== 'SysAdmin') {
         setSubmitError('Access restricted to System Administrators only.');
         return;

@@ -97,25 +97,6 @@ class TestLoginPageStructure:
         link = page.locator("a:has-text('Forgot password?')")
         expect(link).to_have_attribute("href", "/forgot-password")
 
-    def test_org_id_label(self, page: Page):
-        """Organization ID label is visible on the login page."""
-        page.goto(f"{FE_BASE}/login")
-        page.wait_for_load_state("networkidle")
-        expect(page.locator("text=Organization ID")).to_be_visible()
-
-    def test_org_id_label_shows_optional_note(self, page: Page):
-        """Org ID label shows '(optional — OrgAdmin only)' annotation."""
-        page.goto(f"{FE_BASE}/login")
-        page.wait_for_load_state("networkidle")
-        expect(page.locator("text=optional — OrgAdmin only")).to_be_visible()
-
-    def test_org_id_placeholder(self, page: Page):
-        """Org ID input has UUID placeholder."""
-        page.goto(f"{FE_BASE}/login")
-        page.wait_for_load_state("networkidle")
-        field = page.locator("[data-testid='login-org-id']")
-        expect(field).to_have_attribute("placeholder", "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-
     def test_sign_in_button_text(self, page: Page):
         """Submit button text is 'Sign In'."""
         page.goto(f"{FE_BASE}/login")
@@ -217,20 +198,12 @@ class TestLoginFieldInteraction:
         toggle.click()
         expect(pwd).to_have_attribute("type", "password")
 
-    def test_org_id_accepts_uuid(self, page: Page):
-        """Org ID field accepts a valid UUID string."""
+    def test_no_org_id_field_on_login_page(self, page: Page):
+        """Login page has no org-id field — OrgAdmin org is auto-resolved by BE. Spec §1."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
         field = page.locator("[data-testid='login-org-id']")
-        field.fill(ORG1_ID)
-        expect(field).to_have_value(ORG1_ID)
-
-    def test_org_id_pre_filled_from_query_param(self, page: Page):
-        """Org ID field is pre-filled when ?orgId= query param is present."""
-        page.goto(f"{FE_BASE}/login?orgId={ORG1_ID}")
-        page.wait_for_load_state("networkidle")
-        field = page.locator("[data-testid='login-org-id']")
-        expect(field).to_have_value(ORG1_ID)
+        assert field.count() == 0, "Login page must NOT have a login-org-id field"
 
 
 # ---------------------------------------------------------------------------
@@ -403,42 +376,42 @@ class TestSysAdminLoginRedirect:
 class TestOrgAdminLoginRedirect:
     """OrgAdmin role login → /admin/dashboard. Spec §1 OrgAdmin Login."""
 
-    def test_orgadmin1_with_org_id_redirects_to_admin_dashboard(self, page: Page):
-        """OrgAdmin1 login with Org ID redirects to /admin/dashboard."""
-        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
+    def test_orgadmin1_redirects_to_admin_dashboard(self, page: Page):
+        """OrgAdmin1 login WITHOUT entering Org ID redirects to /admin/dashboard (BE auto-resolves)."""
+        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS)
         assert "/admin/" in page.url
 
     def test_orgadmin_does_not_land_on_user_home(self, page: Page):
         """OrgAdmin does NOT land on /user/home after login."""
-        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
+        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS)
         assert "/user/home" not in page.url
 
     def test_orgadmin_does_not_land_on_sysadmin_dashboard(self, page: Page):
         """OrgAdmin does NOT land on /sysadmin/dashboard after login."""
-        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
+        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS)
         assert "/sysadmin/" not in page.url
 
-    def test_orgadmin2_has_separate_org_context(self, page: Page):
-        """OrgAdmin2 logs in with Org 2 and lands on /admin/dashboard."""
-        ui_login_orgadmin(page, ORGADMIN2_USER, ORGADMIN2_PASS, org_id=ORG2_ID)
+    def test_orgadmin2_redirects_to_admin_dashboard(self, page: Page):
+        """OrgAdmin2 logs in WITHOUT Org ID and lands on /admin/dashboard."""
+        ui_login_orgadmin(page, ORGADMIN2_USER, ORGADMIN2_PASS)
         assert "/admin/" in page.url
 
-    def test_org_id_field_visible_on_login_page(self, page: Page):
-        """Org ID field is visible on login page for OrgAdmin to supply."""
+    def test_no_org_id_field_on_login_page(self, page: Page):
+        """Login page has no org-id field — OrgAdmin org is auto-resolved by BE. Spec §1."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
         field = page.locator("[data-testid='login-org-id']")
-        expect(field).to_be_visible()
+        assert field.count() == 0, "Login page must NOT have a login-org-id field (BE auto-resolves)"
 
     def test_orgadmin_org_id_stored_in_localstorage(self, page: Page):
-        """After OrgAdmin login, org_id is stored in localStorage."""
-        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
+        """After OrgAdmin login (no manual Org ID), org_id is stored in localStorage from BE response."""
+        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS)
         stored = page.evaluate("() => localStorage.getItem('org_id')")
-        assert stored == ORG1_ID or (stored is not None and len(stored) > 0)
+        assert stored is not None and len(stored) > 0, "org_id must be stored in localStorage after OrgAdmin login"
 
     def test_orgadmin_can_access_admin_members(self, page: Page):
         """After OrgAdmin login, /admin/members page is accessible."""
-        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
+        ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS)
         page.goto(f"{FE_BASE}/admin/members")
         page.wait_for_load_state("networkidle")
         assert "/admin/" in page.url

@@ -14,7 +14,7 @@ import { useAuthContext } from '@/contexts/AuthContext'
  */
 export const UserSidebar: React.FC = () => {
   const { user } = useAuthContext()
-  const primaryIds = ['home', 'courses', 'dashboard', 'learning']
+  const primaryIds = ['home', 'courses', 'browse-courses', 'dashboard', 'learning']
   // const toolIds = ['documents', 'flashcards', 'quiz']
   const resourceIds = ['library', 'collections', 'browse']
 

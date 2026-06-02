@@ -23,8 +23,8 @@ namespace Organization.Api.Validators
             RuleFor(x => x.UserId)
                 .NotEmpty().WithMessage("UserId is required");
 
-            RuleFor(x => x.OrgId)
-                .NotEmpty().WithMessage("OrgId is required");
+            // OrgId is supplied by the route (/api/orgs/{orgId}/members), not the request body.
+            // The add-member form posts only { userId, role }, so we must NOT require it here.
         }
     }
 }

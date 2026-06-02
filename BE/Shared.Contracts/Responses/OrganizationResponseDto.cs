@@ -19,4 +19,13 @@ namespace Shared.Contracts.Responses
         int MemberCount,
         DateTime CreatedAt
     );
+
+    /// <summary>An organization the current user belongs to, plus their org-level role
+    /// ('Member' | 'OrgAdmin' | 'Owner'). Used by the user's Browse Courses org picker.</summary>
+    public record MyOrganizationDto(
+        Guid Id,
+        string Name,
+        string Slug,
+        string Role
+    );
 }

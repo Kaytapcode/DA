@@ -101,23 +101,11 @@ export const useDocumentViewer = () => {
         || codeToMime(hintFileType)
         || 'application/octet-stream'
 
-      let finalBlob: Blob = new Blob([blob], { type: guess })
-
-      // For PDFs, rewrite the Info-dict Title so Chrome's built-in viewer shows
-      // the filename in the toolbar instead of the blob URL's UUID.
-      if (guess === 'application/pdf') {
-        try {
-          const { PDFDocument } = await import('pdf-lib')
-          const bytes = await blob.arrayBuffer()
-          const doc = await PDFDocument.load(bytes, { updateMetadata: false })
-          const titleText = (hintFileName || 'document').replace(/\.[^/.]+$/, '')
-          doc.setTitle(titleText)
-          const out = await doc.save({ useObjectStreams: false })
-          finalBlob = new Blob([out as BlobPart], { type: 'application/pdf' })
-        } catch {
-          // Encrypted/malformed PDFs — fall back to the raw blob.
-        }
-      }
+      // Serve the raw bytes exactly as the server sent them. We deliberately do NOT re-save
+      // PDFs through pdf-lib: that round-trip (just to rewrite the toolbar title) could emit a
+      // structurally-different PDF that Chrome's viewer rejected with "Failed to load PDF
+      // document." The page already shows the real filename via [data-testid=document-title].
+      const finalBlob: Blob = new Blob([blob], { type: guess })
 
       revokeCurrent()
       const url = URL.createObjectURL(finalBlob)

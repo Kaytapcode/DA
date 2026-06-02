@@ -56,15 +56,14 @@ USER1_PASS = "User@123"
 class TestLoginPageElements:
     """Spec §1 — Login page must provide all required input fields."""
 
-    def test_login_page_has_org_id_field(self, page):
-        """Login page renders data-testid='login-org-id' for OrgAdmin login context."""
-        # Spec §1 OrgAdmin — OrgAdmin needs to provide org ID at login time to get org context
+    def test_login_page_has_no_org_id_field(self, page):
+        """Login page does NOT render an org-id field — OrgAdmin org is auto-resolved by BE.
+        Spec §1 OrgAdmin — each OrgAdmin manages exactly one org; no manual Org ID input needed."""
         page.goto(f"{FE_BASE}/login")
         page.wait_for_load_state("networkidle")
 
         org_field = page.locator("[data-testid='login-org-id']")
-        assert org_field.count() > 0, "Login page must have data-testid='login-org-id' field"
-        org_field.wait_for(state="visible", timeout=TIMEOUT)
+        assert org_field.count() == 0, "Login page must NOT have a login-org-id field (auto-resolved)"
 
     def test_login_page_has_required_fields(self, page):
         """Login form has identifier, password, and submit fields."""

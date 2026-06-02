@@ -120,6 +120,15 @@ try
 
     var app = builder.Build();
 
+    // Apply any pending EF migrations on startup (idempotent — only unapplied migrations run).
+    // Keeps the course_enrollments.status column and future schema changes in sync without a
+    // manual `dotnet ef database update` step. Mirrors Identity.Api's startup behaviour.
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ContentDbContext>();
+        await db.Database.MigrateAsync();
+    }
+
     // Use Serilog request logging
     app.UseSerilogRequestLogging();
 

@@ -31,27 +31,133 @@ namespace Content.Api.Controllers
             return _orgCtx.IsSysAdmin() || course.OrgId == _orgCtx.GetCurrentOrgId() ? course : null;
         }
 
-        // GET /api/courses/{courseId}/enrollments
-        // Teacher + OrgAdmin see all; Student sees only their own row.
+        // GET /api/courses/{courseId}/enrollments?status=Pending
+        // Teacher + OrgAdmin see all (optionally filtered by status); Student sees only their own row.
         [HttpGet]
-        public async Task<IActionResult> GetEnrollments(Guid courseId, CancellationToken ct)
+        public async Task<IActionResult> GetEnrollments(Guid courseId, [FromQuery] string? status, CancellationToken ct = default)
+        {
+            // Existence only — NOT org-scoped: a non-privileged enrolled user (e.g. a per-course
+            // Teacher whose JWT role is "Student" and who has no selected org) must be able to read
+            // their OWN enrollment row to discover their per-course role. Privileged callers
+            // (SysAdmin / OrgAdmin of this org) see the full roster.
+            var course = await _db.Courses.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(c => c.Id == courseId, ct);
+            if (course == null) return NotFound(new ApiResponse(false, "Course not found."));
+
+            var userId = _orgCtx.GetCurrentUserId();
+            var role = _orgCtx.GetCurrentRole();
+            var isPrivileged = _orgCtx.IsSysAdmin() || (role == "OrgAdmin" && _orgCtx.GetCurrentOrgId() == course.OrgId);
+
+            var query = _db.CourseEnrollments.AsNoTracking().Where(e => e.CourseId == courseId);
+            if (!isPrivileged)
+                query = query.Where(e => e.UserId == userId);
+            if (!string.IsNullOrWhiteSpace(status))
+                query = query.Where(e => e.Status == status);
+
+            var rows = await query
+                .Select(e => new CourseEnrollmentResponseDto(e.Id, e.CourseId, e.UserId, e.Role, e.EnrolledAt, e.Status))
+                .ToListAsync(ct);
+
+            return Ok(new ApiResponse<IEnumerable<CourseEnrollmentResponseDto>>(true, rows, null));
+        }
+
+        // POST /api/courses/{courseId}/enrollments/request — any authenticated user self-requests
+        // enrollment in a course of their org. Creates a 'Pending' Student row that an OrgAdmin
+        // must approve. Idempotent: an existing Pending/Approved row is returned unchanged; a
+        // previously Rejected row is reopened as Pending.
+        [HttpPost("request")]
+        public async Task<IActionResult> RequestEnrollment(Guid courseId, CancellationToken ct)
         {
             var course = await LoadCourseInScopeAsync(courseId, ct);
             if (course == null) return NotFound(new ApiResponse(false, "Course not found."));
 
             var userId = _orgCtx.GetCurrentUserId();
-            var role = _orgCtx.GetCurrentRole();
-            var isPrivileged = _orgCtx.IsSysAdmin() || role == "OrgAdmin" || role == "Teacher";
+            if (!userId.HasValue) return Unauthorized(new ApiResponse(false, "Invalid user context."));
 
-            var query = _db.CourseEnrollments.AsNoTracking().Where(e => e.CourseId == courseId);
-            if (!isPrivileged)
-                query = query.Where(e => e.UserId == userId);
+            var existing = await _db.CourseEnrollments.FirstOrDefaultAsync(
+                e => e.CourseId == courseId && e.UserId == userId.Value, ct);
 
-            var rows = await query
-                .Select(e => new CourseEnrollmentResponseDto(e.Id, e.CourseId, e.UserId, e.Role, e.EnrolledAt))
-                .ToListAsync(ct);
+            if (existing != null)
+            {
+                if (existing.Status == "Rejected")
+                {
+                    existing.Status = "Pending";
+                    existing.Role = "Student";
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync(ct);
+                }
+                return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
+                    true,
+                    new CourseEnrollmentResponseDto(existing.Id, existing.CourseId, existing.UserId, existing.Role, existing.EnrolledAt, existing.Status),
+                    existing.Status == "Approved" ? "Already enrolled." : "Enrollment request pending approval."));
+            }
 
-            return Ok(new ApiResponse<IEnumerable<CourseEnrollmentResponseDto>>(true, rows, null));
+            var enrollment = new CourseEnrollmentModel
+            {
+                Id = Guid.NewGuid(),
+                CourseId = courseId,
+                UserId = userId.Value,
+                Role = "Student",
+                Status = "Pending",
+                EnrolledAt = DateTime.UtcNow
+            };
+            _db.CourseEnrollments.Add(enrollment);
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
+                true,
+                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt, enrollment.Status),
+                "Enrollment request submitted; awaiting OrgAdmin approval."));
+        }
+
+        // POST /api/courses/{courseId}/enrollments/{userId}/approve — OrgAdmin/SysAdmin approves a
+        // pending request. Optionally promotes the role (Teacher/Student) at approval time.
+        [HttpPost("{userId:guid}/approve")]
+        [Authorize(Policy = "RequireOrgAdmin")]
+        public async Task<IActionResult> ApproveEnrollment(Guid courseId, Guid userId, [FromBody] ApproveEnrollmentRequestDto? request, CancellationToken ct)
+        {
+            var course = await LoadCourseInScopeAsync(courseId, ct);
+            if (course == null) return NotFound(new ApiResponse(false, "Course not found."));
+
+            var enrollment = await _db.CourseEnrollments.FirstOrDefaultAsync(
+                e => e.CourseId == courseId && e.UserId == userId, ct);
+            if (enrollment == null)
+                return NotFound(new ApiResponse(false, "Enrollment request not found."));
+
+            enrollment.Status = "Approved";
+            if (request != null && !string.IsNullOrWhiteSpace(request.Role))
+                enrollment.Role = request.Role;
+            enrollment.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
+                true,
+                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt, enrollment.Status),
+                "Enrollment approved."));
+        }
+
+        // POST /api/courses/{courseId}/enrollments/{userId}/reject — OrgAdmin/SysAdmin rejects a
+        // pending request. The row is kept with status 'Rejected' (the user may re-request later).
+        [HttpPost("{userId:guid}/reject")]
+        [Authorize(Policy = "RequireOrgAdmin")]
+        public async Task<IActionResult> RejectEnrollment(Guid courseId, Guid userId, CancellationToken ct)
+        {
+            var course = await LoadCourseInScopeAsync(courseId, ct);
+            if (course == null) return NotFound(new ApiResponse(false, "Course not found."));
+
+            var enrollment = await _db.CourseEnrollments.FirstOrDefaultAsync(
+                e => e.CourseId == courseId && e.UserId == userId, ct);
+            if (enrollment == null)
+                return NotFound(new ApiResponse(false, "Enrollment request not found."));
+
+            enrollment.Status = "Rejected";
+            enrollment.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
+                true,
+                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt, enrollment.Status),
+                "Enrollment request rejected."));
         }
 
         // POST /api/courses/{courseId}/enrollments — OrgAdmin/SysAdmin only.
@@ -75,6 +181,8 @@ namespace Content.Api.Controllers
                 CourseId = courseId,
                 UserId = request.UserId,
                 Role = request.Role,
+                // OrgAdmin directly enrolling a user is an immediate, approved enrollment.
+                Status = "Approved",
                 EnrolledAt = DateTime.UtcNow
             };
 
@@ -83,7 +191,7 @@ namespace Content.Api.Controllers
 
             return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
                 true,
-                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt),
+                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt, enrollment.Status),
                 "Enrollment created."));
         }
 
@@ -108,7 +216,7 @@ namespace Content.Api.Controllers
 
             return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
                 true,
-                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt),
+                new CourseEnrollmentResponseDto(enrollment.Id, enrollment.CourseId, enrollment.UserId, enrollment.Role, enrollment.EnrolledAt, enrollment.Status),
                 "Enrollment role updated."));
         }
 

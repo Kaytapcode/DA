@@ -51,13 +51,13 @@ namespace Content.Api.Services
             // OrgAdmin of this org has full Teacher privileges per spec §1.
             if (role == "OrgAdmin" && _orgCtx.GetCurrentOrgId() == course.OrgId) return true;
 
-            // Teacher must be enrolled in this specific course.
-            if (role == "Teacher")
-            {
-                return await _db.CourseEnrollments.AnyAsync(
-                    e => e.CourseId == courseId && e.UserId == userId && e.Role == "Teacher", ct);
-            }
-            return false;
+            // Per-course Teacher: a user with an APPROVED Teacher enrollment in THIS course can
+            // teach it, REGARDLESS of their global/JWT role. The per-course role lives only in the
+            // enrollment table (spec §5: never in the JWT), so we must not gate on the JWT role here
+            // — that was why a per-course Teacher (global role "Student") could not add modules.
+            return await _db.CourseEnrollments.AnyAsync(
+                e => e.CourseId == courseId && e.UserId == userId
+                    && e.Role == "Teacher" && e.Status == "Approved", ct);
         }
 
         public async Task<bool> CanViewAsync(Guid courseId, CancellationToken ct = default)
@@ -76,9 +76,10 @@ namespace Content.Api.Services
             var role = _orgCtx.GetCurrentRole();
             if (role == "OrgAdmin" && _orgCtx.GetCurrentOrgId() == course.OrgId) return true;
 
-            // Otherwise must have an enrollment row (Teacher or Student) for this course.
+            // Otherwise must have an APPROVED enrollment row (Teacher or Student) for this course.
+            // A Pending request does not yet grant read access to course content.
             return await _db.CourseEnrollments.AnyAsync(
-                e => e.CourseId == courseId && e.UserId == userId, ct);
+                e => e.CourseId == courseId && e.UserId == userId && e.Status == "Approved", ct);
         }
     }
 

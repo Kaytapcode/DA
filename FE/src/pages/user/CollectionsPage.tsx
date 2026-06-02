@@ -9,6 +9,16 @@ import { Input } from '@components/ui/Input'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { useCollections, type Collection, type CollectionItem } from '@/hooks/useCollections'
 import { useUserLanguage } from './UserShell'
+import { apiClient } from '@/utils/apiClient'
+
+// Library resource types that can be added into a collection. Each maps to a list endpoint
+// whose rows expose a `contentId` (the polymorphic Content id the collection stores).
+const LIB_TYPES = [
+  { key: 'PDF', endpoint: '/documents', labelEn: 'Documents', labelVi: 'Tài liệu' },
+  { key: 'VIDEO', endpoint: '/videos', labelEn: 'Videos', labelVi: 'Video' },
+  { key: 'QUIZ', endpoint: '/quizzes', labelEn: 'Quizzes', labelVi: 'Quiz' },
+  { key: 'FLASHCARD', endpoint: '/flashcard-decks', labelEn: 'Decks', labelVi: 'Bộ thẻ' },
+] as const
 
 const itemHref = (item: CollectionItem, collection?: Collection | null): string | null => {
   const col = collection
@@ -38,8 +48,24 @@ const FOLDER_GRADIENT = 'linear-gradient(140deg,#1463ff,#0f43b8,#7c3aed)'
 export const CollectionsPage: React.FC = () => {
   const isVi = useUserLanguage()
   const location = useLocation()
-  const { collections, isLoading, error, create, remove, getItems, removeItem } = useCollections()
+  const { collections, isLoading, error, create, remove, getSections, getItems, addItem, removeItem } = useCollections()
   const autoOpenRef = useRef(false)
+
+  // In-page "Add content" panel (so users don't have to leave for the Library).
+  // `addTargetId` is the module the content is added to: the collection root, or a section.
+  const [showAddContent, setShowAddContent] = useState(false)
+  const [addType, setAddType] = useState<(typeof LIB_TYPES)[number]['key']>('PDF')
+  const [libResources, setLibResources] = useState<Array<{ contentId: string; title: string }>>([])
+  const [libLoading, setLibLoading] = useState(false)
+  const [addingContentId, setAddingContentId] = useState<string | null>(null)
+  const [addTargetId, setAddTargetId] = useState<string | null>(null)
+
+  // Optional "sections" (child modules) that divide a collection's content into parts.
+  const [sections, setSections] = useState<Collection[]>([])
+  const [sectionItems, setSectionItems] = useState<Record<string, CollectionItem[]>>({})
+  const [showAddSection, setShowAddSection] = useState(false)
+  const [sectionTitle, setSectionTitle] = useState('')
+  const [creatingSection, setCreatingSection] = useState(false)
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -54,18 +80,43 @@ export const CollectionsPage: React.FC = () => {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
 
+  const loadSections = useCallback(async (collectionId: string) => {
+    const secs = await getSections(collectionId)
+    setSections(secs)
+    const entries = await Promise.all(secs.map(async (s) => [s.id, await getItems(s.id)] as const))
+    setSectionItems(Object.fromEntries(entries))
+  }, [getSections, getItems])
+
   const handleSelectCollection = useCallback(async (c: Collection) => {
     setSelectedCollection(c)
+    setShowAddContent(false)
+    setShowAddSection(false)
+    setAddTargetId(c.id)
     setItemsLoading(true)
     const result = await getItems(c.id)
     setItems(result)
     setItemsLoading(false)
-  }, [getItems])
+    await loadSections(c.id)
+  }, [getItems, loadSections])
 
   const handleBack = useCallback(() => {
     setSelectedCollection(null)
     setItems([])
+    setSections([])
+    setSectionItems({})
   }, [])
+
+  const handleCreateSection = async () => {
+    if (!selectedCollection || !sectionTitle.trim()) return
+    setCreatingSection(true)
+    const ok = await create(sectionTitle.trim(), undefined, selectedCollection.id)
+    if (ok) {
+      setSectionTitle('')
+      setShowAddSection(false)
+      await loadSections(selectedCollection.id)
+    }
+    setCreatingSection(false)
+  }
 
   const handleCreate = async () => {
     if (!title.trim()) return
@@ -95,6 +146,61 @@ export const CollectionsPage: React.FC = () => {
     setItems((prev) => prev.filter((i) => i.contentId !== contentId))
     setBusyContentId(null)
   }
+
+  // Load the user's library content of the chosen type so it can be added to the collection.
+  // Reuses the same list endpoints the rest of the app uses (no hardcoded data).
+  const loadLibrary = useCallback(async (typeKey: (typeof LIB_TYPES)[number]['key']) => {
+    const cfg = LIB_TYPES.find((t) => t.key === typeKey)
+    if (!cfg) return
+    setLibLoading(true)
+    setLibResources([])
+    try {
+      const res = await apiClient.get<any[]>(cfg.endpoint)
+      if (res.success && res.data) {
+        setLibResources(
+          res.data
+            .map((r: any) => ({ contentId: r.contentId ?? r.id, title: r.title ?? r.fileName ?? r.name ?? '(untitled)' }))
+            .filter((r: { contentId?: string }) => !!r.contentId)
+        )
+      }
+    } catch {
+      setLibResources([])
+    } finally {
+      setLibLoading(false)
+    }
+  }, [])
+
+  // Open the add-content panel targeting either the collection root (default) or a section.
+  const openAddContent = async (targetId?: string) => {
+    setAddTargetId(targetId ?? selectedCollection?.id ?? null)
+    setShowAddContent(true)
+    await loadLibrary(addType)
+  }
+
+  const handleAddToCollection = async (contentId: string) => {
+    const target = addTargetId ?? selectedCollection?.id
+    if (!target) return
+    setAddingContentId(contentId)
+    const ok = await addItem(target, contentId)
+    if (ok) {
+      if (selectedCollection && target === selectedCollection.id) {
+        setItems(await getItems(selectedCollection.id))
+      } else {
+        setSectionItems((prev) => ({ ...prev }))
+        const refreshed = await getItems(target)
+        setSectionItems((prev) => ({ ...prev, [target]: refreshed }))
+      }
+    }
+    setAddingContentId(null)
+  }
+
+  // Content ids already in the CURRENT add target — hide them from the add list.
+  const targetExistingIds = new Set(
+    (addTargetId && selectedCollection && addTargetId !== selectedCollection.id
+      ? (sectionItems[addTargetId] ?? [])
+      : items
+    ).map((i) => i.contentId)
+  )
 
   // Auto-open a collection when navigated from search results (?collectionId=).
   useEffect(() => {
@@ -136,6 +242,98 @@ export const CollectionsPage: React.FC = () => {
               </div>
             </div>
 
+            {selectedCollection.ownedByCaller && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => { setShowAddSection((v) => !v) }}
+                  data-testid="collection-add-section-btn"
+                >
+                  <MaterialIcon icon="create_new_folder" size="xs" />
+                  {isVi ? 'Thêm phần (module)' : 'Add section'}
+                </Button>
+                <Button
+                  onClick={() => { if (showAddContent && (addTargetId === selectedCollection.id)) { setShowAddContent(false) } else { void openAddContent(selectedCollection.id) } }}
+                  data-testid="collection-add-content-btn"
+                >
+                  <MaterialIcon icon="add" size="xs" />
+                  {isVi ? 'Thêm nội dung' : 'Add content'}
+                </Button>
+              </div>
+            )}
+
+            {showAddSection && selectedCollection.ownedByCaller && (
+              <Card className="p-4" data-testid="collection-add-section-panel">
+                <p className="mb-2 text-sm font-semibold text-on-surface">
+                  {isVi ? 'Tạo phần mới để chia nội dung' : 'Create a section to organize content'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    data-testid="collection-section-title-input"
+                    value={sectionTitle}
+                    onChange={(e) => setSectionTitle(e.target.value)}
+                    placeholder={isVi ? 'Tên phần, ví dụ: Chương 1' : 'Section name, e.g. Chapter 1'}
+                    className="flex-1 min-w-[220px]"
+                  />
+                  <Button
+                    data-testid="collection-section-create-btn"
+                    onClick={() => void handleCreateSection()}
+                    disabled={creatingSection || !sectionTitle.trim()}
+                  >
+                    {creatingSection ? (isVi ? 'Đang tạo...' : 'Creating...') : (isVi ? 'Tạo phần' : 'Create section')}
+                  </Button>
+                </div>
+              </Card>
+            )}
+
+            {showAddContent && selectedCollection.ownedByCaller && (
+              <Card className="p-6" data-testid="collection-add-content-panel">
+                <p className="mb-3 text-sm font-semibold text-on-surface" data-testid="collection-add-target">
+                  {addTargetId && addTargetId !== selectedCollection.id
+                    ? `${isVi ? 'Thêm vào phần' : 'Adding to section'}: ${sections.find((s) => s.id === addTargetId)?.title ?? ''}`
+                    : (isVi ? 'Thêm vào bộ sưu tập' : 'Adding to collection')}
+                </p>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-on-surface-variant">{isVi ? 'Loại:' : 'Type:'}</span>
+                  {LIB_TYPES.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      data-testid={`collection-addtype-${t.key}`}
+                      onClick={() => { setAddType(t.key); void loadLibrary(t.key) }}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${addType === t.key ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
+                    >
+                      {isVi ? t.labelVi : t.labelEn}
+                    </button>
+                  ))}
+                </div>
+                {libLoading && (
+                  <div className="flex justify-center py-6"><div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" /></div>
+                )}
+                {!libLoading && libResources.filter((r) => !targetExistingIds.has(r.contentId)).length === 0 && (
+                  <p className="py-3 text-sm text-on-surface-variant" data-testid="collection-add-empty">
+                    {isVi ? 'Không có nội dung loại này trong thư viện của bạn.' : 'No content of this type in your library.'}
+                  </p>
+                )}
+                <div className="max-h-60 space-y-1 overflow-y-auto">
+                  {libResources.filter((r) => !targetExistingIds.has(r.contentId)).map((r) => (
+                    <div key={r.contentId} className="flex items-center justify-between rounded-lg border border-outline-variant px-3 py-2">
+                      <span className="truncate text-sm text-on-surface">{r.title}</span>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        data-testid={`collection-add-item-${r.contentId}`}
+                        disabled={addingContentId === r.contentId}
+                        onClick={() => void handleAddToCollection(r.contentId)}
+                      >
+                        {addingContentId === r.contentId ? (isVi ? 'Đang thêm...' : 'Adding...') : (isVi ? 'Thêm' : 'Add')}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             {itemsLoading && (
               <Card>
                 <div className="flex justify-center py-10">
@@ -144,7 +342,7 @@ export const CollectionsPage: React.FC = () => {
               </Card>
             )}
 
-            {!itemsLoading && items.length === 0 && (
+            {!itemsLoading && items.length === 0 && sections.length === 0 && (
               <Card className="border-dashed">
                 <div className="flex flex-col items-center gap-3 py-14 text-center">
                   <MaterialIcon icon="inventory_2" size="md" className="text-[#9aa5b5]" />
@@ -216,6 +414,49 @@ export const CollectionsPage: React.FC = () => {
                     <Link key={item.contentId} to={href} className="block">{cardBody}</Link>
                   ) : (
                     <div key={item.contentId}>{cardBody}</div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Optional sections (child modules) dividing the collection into parts. */}
+            {sections.length > 0 && (
+              <div className="space-y-4" data-testid="collection-sections">
+                <h3 className="text-lg font-bold text-[#111b2d]">{isVi ? 'Các phần' : 'Sections'}</h3>
+                {sections.map((sec) => {
+                  const secItems = sectionItems[sec.id] ?? []
+                  return (
+                    <Card key={sec.id} className="p-4" data-testid={`collection-section-${sec.id}`}>
+                      <div className="mb-3 flex items-center justify-between">
+                        <div>
+                          <h4 className="font-bold text-[#111b2d]">{sec.title}</h4>
+                          <p className="text-xs text-[#8a98b0]">{secItems.length} {isVi ? 'mục' : 'items'}</p>
+                        </div>
+                        {selectedCollection.ownedByCaller && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            data-testid={`collection-section-add-${sec.id}`}
+                            onClick={() => { if (showAddContent && addTargetId === sec.id) { setShowAddContent(false) } else { void openAddContent(sec.id) } }}
+                          >
+                            <MaterialIcon icon="add" size="xs" />
+                            {isVi ? 'Thêm nội dung' : 'Add content'}
+                          </Button>
+                        )}
+                      </div>
+                      {secItems.length === 0 ? (
+                        <p className="text-sm text-[#8a98b0]">{isVi ? 'Phần này chưa có nội dung.' : 'No content in this section yet.'}</p>
+                      ) : (
+                        <ul className="space-y-1">
+                          {secItems.map((it) => (
+                            <li key={it.contentId} className="flex items-center gap-2 rounded-lg border border-[#e3e8f3] px-3 py-2 text-sm">
+                              <span className="rounded bg-[#eef2ff] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#1463ff]">{it.contentType}</span>
+                              <span className="truncate text-[#111b2d]">{it.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Card>
                   )
                 })}
               </div>

@@ -9,13 +9,18 @@ export interface AuthUser {
   role: string;
 }
 
+export interface LoginResult {
+  user: AuthUser;
+  orgId: string | null;
+}
+
 export interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   orgId: string | null;
-  login: (username: string, password: string, orgId?: string) => Promise<AuthUser>;
+  login: (username: string, password: string, orgId?: string) => Promise<LoginResult>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setOrgContext: (orgId: string) => void;
@@ -166,7 +171,7 @@ export const useAuth = (): AuthContextType => {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authUser));
       if (resolvedOrgId) localStorage.setItem(STORAGE_KEYS.ORG_ID, resolvedOrgId);
 
-      return authUser;
+      return { user: authUser, orgId: resolvedOrgId };
     } finally {
       setIsLoading(false);
     }

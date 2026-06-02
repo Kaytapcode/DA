@@ -111,7 +111,7 @@ export const RegisterPage: React.FC = () => {
           organizationSlug: formData.orgSlug.trim(),
         });
         if (res.success && res.data?.orgId) {
-          navigate(`/login?orgId=${res.data.orgId}&registered=orgadmin`, { replace: true });
+          navigate('/login?registered=orgadmin', { replace: true });
         } else {
           setSubmitError(res.message || 'Registration failed. Please try again.');
         }
@@ -331,7 +331,7 @@ export const RegisterPage: React.FC = () => {
                     <input
                       type="text"
                       data-testid="register-org-name"
-                      placeholder="Hanoi University of Technology"
+                      placeholder="HCM University of Technology"
                       value={formData.orgName}
                       onChange={(e) => handleFieldChange('orgName', e.target.value)}
                       className={inputCls('orgName')}
@@ -345,7 +345,7 @@ export const RegisterPage: React.FC = () => {
                     <input
                       type="text"
                       data-testid="register-org-slug"
-                      placeholder="hanoi-university-of-technology"
+                      placeholder="HCM-university-of-technology"
                       value={formData.orgSlug}
                       onChange={(e) => handleFieldChange('orgSlug', e.target.value)}
                       className={inputCls('orgSlug') + ' font-mono text-xs'}

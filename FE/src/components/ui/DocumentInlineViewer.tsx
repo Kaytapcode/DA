@@ -61,21 +61,18 @@ export const DocumentInlineViewer: React.FC<DocumentInlineViewerProps> = ({
   }
 
   if (kind === 'pdf') {
-    // Append the filename as a fragment so Chrome's built-in PDF viewer shows
-    // it in the toolbar instead of the blob URL's UUID.
-    const pdfSrc = `${blobUrl}#filename=${encodeURIComponent(fileName)}`
+    // Render PDFs in a plain <iframe> pointed straight at the blob URL. We deliberately
+    // do NOT append a `#filename=` fragment: Chrome's built-in PDF viewer can fail to
+    // load a blob: URL that carries a fragment (blank viewer / forced download), and the
+    // useDocumentViewer hook already rewrites the PDF's internal Title via pdf-lib so the
+    // toolbar shows the real name. <iframe> is more reliable than <object> for blob PDFs.
     return (
-      <object
-        data={pdfSrc}
-        type="application/pdf"
+      <iframe
+        title={fileName}
+        src={blobUrl}
+        data-testid="document-pdf-frame"
         className={`${wrapper} rounded-xl border border-outline-variant bg-white`}
-      >
-        <iframe
-          title={fileName}
-          src={pdfSrc}
-          className="w-full h-full rounded-xl border-0 bg-white"
-        />
-      </object>
+      />
     )
   }
 

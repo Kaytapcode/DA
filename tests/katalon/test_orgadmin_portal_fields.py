@@ -241,13 +241,13 @@ class TestOrgAdminMemberManagementFields:
         assert "All Roles" in options
 
     def test_role_filter_has_role_options(self, orgadmin_page: Page):
-        """Role filter dropdown includes Student, Teacher, OrgAdmin options."""
+        """Role filter dropdown includes org-level roles Member and OrgAdmin.
+        (Teacher/Student is NOT an org role — it is assigned per-course.)"""
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         select = orgadmin_page.locator("select").first
         options = select.locator("option").all_inner_texts()
-        assert "Student" in options
-        assert "Teacher" in options
+        assert "Member" in options
         assert "OrgAdmin" in options
 
     def test_refresh_button_present(self, orgadmin_page: Page):
@@ -320,23 +320,24 @@ class TestOrgAdminRoleAssignmentDropdown:
         row_selects = orgadmin_page.locator("table tbody td select")
         assert row_selects.count() >= 1
 
-    def test_role_dropdown_has_student_option(self, orgadmin_page: Page):
-        """Member row role dropdown includes 'Student' option."""
+    def test_role_dropdown_has_member_option(self, orgadmin_page: Page):
+        """Member row role dropdown includes 'Member' option (org-level role)."""
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table tbody tr", timeout=10000)
         row_select = orgadmin_page.locator("table tbody td select").first
         options = row_select.locator("option").all_inner_texts()
-        assert "Student" in options
+        assert "Member" in options
 
-    def test_role_dropdown_has_teacher_option(self, orgadmin_page: Page):
-        """Member row role dropdown includes 'Teacher' option."""
+    def test_role_dropdown_has_no_per_course_roles(self, orgadmin_page: Page):
+        """Org member dropdown must NOT offer Teacher/Student — those are per-course only."""
         orgadmin_page.goto(f"{FE_BASE}/admin/members")
         orgadmin_page.wait_for_load_state("networkidle")
         orgadmin_page.wait_for_selector("table tbody tr", timeout=10000)
         row_select = orgadmin_page.locator("table tbody td select").first
         options = row_select.locator("option").all_inner_texts()
-        assert "Teacher" in options
+        assert "Teacher" not in options
+        assert "Student" not in options
 
     def test_role_dropdown_has_orgadmin_option(self, orgadmin_page: Page):
         """Member row role dropdown includes 'OrgAdmin' option."""

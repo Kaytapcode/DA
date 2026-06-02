@@ -76,6 +76,16 @@ namespace Organization.Api.Data
             }
 
             await db.SaveChangesAsync();
+
+            // Normalize legacy org-level roles: 'Student'/'Teacher' are NOT org roles anymore.
+            // Org membership is only 'Member' | 'OrgAdmin' | 'Owner'; Teacher/Student is per-course.
+            var legacy = await db.Members.IgnoreQueryFilters()
+                .Where(x => x.Role == "Student" || x.Role == "Teacher")
+                .ToListAsync();
+            foreach (var row in legacy)
+                row.Role = "Member";
+            if (legacy.Count > 0)
+                await db.SaveChangesAsync();
         }
     }
 }

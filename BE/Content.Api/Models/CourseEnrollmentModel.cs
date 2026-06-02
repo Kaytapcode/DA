@@ -26,6 +26,15 @@ namespace Content.Api.Models
         [StringLength(50)]
         public string Role { get; set; } = "Student";
 
+        // Enrollment lifecycle status: 'Pending' | 'Approved' | 'Rejected'.
+        // OrgAdmin-created enrollments are 'Approved' immediately. A User self-request
+        // (POST .../enrollments/request) creates a 'Pending' row that an OrgAdmin must
+        // approve before the user gains course access. Only 'Approved' rows grant access.
+        [Required]
+        [Column("status")]
+        [StringLength(20)]
+        public string Status { get; set; } = "Approved";
+
         [Column("enrolled_at")]
         public DateTime EnrolledAt { get; set; } = DateTime.UtcNow;
 

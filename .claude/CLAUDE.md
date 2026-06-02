@@ -462,6 +462,172 @@ Tick only when the matching tests (API + FE display + at least one E2E) are gree
 - [x] **Per-field Playwright tests — SysAdmin portal** — `test_sysadmin_portal_fields.py`: user list columns, create-user modal fields, org directory columns, analytics stat labels, AI key form (5 classes, ~35 tests).
 - [x] **Per-field Playwright tests — OrgAdmin portal** — `test_orgadmin_portal_fields.py`: course list columns, create-course modal, member list columns, role dropdown options, analytics labels (5 classes, ~35 tests).
 
+### Course Enrollment & Member Management batch (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> These five items were implemented at the dev's request **ahead of the SystemDoc update**.
+> `SystemDoc/` was NOT edited (per §2). When the spec is updated, back-fill the `# Spec X.Y`
+> markers in the test files. Tests: `tests/api/test_course_enrollment_flow.py` (12),
+> `tests/katalon/test_course_enrollment_workflows.py` (3).
+
+- [x] **#1 — User can view documents.** Root cause was FE-only: the PDF blob URL carried a
+  `#filename=` fragment passed to `<object>`, which Chrome's PDF viewer can fail to render.
+  Fix: `DocumentInlineViewer` now renders PDFs in a plain `<iframe src={blobUrl}>` (no fragment;
+  the pdf-lib title rewrite still names the toolbar). testid `document-pdf-frame`. BE serving
+  (`GET /api/documents/{id}` → inline `application/pdf`) was already correct.
+- [x] **#2 — OrgAdmin can add/manage org members.** Three BE bugs fixed:
+  (a) FluentValidation `MemberRequestValidator` required `OrgId` in the body — removed (orgId is
+  from the route); (b) `CreateMemberRequestDto.OrgId` `[Required]` removed; (c) `MemberController`
+  PUT/DELETE keyed on the internal `MemberModel.Id` but the FE sends `userId` — both now resolve
+  via `GetByUserAndOrgAsync(userId, orgId)`. FE `MemberManagementPage` was already correct.
+- [x] **#3 — Per-course roles.** Already modelled (`course_enrollments.role`); a user can be
+  Teacher in one course and Student in another. `CourseAccessService.CanTeach/CanView` resolve
+  role per-course (never from JWT). Verified end-to-end.
+- [x] **#4 — Add user to a course, then assign role.** `POST /api/courses/{id}/enrollments`
+  (OrgAdmin) creates the enrollment; `PATCH .../{userId}` changes the per-course role. FE:
+  `CourseEditorMemberRolesTabPage` (search org member → enroll → role dropdown).
+- [x] **#5 — Self-service enrollment request + OrgAdmin approval.** New `course_enrollments.status`
+  column (`Pending`|`Approved`|`Rejected`, migration `AddCourseEnrollmentStatus`, existing rows
+  back-filled `Approved`; Content.Api now auto-migrates on startup). Endpoints:
+  `POST /api/courses/{id}/enrollments/request` (user → Pending Student; re-opens a Rejected row),
+  `POST .../{userId}/approve` (optional role), `POST .../{userId}/reject`, and `GET ...?status=`.
+  `CanTeach`/`CanView` count **only `Approved`** enrollments — a Pending request grants no access.
+  Direct OrgAdmin enrollment is `Approved` immediately. FE: new **Browse Courses** page
+  (`/user/courses/browse`, `CourseBrowsePage`, sidebar `browse-courses`) with per-course request
+  button + live status; OrgAdmin **Pending requests** card with Approve/Reject in the member-roles tab.
+
+### Follow-up fixes (2026-06-01, same batch) — ⚠️ SPEC UPDATE PENDING
+
+> Round-2 fixes after dev retest. Tests: `tests/katalon/test_remaining_fixes_workflows.py` (6,
+> real-browser flows with screenshots to `tests/_screens/` on failure).
+
+- [x] **Org vs per-course role split.** Org-level membership roles are now **only `Member` /
+  `OrgAdmin`** (plus `Owner` for the creator). Teacher/Student is **per-course only**, assigned by
+  OrgAdmin on the Course Editor → Member Roles tab. Changes: `MemberController` validRoles +
+  `JoinSelf` → `Member`; `MemberRequestValidator`; FE `MemberManagementPage` dropdowns; seeder
+  normalizes legacy org-level `Student`/`Teacher` rows → `Member`.
+- [x] **#1 Document "Failed to load PDF" / "Unable to load document".** `useDocumentViewer` no
+  longer re-saves PDFs through pdf-lib (that round-trip corrupted some real PDFs). It now serves
+  the raw server bytes straight into the `<iframe>`.
+- [x] **#2 My Courses dummy data removed.** `CourseListPage` now fetches real enrollments from new
+  `GET /api/courses/enrolled` (approved courses + per-course role); loading skeleton + empty state.
+- [x] **#3 Browse "Failed to load courses".** New `GET /api/organizations/mine` (orgs the user
+  belongs to + role). `CourseBrowsePage` resolves the user's org(s), shows a picker when >1, and
+  loads courses with an explicit `X-Org-Id` (no dependency on a globally-selected org). No-org
+  state links to Join Organization.
+- [x] **#4 OrgAdmin Curriculum editor "No courseId in URL".** When opened without `?courseId`, the
+  page now renders a real **course picker** (`curriculum-course-picker`) listing the org's courses;
+  picking one routes to `?courseId=` and loads its curriculum.
+
+### Follow-up fixes round 3 (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> OrgAdmin Course Editor reachability + per-course role assignment. The add-module / enroll /
+> set-role endpoints were already correct — the bugs were FE navigation dead-ends (pages opened
+> with no `?courseId`). Tests: `tests/katalon/test_course_editor_workflows.py` (5).
+
+- [x] **Per-course role assignment reachable (#1).** Org membership stays `Member`/`OrgAdmin`;
+  Teacher/Student is assigned on the course's **Member Roles** tab — now reachable (see below).
+- [x] **OrgAdmin can add a module / enroll a user / set per-course role (#2).** Root cause was
+  navigation: the editor tabs were only reachable by hand-editing the URL with a `courseId`.
+  Fixes (all in `OrgAdminFeConvertedPages.tsx`):
+  - **Row actions**: Course Management rows now have explicit **Curriculum** and **Members**
+    links (`course-curriculum-btn-*`, `course-members-btn-*`).
+  - **Editor tab bar** (`course-editor-tabs`, `editor-tab-curriculum`, `editor-tab-members`)
+    on both editor pages — switch Curriculum ↔ Members & Roles preserving `courseId`.
+  - **Course picker** (`CourseEditorPicker`) on BOTH tabs when opened with no `courseId`
+    (the member-roles tab previously dead-ended with "Open this page from a specific course").
+  - Add-module (`module-add-*`), enroll (`enrollment-submit-btn`), and per-course role select
+    (Teacher/Student) verified end-to-end with real clicks + reload-persistence.
+
+### Follow-up fixes round 4 (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> Course access + content/collection flows. Tests: `tests/katalon/test_course_enter_collection_workflows.py` (3).
+
+- [x] **#1 Enrolled user couldn't open a course ("Course not found").** `GET /api/courses/{id}` and
+  `GET /api/courses/{id}/modules` were purely org-scoped, so an enrolled user without a selected org
+  got 404. Both now gate on **`CourseAccessService.CanViewAsync`** (SysAdmin / OrgAdmin-of-org /
+  approved enrollment) — read access is per-course, not org-scoped. Non-enrolled users still 404.
+- [x] **#2b OrgAdmin add-content reuses the real content pipeline.** The curriculum module
+  "Add Content" now defaults to **From Library** (link real user-created content) instead of
+  spawning an empty placeholder; opening it preloads the library. testids `module-expand-btn`,
+  `content-add-btn`. (Add-module itself was already working — verified again.)
+- [x] **#3 Add content to a collection from the collection page.** `CollectionsPage` detail view
+  has an in-page **Add content** panel (`collection-add-content-btn/panel`, type tabs
+  `collection-addtype-*`, `collection-add-item-*`) that lists the user's library content and adds
+  it via the existing `POST /api/collections/{id}/items` (reuses `useCollections.addItem`).
+
+### Follow-up fixes round 5 (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> Teacher in-course authoring, content-flow unification, collection sections.
+> Tests: `tests/katalon/test_teacher_and_sections_workflows.py` (3).
+
+- [x] **#1 Per-course Teacher can add module/content.** Root cause was THREE JWT-role gates that a
+  per-course Teacher (whose JWT role is "Student" — per-course role lives only in the enrollment
+  table, spec §5) failed before reaching `CanTeachAsync`:
+  - `CanTeachAsync` only checked the enrollment when the JWT role was already "Teacher" — now it
+    checks for an APPROVED Teacher enrollment **regardless of JWT role**.
+  - `[Authorize(Policy="RequireTeacher")]` on every module/content mutation (Modules/Contents
+    controllers) → replaced with `[Authorize]`; `CanTeachAsync` is the sole gate.
+  - Org-scoped helpers (`GetVerifiedCourseAsync`, `ContentsController.VerifyAccessAsync`,
+    `CourseEnrollmentController.GetEnrollments`) falsely 404'd a teacher with no/other org context
+    → now existence-only / `CanViewAsync`-based (mutations still gate on `CanTeachAsync`).
+  - **FE**: per-course teachers can't reach the OrgAdmin `/admin/editor`, so `SpecificCoursePage`
+    now resolves the caller's per-course role and shows **teacher tools** (add module +
+    link content from the library) inline (testids `teacher-add-module-toggle`,
+    `teacher-module-add-btn`, `teacher-add-content-btn-*`, `teacher-link-*`).
+- [x] **#3/#4 Content-add unified + publish removed.** Curriculum "Add content" is now
+  **library-only** (link real user-created content; the empty-placeholder "Create New" mode is
+  gone) — same content users author. The DRAFT/PUBLISHED toggle + status badge were removed from
+  content rows (the publish step was superfluous).
+- [x] **#2 Collection optional sections.** A collection (a personal `ModuleModel`) can have child
+  "sections" (`ParentId`). FE `CollectionsPage` detail view: **Add section** (`collection-add-section-btn`)
+  creates a child module; each section lists its items and has its own **Add content**
+  (`collection-section-add-*`) targeting that section. `SearchController` now excludes child
+  modules (`ParentId == null`) so sections don't show as top-level collections.
+
+### Follow-up fixes round 6 (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> Course content is CREATED through the user's own creation pages (dev decision: "flow giống user
+> tạo content chứ không phải add 1 content có sẵn"). Tests:
+> `tests/katalon/test_create_content_in_course_workflows.py` (3).
+
+- [x] **#1/#3 Add content = reuse the user creation pages (not link-existing).** New hook
+  `useCourseContentLink` reads `?courseId&moduleId&returnTo` and exposes `linkAndReturn` /
+  `linkOnly` / `courseQuery`. The module editors' **Add content** is now a TYPE CHOOSER
+  (Document/Video/Quiz/Flashcards):
+  - **Document** → opens the same `DocumentUploadModal` inline; on upload the new doc's
+    `contentId` is linked into the module (modal `onUploaded` now returns the doc).
+  - **Video/Quiz/Deck** → navigate to `/user/videos|quizzes|decks/new?courseId=&moduleId=&returnTo=`;
+    each creator (`VideoCreatePage`, `QuizCreatePage` manual+AI, `DeckEditorPage`) calls
+    `linkAndReturn(contentId)` after creating → content auto-links into the module and returns to
+    the curriculum editor (OrgAdmin) or the course page (Teacher). Deck links the shell then keeps
+    the user editing cards with a **Done — back to course** button.
+  - Removed the old link-from-library picker + the "No content of this type in your library" dead
+    end from both the OrgAdmin curriculum tab and the Teacher in-course tools.
+  - testids: `content-create-*` (OrgAdmin), `teacher-create-*` (Teacher), `deck-back-to-course`.
+- [x] **#2 OrgAdmin add module via Course Management** — verified working + persisting in automation
+  (`test_course_editor_workflows.py::TestOrgAdminAddsModule`: row → Curriculum → add → reload). No
+  code change needed; could not reproduce a failure.
+
+### Follow-up fixes round 7 (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> Investigated via sub-agents (general-purpose for add-module root cause, Explore for route guards).
+> Consolidated spec-change list now lives in [SPEC_ADDITIONS.md](../SPEC_ADDITIONS.md).
+> Tests: `tests/katalon/test_addmodule_and_routeguard_workflows.py` (6).
+
+- [x] **#1 "Add module fails" = FE silent-failure (not a BE bug).** The BE requires a module title
+  of **3–255 chars** (`ContentValidators.cs`); the FE only checked non-empty and
+  `useModuleContent.createModule` did `catch { return null }` with no message, so a 1–2 char title
+  (or any 4xx) made the form vanish with nothing saved. Fix: `createModule`/`createContent`/
+  `linkContent` now `setError` on failure; the add-module forms disable Add until ≥3 chars, show the
+  error, and only close on success — for both OrgAdmin curriculum (`module-add-error`) and the
+  per-course Teacher tools on `SpecificCoursePage` (`teacher-module-error`). All BE add-module
+  scenarios were verified 200/persisted.
+- [x] **#2 Route guards on `/fe/*` mirror routes.** The 28 `/fe/user|orgadmin|sysadmin|notification`
+  design-mirror routes in `AppRouter.tsx` were unguarded (a Student/anon could open admin pages).
+  Each is now wrapped in `ProtectedRoute` (orgadmin → `OrgAdmin/SysAdmin`, sysadmin → `SysAdmin`,
+  user/notification → authenticated); wrong-role hits redirect to the role's home, anon → `/login`.
+  (`/fe/auth/*` left public — they mirror the public login/register screens.)
+
 ### Seeded test accounts (for manual testing — Spec §5)
 
 | Account | Password | Role | How to log in |

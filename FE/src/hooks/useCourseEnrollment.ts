@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { apiClient } from '@/utils/apiClient'
 
+export type EnrollmentStatus = 'Pending' | 'Approved' | 'Rejected'
+
 // Mirrors Shared.Contracts.Responses.CourseEnrollmentResponseDto.
 export interface CourseEnrollment {
   id: string
@@ -8,6 +10,7 @@ export interface CourseEnrollment {
   userId: string
   role: 'Teacher' | 'Student'
   enrolledAt: string
+  status: EnrollmentStatus
 }
 
 export const useCourseEnrollment = (courseId: string | null) => {
@@ -83,5 +86,40 @@ export const useCourseEnrollment = (courseId: string | null) => {
     [courseId, refresh]
   )
 
-  return { enrollments, isLoading, error, refresh, create, updateRole, remove }
+  const approve = useCallback(
+    async (userId: string, role?: 'Teacher' | 'Student') => {
+      if (!courseId) return false
+      try {
+        const res = await apiClient.post(
+          `/courses/${courseId}/enrollments/${userId}/approve`,
+          role ? { role } : {}
+        )
+        if (!res.success) throw new Error(res.message || 'Failed to approve request')
+        await refresh()
+        return true
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to approve request')
+        return false
+      }
+    },
+    [courseId, refresh]
+  )
+
+  const reject = useCallback(
+    async (userId: string) => {
+      if (!courseId) return false
+      try {
+        const res = await apiClient.post(`/courses/${courseId}/enrollments/${userId}/reject`, {})
+        if (!res.success) throw new Error(res.message || 'Failed to reject request')
+        await refresh()
+        return true
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to reject request')
+        return false
+      }
+    },
+    [courseId, refresh]
+  )
+
+  return { enrollments, isLoading, error, refresh, create, updateRole, remove, approve, reject }
 }

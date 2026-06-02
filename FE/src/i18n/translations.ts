@@ -57,6 +57,7 @@ export const translations = {
   'user.collections': { en: 'Collections', vi: 'Bộ Sưu Tập' },
   'user.search': { en: 'Search', vi: 'Tìm Kiếm' },
   'user.browse': { en: 'Browse Public', vi: 'Khám Phá' },
+  'user.browseCourses': { en: 'Browse Courses', vi: 'Khám phá khoá học' },
   'user.quiz': { en: 'Quizzes', vi: 'Bài Kiểm Tra' },
   'user.lesson': { en: 'Video Lessons', vi: 'Bài Học Video' },
   'user.flashcards': { en: 'Flashcards', vi: 'Thẻ Ghi Nhớ' },

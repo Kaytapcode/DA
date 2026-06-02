@@ -8,9 +8,11 @@ import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
+import { useCourseContentLink } from '@/hooks/useCourseContentLink'
 
 interface SavedVideo {
 	id: string
+	contentId: string
 	youTubeVideoId: string
 	title?: string | null
 	description?: string | null
@@ -35,6 +37,7 @@ function extractVideoId(url: string): string | null {
 export const VideoCreatePage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const navigate = useNavigate()
+	const courseLink = useCourseContentLink()
 
 	const [url, setUrl] = useState('')
 	const [title, setTitle] = useState('')
@@ -77,6 +80,8 @@ export const VideoCreatePage: React.FC = () => {
 			if (!res.success || !res.data) throw new Error(res.message || 'Failed to save video')
 			setSavedVideo(res.data)
 			setSuccess(t('Da luu vao thu vien!', 'Saved to library!'))
+			// If launched to add content to a course module, link the new video + return.
+			if (courseLink.active) { await courseLink.linkAndReturn(res.data.contentId) }
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to save video')
 		} finally {

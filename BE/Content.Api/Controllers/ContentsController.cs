@@ -33,12 +33,11 @@ namespace Content.Api.Controllers
             _access = access;
         }
 
+        // Per-course read access (SysAdmin / OrgAdmin-of-org / approved enrollment), NOT org scope —
+        // so an enrolled Teacher/Student without a selected org isn't falsely 404'd. Mutations
+        // additionally gate on CanTeachAsync, so a Student passes this but cannot modify content.
         private async Task<bool> VerifyAccessAsync(Guid courseId)
-        {
-            var course = await _courseRepo.GetByIdAsync(courseId);
-            if (course == null) return false;
-            return _orgCtx.IsSysAdmin() || course.OrgId == _orgCtx.GetCurrentOrgId();
-        }
+            => await _access.CanViewAsync(courseId);
 
         private static ContentResponseDto ToContentDto(ContentModel content, int orderIndex) => new(
             content.Id,
@@ -80,7 +79,7 @@ namespace Content.Api.Controllers
 
         // POST /api/courses/{courseId}/modules/{moduleId}/contents
         [HttpPost]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> CreateContent(Guid courseId, Guid moduleId, [FromBody] CreateContentRequestDto request)
         {
             if (!await VerifyAccessAsync(courseId))
@@ -106,7 +105,7 @@ namespace Content.Api.Controllers
 
         // PUT /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}
         [HttpPut("{contentId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> UpdateContent(Guid courseId, Guid contentId, [FromBody] UpdateContentRequestDto request)
         {
             if (!await VerifyAccessAsync(courseId))
@@ -125,7 +124,7 @@ namespace Content.Api.Controllers
 
         // DELETE /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}
         [HttpDelete("{contentId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> DeleteContent(Guid courseId, Guid moduleId, Guid contentId)
         {
             if (!await VerifyAccessAsync(courseId))
@@ -139,7 +138,7 @@ namespace Content.Api.Controllers
 
         // T3.6: PATCH /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}/status
         [HttpPatch("{contentId:guid}/status")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> SetStatus(Guid courseId, Guid contentId, [FromBody] SetContentStatusRequestDto request)
         {
             if (!await VerifyAccessAsync(courseId))
@@ -158,7 +157,7 @@ namespace Content.Api.Controllers
         // Links an existing content item (quiz/video/doc/deck) owned by the user to this module
         // without creating a new ContentModel stub. Accepts { contentId } in the body.
         [HttpPost("link")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> LinkExistingContent(Guid courseId, Guid moduleId, [FromBody] LinkContentRequestDto request)
         {
             if (!await VerifyAccessAsync(courseId))
@@ -175,7 +174,7 @@ namespace Content.Api.Controllers
 
         // T3.7: PATCH /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}/order
         [HttpPatch("{contentId:guid}/order")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> ReorderContent(Guid courseId, Guid moduleId, Guid contentId, [FromBody] ReorderContentRequestDto request)
         {
             if (!await VerifyAccessAsync(courseId))

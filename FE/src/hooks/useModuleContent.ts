@@ -71,14 +71,19 @@ export const useModuleContent = (): UseModuleContentReturn => {
   }, []);
 
   const createModule = useCallback(async (courseId: string, title: string, description?: string): Promise<ModuleItem | null> => {
+    setError(null);
     try {
       const res = await apiClient.post<ModuleItem>(`/courses/${courseId}/modules`, { title, description });
       if (res.success && res.data) {
         setModules(prev => [...prev, res.data!]);
         return res.data;
       }
+      // Surface a server "success:false" instead of vanishing silently.
+      setError(res.message || 'Failed to create module');
       return null;
-    } catch {
+    } catch (err: any) {
+      // Surface 4xx (e.g. "Title must be between 3 and 255 characters") instead of swallowing it.
+      setError(err?.message || err?.data?.message || err?.errors?.[0] || 'Failed to create module');
       return null;
     }
   }, []);
@@ -123,8 +128,10 @@ export const useModuleContent = (): UseModuleContentReturn => {
         ));
         return res.data;
       }
+      setError(res.message || 'Failed to create content');
       return null;
-    } catch {
+    } catch (err: any) {
+      setError(err?.message || err?.data?.message || 'Failed to create content');
       return null;
     }
   }, []);
@@ -193,8 +200,10 @@ export const useModuleContent = (): UseModuleContentReturn => {
         ));
         return res.data;
       }
+      setError(res.message || 'Failed to link content');
       return null;
-    } catch {
+    } catch (err: any) {
+      setError(err?.message || err?.data?.message || 'Failed to link content');
       return null;
     }
   }, []);

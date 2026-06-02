@@ -8,6 +8,7 @@ import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
+import { useCourseContentLink } from '@/hooks/useCourseContentLink'
 
 interface DeckSummary {
 	deckId: string
@@ -37,6 +38,7 @@ interface CardDraft {
 export const DeckEditorPage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const navigate = useNavigate()
+	const courseLink = useCourseContentLink()
 	const { deckId: routeDeckId } = useParams<{ deckId?: string }>()
 	const isCreate = !routeDeckId
 
@@ -86,7 +88,14 @@ export const DeckEditorPage: React.FC = () => {
 			if (!res.success || !res.data) throw new Error(res.message || 'Failed to create deck')
 			const newId = res.data.deckId
 			setDeckId(newId)
-			navigate(`/user/decks/${newId}/edit`, { replace: true })
+			// Course context: link the new deck into the module now (it's filled with cards next),
+			// and carry the context to the edit URL so a "Back to course" button is shown.
+			if (courseLink.active) {
+				await courseLink.linkOnly(res.data.contentId)
+				navigate(`/user/decks/${newId}/edit${courseLink.courseQuery}`, { replace: true })
+			} else {
+				navigate(`/user/decks/${newId}/edit`, { replace: true })
+			}
 			setSuccess(t('Tao bo the thanh cong! Bay gio them the.', 'Deck created! Now add cards.'))
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to create deck')
@@ -149,11 +158,27 @@ export const DeckEditorPage: React.FC = () => {
 									: t('Them, sua hoac xoa the trong bo nay.', 'Add, edit, or remove cards in this deck.')}
 							</p>
 						</div>
-						<Button variant="ghost" onClick={() => navigate('/user/library')}>
-							<MaterialIcon icon="arrow_back" size="xs" />
-							<span className="ml-1">{t('Quay lai', 'Back')}</span>
-						</Button>
+						{courseLink.active ? (
+							<Button data-testid="deck-back-to-course" onClick={() => courseLink.goBack()}>
+								<MaterialIcon icon="check" size="xs" />
+								<span className="ml-1">{t('Xong - ve khoa hoc', 'Done — back to course')}</span>
+							</Button>
+						) : (
+							<Button variant="ghost" onClick={() => navigate('/user/library')}>
+								<MaterialIcon icon="arrow_back" size="xs" />
+								<span className="ml-1">{t('Quay lai', 'Back')}</span>
+							</Button>
+						)}
 					</div>
+
+					{courseLink.active && (
+						<Card className="border border-primary/30 bg-primary/5">
+							<p className="text-sm text-on-surface" data-testid="deck-course-context">
+								{t('Bo the nay se duoc them vao khoa hoc. Them the roi bam "Xong".',
+								   'This deck is being added to a course. Add cards, then click "Done".')}
+							</p>
+						</Card>
+					)}
 
 					{error && (
 						<Card className="border border-red-200 bg-red-50">

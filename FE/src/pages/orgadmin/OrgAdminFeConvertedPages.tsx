@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { MainLayout } from '@layouts/MainLayout'
+import { DocumentUploadModal } from '@components/DocumentUploadModal'
 import { OrgAdminNavbar } from '@components/layout/orgadmin/OrgAdminNavbar'
 import { OrgAdminSidebar } from '@components/layout/orgadmin/OrgAdminSidebar'
 import { Card } from '@components/ui/Card'
@@ -145,7 +146,7 @@ export const CourseManagementPage: React.FC = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           </div>
         )}
-        {/* {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>} */}
+        {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>}
         {!isLoading && (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -177,15 +178,31 @@ export const CourseManagementPage: React.FC = () => {
                     <td className="py-3 text-on-surface-variant">{c.moduleCount ?? 0}</td>
                     <td className="py-3 text-on-surface-variant">{new Date(c.createdAt).toLocaleDateString()}</td>
                     <td className="py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        data-testid={`course-delete-btn-${c.id}`}
-                        onClick={() => void handleDelete(c.id)}
-                        disabled={busyCourseId === c.id}
-                      >
-                        <MaterialIcon icon="delete" size="xs" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          to={`/admin/editor/curriculum?courseId=${c.id}`}
+                          data-testid={`course-curriculum-btn-${c.id}`}
+                          className="rounded-lg border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container-low"
+                        >
+                          {isVi ? 'Chương trình' : 'Curriculum'}
+                        </Link>
+                        <Link
+                          to={`/admin/editor/member-roles?courseId=${c.id}`}
+                          data-testid={`course-members-btn-${c.id}`}
+                          className="rounded-lg border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container-low"
+                        >
+                          {isVi ? 'Thành viên' : 'Members'}
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          data-testid={`course-delete-btn-${c.id}`}
+                          onClick={() => void handleDelete(c.id)}
+                          disabled={busyCourseId === c.id}
+                        >
+                          <MaterialIcon icon="delete" size="xs" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -210,10 +227,9 @@ interface ContentRowProps {
 }
 
 const ContentRow: React.FC<ContentRowProps> = ({
-  content, moduleId, index, total, onMove, onDelete, onToggleStatus,
+  content, moduleId, index, total, onMove, onDelete,
 }) => {
   const isVi = useLang()
-  const isPublished = content.status === 'PUBLISHED'
   const type = content.contentType.toUpperCase()
   const openPath =
     type === 'QUIZ' && content.quizId
@@ -231,9 +247,6 @@ const ContentRow: React.FC<ContentRowProps> = ({
       <div className="flex items-center gap-2">
         <MaterialIcon icon="drag_indicator" className="text-on-surface-variant text-sm" />
         <span className="text-sm text-on-surface">{content.title}</span>
-        <Badge variant={isPublished ? 'success' : 'warning'} size="sm">
-          {isPublished ? (isVi ? 'Da phat hanh' : 'Published') : (isVi ? 'Nhap' : 'Draft')}
-        </Badge>
         <Badge variant="secondary" size="sm">{content.contentType}</Badge>
       </div>
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -261,13 +274,6 @@ const ContentRow: React.FC<ContentRowProps> = ({
           title="Move down"
         >
           <MaterialIcon icon="keyboard_arrow_down" className="text-sm" />
-        </button>
-        <button
-          onClick={() => onToggleStatus(content.id, isPublished ? 'DRAFT' : 'PUBLISHED')}
-          className="p-1 rounded hover:bg-surface-container-high text-xs text-primary"
-          title={isPublished ? 'Set Draft' : 'Publish'}
-        >
-          <MaterialIcon icon={isPublished ? 'unpublished' : 'publish'} className="text-sm" />
         </button>
         <button
           onClick={() => onDelete(content.id)}
@@ -313,7 +319,7 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
     <div className="rounded-lg border border-outline-variant overflow-hidden">
       <div className="p-4 bg-surface-container-low flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={handleToggle} className="p-1 rounded hover:bg-surface-container">
+          <button onClick={handleToggle} data-testid="module-expand-btn" className="p-1 rounded hover:bg-surface-container">
             <MaterialIcon icon={open ? 'expand_less' : 'expand_more'} />
           </button>
           <span className="text-sm font-bold text-on-surface-variant">#{index + 1}</span>
@@ -371,6 +377,7 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
           ))}
           <button
             onClick={() => onAddContent(module.id)}
+            data-testid="content-add-btn"
             className="ml-6 mt-2 text-sm text-primary flex items-center gap-1 hover:underline"
           >
             <MaterialIcon icon="add" className="text-sm" />
@@ -382,79 +389,125 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
   )
 }
 
+// When a Course Editor tab is opened without a ?courseId, show a real list of the org's courses
+// to pick from (no hardcoded data) instead of a dead-end error. `basePath` decides which tab the
+// picked course opens (curriculum vs member-roles). testid `curriculum-pick-*` is kept stable.
+const CourseEditorPicker: React.FC<{ isVi: boolean; basePath: string; label: string }> = ({ isVi, basePath, label }) => {
+  const [courses, setCourses] = useState<Array<{ id: string; title: string; courseCode?: string | null }>>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    apiClient.get<Array<{ id: string; title: string; courseCode?: string | null }>>('/courses?pageIndex=0&pageSize=100')
+      .then((res: any) => { setCourses(res.data ?? []) })
+      .catch(() => setError(isVi ? 'Khong the tai danh sach khoa hoc.' : 'Failed to load courses.'))
+      .finally(() => setLoading(false))
+  }, [isVi])
+
+  return (
+    <Card className="p-6" data-testid="curriculum-course-picker">
+      <h3 className="mb-1 font-bold text-on-surface">{label}</h3>
+      <p className="mb-4 text-sm text-on-surface-variant">
+        {isVi ? 'Chon mot khoa hoc ben duoi.' : 'Select one of your organization’s courses below.'}
+      </p>
+      {loading && <div className="flex justify-center py-6"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>}
+      {error && <p className="text-sm text-error">{error}</p>}
+      {!loading && !error && courses.length === 0 && (
+        <p className="text-sm text-on-surface-variant" data-testid="curriculum-no-courses">
+          {isVi ? 'Chua co khoa hoc nao. Tao khoa hoc o muc Quan ly khoa hoc.' : 'No courses yet. Create one in Course Management first.'}
+        </p>
+      )}
+      {!loading && courses.length > 0 && (
+        <div className="space-y-2">
+          {courses.map((c) => (
+            <Link
+              key={c.id}
+              to={`${basePath}?courseId=${c.id}`}
+              data-testid={`curriculum-pick-${c.id}`}
+              className="flex items-center justify-between rounded-lg border border-outline-variant px-4 py-3 hover:bg-surface-container-low"
+            >
+              <span className="font-medium text-on-surface">{c.title}</span>
+              {c.courseCode && <span className="font-mono text-xs text-on-surface-variant">{c.courseCode}</span>}
+            </Link>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// Tab bar shown at the top of both Course Editor tabs (Curriculum / Members) so an OrgAdmin can
+// switch between editing a course's curriculum and its enrolled members while keeping the courseId.
+const CourseEditorTabs: React.FC<{ isVi: boolean; courseId: string; active: 'curriculum' | 'members' }> = ({ isVi, courseId, active }) => {
+  const tab = (key: 'curriculum' | 'members', path: string, labelEn: string, labelVi: string) => (
+    <Link
+      to={`${path}?courseId=${courseId}`}
+      data-testid={`editor-tab-${key}`}
+      className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${active === key ? 'bg-primary text-on-primary' : 'border border-outline-variant text-on-surface hover:bg-surface-container-low'}`}
+    >
+      {isVi ? labelVi : labelEn}
+    </Link>
+  )
+  return (
+    <div className="mb-4 flex gap-2" data-testid="course-editor-tabs">
+      {tab('curriculum', '/admin/editor/curriculum', 'Curriculum', 'Chương trình')}
+      {tab('members', '/admin/editor/member-roles', 'Members & Roles', 'Thành viên & Vai trò')}
+    </div>
+  )
+}
+
 // ── Course Editor - Curriculum Tab ─────────────────────────────────────────────
 export const CourseEditorCurriculumTabPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('courseId') ?? ''
 
+  const navigate = useNavigate()
   const {
     modules, isLoading, error,
     fetchModules, fetchContents,
     createModule, deleteModule, moveModule,
-    createContent, deleteContent, moveContent, setContentStatus, linkContent,
+    deleteContent, moveContent, setContentStatus, linkContent,
   } = useModuleContent()
 
   const [newModuleTitle, setNewModuleTitle] = useState('')
   const [addingModule, setAddingModule] = useState(false)
   const [addingContentForModule, setAddingContentForModule] = useState<string | null>(null)
-  const [newContentTitle, setNewContentTitle] = useState('')
-  const [newContentType, setNewContentType] = useState('VIDEO')
-
-  // Link existing resource state
-  const [contentAddMode, setContentAddMode] = useState<'create' | 'link'>('create')
-  const [libraryResources, setLibraryResources] = useState<Array<{ id: string; title: string; contentId?: string }>>([])
-  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
-  const [linkingContentId, setLinkingContentId] = useState<string | null>(null)
+  // When set, the document upload modal is open for this module (Document is created inline since
+  // upload is one step; Quiz/Video/Deck navigate to their full creator pages).
+  const [uploadModuleId, setUploadModuleId] = useState<string | null>(null)
 
   useEffect(() => {
     if (courseId) fetchModules(courseId)
   }, [courseId, fetchModules])
 
-  const loadLibraryByType = async (type: string) => {
-    setIsLoadingLibrary(true)
-    setLibraryResources([])
-    try {
-      let endpoint = ''
-      if (type === 'VIDEO') endpoint = '/videos'
-      else if (type === 'PDF') endpoint = '/documents'
-      else if (type === 'QUIZ') endpoint = '/quizzes'
-      else if (type === 'FLASHCARD') endpoint = '/flashcard-decks'
-      if (!endpoint) return
-      const res = await apiClient.get<any[]>(endpoint)
-      if (res.success && res.data) {
-        setLibraryResources(res.data.map((r: any) => ({
-          id: r.contentId ?? r.id,
-          title: r.title ?? r.fileName ?? r.name ?? '(no title)',
-        })))
-      }
-    } catch { /* silent */ } finally {
-      setIsLoadingLibrary(false)
-    }
+  // Open the matching user CREATION page for the chosen type, carrying course+module context so the
+  // new content auto-links into this module and returns here (CourseEditorPicker returnTo=curriculum).
+  const goCreateContent = (type: string, moduleId: string) => {
+    const ctx = `?courseId=${courseId}&moduleId=${moduleId}&returnTo=curriculum`
+    if (type === 'VIDEO') navigate(`/user/videos/new${ctx}`)
+    else if (type === 'QUIZ') navigate(`/user/quizzes/new${ctx}`)
+    else if (type === 'FLASHCARD') navigate(`/user/decks/new${ctx}`)
+    else if (type === 'PDF') setUploadModuleId(moduleId) // Document → inline upload modal
+  }
+
+  const handleDocUploaded = async (moduleId: string, doc?: { contentId?: string | null }) => {
+    if (doc?.contentId) await linkContent(courseId, moduleId, doc.contentId)
+    setUploadModuleId(null)
+    setAddingContentForModule(null)
+    await fetchModules(courseId)
   }
 
   const handleAddModule = async () => {
-    if (!newModuleTitle.trim() || !courseId) return
-    await createModule(courseId, newModuleTitle.trim())
-    setNewModuleTitle('')
-    setAddingModule(false)
-  }
-
-  const handleAddContent = async (moduleId: string) => {
-    if (!newContentTitle.trim() || !courseId) return
-    await createContent(courseId, moduleId, newContentTitle.trim(), newContentType)
-    setNewContentTitle('')
-    setNewContentType('VIDEO')
-    setAddingContentForModule(null)
-  }
-
-  const handleLinkContent = async (moduleId: string, contentId: string) => {
-    if (!courseId) return
-    setLinkingContentId(contentId)
-    await linkContent(courseId, moduleId, contentId)
-    setLinkingContentId(null)
-    setAddingContentForModule(null)
-    setLibraryResources([])
+    if (!courseId || !newModuleTitle.trim()) return
+    // createModule now surfaces server errors via the hook's `error` (shown below); only clear &
+    // close the form when the module is actually created so failures stay visible & editable.
+    const created = await createModule(courseId, newModuleTitle.trim())
+    if (created) {
+      setNewModuleTitle('')
+      setAddingModule(false)
+    }
   }
 
   return (
@@ -465,15 +518,16 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
       subtitleVi="Sap xep module, bai hoc va thu tu"
     >
       {!courseId && (
-        <Card className="p-6">
-          <p className="text-on-surface-variant text-sm">
-            {isVi ? 'Khong tim thay courseId trong URL. Truy cap: /admin/editor/curriculum?courseId=...' : 'No courseId in URL. Navigate via: /admin/editor/curriculum?courseId=...'}
-          </p>
-        </Card>
+        <CourseEditorPicker
+          isVi={isVi}
+          basePath="/admin/editor/curriculum"
+          label={isVi ? 'Chon khoa hoc de chinh sua chuong trinh' : 'Pick a course to edit its curriculum'}
+        />
       )}
 
       {courseId && (
         <>
+          <CourseEditorTabs isVi={isVi} courseId={courseId} active="curriculum" />
           {isLoading && (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -501,103 +555,51 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                   onMoveContent={(moduleId, contentId, newIdx) => moveContent(courseId, moduleId, contentId, newIdx)}
                   onDeleteContent={(moduleId, contentId) => deleteContent(courseId, moduleId, contentId)}
                   onToggleContentStatus={(moduleId, contentId, status) => setContentStatus(courseId, moduleId, contentId, status)}
-                  onAddContent={(moduleId) => {
-                    setAddingContentForModule(moduleId)
-                    setNewContentTitle('')
-                    setNewContentType('VIDEO')
-                  }}
+                  onAddContent={(moduleId) => setAddingContentForModule(moduleId)}
                 />
               ))}
 
-              {/* Add Content Dialog (inline) */}
+              {/* Add Content — choose a type, then go through the SAME creation flow users use.
+                  Document uploads inline; Quiz/Video/Deck open their full creator pages and
+                  auto-link back into this module on save. */}
               {addingContentForModule && (
-                <Card className="p-4 border-primary space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-sm">{isVi ? 'Them bai hoc' : 'Add Content'}</p>
-                    <div className="flex gap-1 text-xs">
+                <Card className="p-4 border-primary space-y-3" data-testid="content-add-panel">
+                  <p className="font-semibold text-sm">{isVi ? 'Tao noi dung moi cho module' : 'Create new content for this module'}</p>
+                  <p className="text-xs text-on-surface-variant">
+                    {isVi
+                      ? 'Chon loai noi dung — ban se tao moi giong het luong nguoi dung tu tao, roi tu dong them vao module.'
+                      : 'Pick a type — you create it through the same flow a user uses, then it is added to this module automatically.'}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {([
+                      { key: 'PDF', icon: 'picture_as_pdf', en: 'Document', vi: 'Tai lieu' },
+                      { key: 'VIDEO', icon: 'play_circle', en: 'Video', vi: 'Video' },
+                      { key: 'QUIZ', icon: 'quiz', en: 'Quiz', vi: 'Quiz' },
+                      { key: 'FLASHCARD', icon: 'style', en: 'Flashcards', vi: 'Bo the' },
+                    ] as const).map((t) => (
                       <button
-                        className={`px-3 py-1 rounded-full border transition-colors ${contentAddMode === 'create' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
-                        onClick={() => { setContentAddMode('create'); setLibraryResources([]) }}
+                        key={t.key}
+                        data-testid={`content-create-${t.key}`}
+                        onClick={() => goCreateContent(t.key, addingContentForModule!)}
+                        className="flex flex-col items-center gap-1 rounded-lg border border-outline-variant px-3 py-3 text-sm hover:border-primary hover:bg-surface-container-low"
                       >
-                        {isVi ? 'Tao moi' : 'Create New'}
+                        <MaterialIcon icon={t.icon} />
+                        <span>{isVi ? t.vi : t.en}</span>
                       </button>
-                      <button
-                        className={`px-3 py-1 rounded-full border transition-colors ${contentAddMode === 'link' ? 'bg-primary text-on-primary border-primary' : 'border-outline-variant text-on-surface-variant hover:bg-surface-container-low'}`}
-                        onClick={() => { setContentAddMode('link'); loadLibraryByType(newContentType) }}
-                      >
-                        {isVi ? 'Tu thu vien' : 'From Library'}
-                      </button>
-                    </div>
+                    ))}
                   </div>
-
-                  <select
-                    value={newContentType}
-                    onChange={(e) => {
-                      setNewContentType(e.target.value)
-                      if (contentAddMode === 'link') loadLibraryByType(e.target.value)
-                    }}
-                    className="w-full p-2 rounded border border-outline bg-surface text-on-surface text-sm"
-                  >
-                    <option value="VIDEO">VIDEO</option>
-                    <option value="PDF">PDF</option>
-                    <option value="QUIZ">QUIZ</option>
-                    <option value="FLASHCARD">FLASHCARD</option>
-                  </select>
-
-                  {contentAddMode === 'create' && (
-                    <>
-                      <Input
-                        value={newContentTitle}
-                        onChange={(e) => setNewContentTitle(e.target.value)}
-                        placeholder={isVi ? 'Tieu de bai hoc' : 'Content title'}
-                      />
-                      <div className="flex gap-2">
-                        <Button size="sm" onClick={() => handleAddContent(addingContentForModule)}>
-                          {isVi ? 'Them' : 'Add'}
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={() => { setAddingContentForModule(null); setLibraryResources([]) }}>
-                          {isVi ? 'Huy' : 'Cancel'}
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {contentAddMode === 'link' && (
-                    <>
-                      {isLoadingLibrary && (
-                        <div className="flex justify-center py-3">
-                          <div className="h-5 w-5 animate-spin rounded-full border-b-2 border-primary" />
-                        </div>
-                      )}
-                      {!isLoadingLibrary && libraryResources.length === 0 && (
-                        <p className="text-xs text-on-surface-variant py-2">
-                          {isVi ? 'Khong co tai nguyen nao trong thu vien.' : 'No resources found in your library.'}
-                        </p>
-                      )}
-                      {!isLoadingLibrary && libraryResources.length > 0 && (
-                        <div className="max-h-48 overflow-y-auto rounded border border-outline-variant divide-y divide-outline-variant">
-                          {libraryResources.map((r) => (
-                            <button
-                              key={r.id}
-                              onClick={() => handleLinkContent(addingContentForModule, r.id)}
-                              disabled={linkingContentId === r.id}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-surface-container-low flex items-center justify-between gap-2"
-                            >
-                              <span className="truncate">{r.title}</span>
-                              {linkingContentId === r.id
-                                ? <span className="text-xs text-on-surface-variant">{isVi ? 'Dang lien ket...' : 'Linking...'}</span>
-                                : <span className="text-xs text-primary">{isVi ? 'Chon' : 'Select'}</span>
-                              }
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <Button size="sm" variant="secondary" onClick={() => { setAddingContentForModule(null); setLibraryResources([]) }}>
-                        {isVi ? 'Huy' : 'Cancel'}
-                      </Button>
-                    </>
-                  )}
+                  <Button size="sm" variant="secondary" onClick={() => setAddingContentForModule(null)}>
+                    {isVi ? 'Huy' : 'Cancel'}
+                  </Button>
                 </Card>
+              )}
+
+              {uploadModuleId && (
+                <DocumentUploadModal
+                  isOpen={!!uploadModuleId}
+                  onClose={() => setUploadModuleId(null)}
+                  onUploaded={(doc) => void handleDocUploaded(uploadModuleId, doc)}
+                />
               )}
 
               {/* Add Module */}
@@ -608,11 +610,20 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                     data-testid="module-title-input"
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
-                    placeholder={isVi ? 'Ten module' : 'Module title'}
+                    placeholder={isVi ? 'Ten module (toi thieu 3 ky tu)' : 'Module title (min 3 characters)'}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddModule()}
                   />
+                  {/* Server/validation errors are surfaced (no more silent failure). */}
+                  {error && <p className="text-sm text-error" data-testid="module-add-error">{error}</p>}
                   <div className="flex gap-2">
-                    <Button size="sm" data-testid="module-add-btn" onClick={handleAddModule}>{isVi ? 'Them' : 'Add'}</Button>
+                    <Button
+                      size="sm"
+                      data-testid="module-add-btn"
+                      onClick={handleAddModule}
+                      disabled={newModuleTitle.trim().length < 3}
+                    >
+                      {isVi ? 'Them' : 'Add'}
+                    </Button>
                     <Button size="sm" variant="secondary" onClick={() => setAddingModule(false)}>
                       {isVi ? 'Huy' : 'Cancel'}
                     </Button>
@@ -650,7 +661,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   const { org } = useOrgContext()
   const orgId = org?.id ?? localStorage.getItem('org_id') ?? ''
 
-  const { enrollments, isLoading, error, create, updateRole, remove } = useCourseEnrollment(courseId)
+  const { enrollments, isLoading, error, create, updateRole, remove, approve, reject } = useCourseEnrollment(courseId)
   const [newUserId, setNewUserId] = useState('')
   const [newRole, setNewRole] = useState<'Teacher' | 'Student'>('Student')
   const [submitting, setSubmitting] = useState(false)
@@ -705,6 +716,24 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
     setBusyUserId(null)
   }
 
+  const handleApprove = async (e: CourseEnrollment) => {
+    setBusyUserId(e.userId)
+    await approve(e.userId)
+    setBusyUserId(null)
+  }
+
+  const handleReject = async (e: CourseEnrollment) => {
+    setBusyUserId(e.userId)
+    await reject(e.userId)
+    setBusyUserId(null)
+  }
+
+  // Pending self-service requests are surfaced separately so the OrgAdmin can approve/reject.
+  // The main list shows only approved enrollments; rejected rows are retained in the DB so the
+  // user can re-request, but are not shown as active members.
+  const pendingRequests = enrollments.filter((e) => e.status === 'Pending')
+  const activeEnrollments = enrollments.filter((e) => e.status === 'Approved')
+
   return (
     <OrgShell
       titleEn="Course Editor - Member Roles"
@@ -713,14 +742,14 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
       subtitleVi="Gan vai tro Teacher / Student cho tung khoa hoc"
     >
       {!courseId && (
-        <Card className="p-4">
-          <p className="text-sm text-on-surface-variant">
-            {isVi
-              ? 'Vui long mo trang nay tu mot khoa hoc cu the (?courseId=...).'
-              : 'Open this page from a specific course (?courseId=...).'}
-          </p>
-        </Card>
+        <CourseEditorPicker
+          isVi={isVi}
+          basePath="/admin/editor/member-roles"
+          label={isVi ? 'Chon khoa hoc de quan ly thanh vien' : 'Pick a course to manage its members'}
+        />
       )}
+
+      {courseId && <CourseEditorTabs isVi={isVi} courseId={courseId} active="members" />}
 
       {error && courseId && (
         <Card className="p-4 border border-error/30">
@@ -813,6 +842,49 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
       )}
 
       {courseId && (
+        <Card className="p-6" data-testid="enrollment-requests-card">
+          <h3 className="mb-4 font-bold text-on-surface">
+            {isVi ? 'Yeu cau ghi danh dang cho' : 'Pending enrollment requests'}
+            {pendingRequests.length > 0 && (
+              <Badge variant="warning" size="sm" className="ml-2">{pendingRequests.length}</Badge>
+            )}
+          </h3>
+          {!isLoading && pendingRequests.length === 0 && (
+            <p className="py-2 text-sm text-on-surface-variant">
+              {isVi ? 'Khong co yeu cau nao dang cho duyet.' : 'No pending requests.'}
+            </p>
+          )}
+          <div className="space-y-2">
+            {pendingRequests.map((e) => (
+              <div key={e.id} data-testid={`enrollment-request-${e.userId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-warning/5 border border-warning/30 p-3">
+                <Badge variant="warning" size="sm">{isVi ? 'Dang cho' : 'Pending'}</Badge>
+                <span className="font-mono text-xs text-on-surface-variant">{e.userId}</span>
+                <div className="ml-auto flex gap-2">
+                  <Button
+                    size="sm"
+                    data-testid={`enrollment-approve-${e.userId}`}
+                    onClick={() => void handleApprove(e)}
+                    disabled={busyUserId === e.userId}
+                  >
+                    {isVi ? 'Duyet' : 'Approve'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    data-testid={`enrollment-reject-${e.userId}`}
+                    onClick={() => void handleReject(e)}
+                    disabled={busyUserId === e.userId}
+                  >
+                    {isVi ? 'Tu choi' : 'Reject'}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {courseId && (
         <Card className="p-6">
           <h3 className="mb-4 font-bold text-on-surface">
             {isVi ? 'Danh sach ghi danh' : 'Course enrollments'}
@@ -822,14 +894,14 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
               <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
             </div>
           )}
-          {!isLoading && enrollments.length === 0 && (
+          {!isLoading && activeEnrollments.length === 0 && (
             <p className="py-4 text-center text-sm text-on-surface-variant">
               {isVi ? 'Chua co ai duoc ghi danh.' : 'No one is enrolled yet.'}
             </p>
           )}
-          {!isLoading && enrollments.length > 0 && (
+          {!isLoading && activeEnrollments.length > 0 && (
             <div className="space-y-2">
-              {enrollments.map((e) => (
+              {activeEnrollments.map((e) => (
                 <div key={e.id} data-testid={`enrollment-row-${e.userId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
                   <Badge variant={e.role === 'Teacher' ? 'warning' : 'primary'} size="sm">
                     {e.role}

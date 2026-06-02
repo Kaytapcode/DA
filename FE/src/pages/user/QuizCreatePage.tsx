@@ -10,6 +10,7 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
 import { tokenStore } from '@/utils/tokenStore'
 import { useUserLanguage } from './UserShell'
+import { useCourseContentLink } from '@/hooks/useCourseContentLink'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
@@ -88,6 +89,7 @@ const aiToEditable = (q: AiQuestion): EditableQ => ({
 export const QuizCreatePage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const navigate = useNavigate()
+	const courseLink = useCourseContentLink()
 	const fileInputRef = useRef<HTMLInputElement>(null)
 
 	const t = (vi: string, en: string) => (isVi ? vi : en)
@@ -189,7 +191,9 @@ export const QuizCreatePage: React.FC = () => {
 			}
 
 			setSuccess(t('Tạo quiz thành công! Đang chuyển hướng...', 'Quiz created! Redirecting...'))
-			setTimeout(() => navigate('/user/library'), 1200)
+			// If launched to add content to a course module, link the new quiz and return there.
+			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId) }
+			else setTimeout(() => navigate('/user/library'), 1200)
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to create quiz')
 		} finally {
@@ -322,7 +326,8 @@ export const QuizCreatePage: React.FC = () => {
 			if (!saveRes.success) throw new Error(saveRes.message || 'Failed to save questions')
 
 			setSuccess(t('Đã lưu quiz nháp! Đang chuyển về thư viện...', 'Draft quiz saved! Redirecting to library...'))
-			setTimeout(() => navigate('/user/library'), 1400)
+			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId) }
+			else setTimeout(() => navigate('/user/library'), 1400)
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to save quiz')
 		} finally {

@@ -110,7 +110,7 @@ class TestOrganizationMembers:
         token = _orgadmin_token()
         r = requests.post(
             f"{API_BASE}/api/orgs/{ORG1_ID}/members",
-            json={"orgId": ORG1_ID, "userId": USER1_ID, "role": "Student"},
+            json={"orgId": ORG1_ID, "userId": USER1_ID, "role": "Member"},
             headers=_ah(token, ORG1_ID),
             timeout=10,
         )

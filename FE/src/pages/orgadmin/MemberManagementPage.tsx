@@ -20,8 +20,11 @@ interface MemberRow {
   joinDate: string
 }
 
-const ROLES = ['Student', 'Teacher', 'OrgAdmin', 'Owner'] as const
-const ADD_ROLES = ['Student', 'Teacher', 'OrgAdmin'] as const
+// Org-level roles only: a member is either a plain 'Member' or an 'OrgAdmin' ('Owner' is shown
+// for the creator but not assignable). Teacher/Student is NOT an org role — it is assigned
+// per-course on the Course Editor → Member Roles tab.
+const ROLES = ['Member', 'OrgAdmin', 'Owner'] as const
+const ADD_ROLES = ['Member', 'OrgAdmin'] as const
 
 interface UserLookupItem {
   id: string
@@ -46,7 +49,7 @@ export const MemberManagementPage: React.FC = () => {
   const [addResults, setAddResults] = useState<UserLookupItem[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserLookupItem | null>(null)
-  const [addRole, setAddRole] = useState<(typeof ADD_ROLES)[number]>('Student')
+  const [addRole, setAddRole] = useState<(typeof ADD_ROLES)[number]>('Member')
   const [addError, setAddError] = useState<string | null>(null)
   const [addSuccess, setAddSuccess] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)

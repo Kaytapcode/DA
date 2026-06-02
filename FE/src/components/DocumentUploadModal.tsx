@@ -4,10 +4,17 @@ import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { tokenStore } from '@/utils/tokenStore'
 
+interface UploadedDoc {
+  id: string
+  contentId?: string | null
+  fileName?: string
+}
+
 interface DocumentUploadModalProps {
   isOpen: boolean
   onClose: () => void
-  onUploaded: () => void
+  // Receives the created document (incl. its contentId) so callers can e.g. link it to a course module.
+  onUploaded: (doc?: UploadedDoc) => void
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -106,7 +113,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       }
 
       setSuccessMessage('Upload completed successfully.')
-      onUploaded()
+      onUploaded(response.data?.data as UploadedDoc | undefined)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed'
       setError(message)

@@ -26,19 +26,22 @@ namespace Content.Api.Controllers
             _access = access;
         }
 
+        // Existence-only lookup. Access is enforced per-course by CanTeachAsync/CanViewAsync in each
+        // action (which honour per-course Teacher enrollment), NOT by org scope here — otherwise a
+        // per-course Teacher with no/other org context would get a false 404 before the access check.
         private async Task<CourseModel?> GetVerifiedCourseAsync(Guid courseId)
         {
-            var course = await _courseRepo.GetByIdAsync(courseId);
-            if (course == null) return null;
-            if (!_orgCtx.IsSysAdmin() && course.OrgId != _orgCtx.GetCurrentOrgId()) return null;
-            return course;
+            return await _courseRepo.GetByIdAsync(courseId);
         }
 
         // GET /api/courses/{courseId}/modules
         [HttpGet]
         public async Task<IActionResult> GetModules(Guid courseId)
         {
-            if (await GetVerifiedCourseAsync(courseId) == null)
+            // Read access is per-course (CanView = SysAdmin / OrgAdmin-of-org / approved enrollment),
+            // not purely org-scoped — so an enrolled student without a selected org can load modules.
+            var course = await _courseRepo.GetByIdAsync(courseId);
+            if (course == null || !await _access.CanViewAsync(courseId))
                 return NotFound(new ApiResponse(false, "Course not found."));
 
             var modules = await _moduleRepo.GetByCourseAsync(courseId);
@@ -53,7 +56,7 @@ namespace Content.Api.Controllers
 
         // POST /api/courses/{courseId}/modules
         [HttpPost]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> CreateModule(Guid courseId, [FromBody] CreateModuleRequestDto request)
         {
             var course = await GetVerifiedCourseAsync(courseId);
@@ -77,7 +80,7 @@ namespace Content.Api.Controllers
 
         // PUT /api/courses/{courseId}/modules/{moduleId}
         [HttpPut("{moduleId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> UpdateModule(Guid courseId, Guid moduleId, [FromBody] UpdateModuleRequestDto request)
         {
             if (await GetVerifiedCourseAsync(courseId) == null)
@@ -98,7 +101,7 @@ namespace Content.Api.Controllers
 
         // DELETE /api/courses/{courseId}/modules/{moduleId}
         [HttpDelete("{moduleId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> DeleteModule(Guid courseId, Guid moduleId)
         {
             if (await GetVerifiedCourseAsync(courseId) == null)
@@ -112,7 +115,7 @@ namespace Content.Api.Controllers
 
         // PATCH /api/courses/{courseId}/modules/{moduleId}/order � T3.7 Up/Down sort
         [HttpPatch("{moduleId:guid}/order")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> ReorderModule(Guid courseId, Guid moduleId, [FromBody] ReorderModuleRequestDto request)
         {
             if (await GetVerifiedCourseAsync(courseId) == null)

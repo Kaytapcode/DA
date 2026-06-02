@@ -4,7 +4,9 @@ using System.ComponentModel.DataAnnotations;
 namespace Shared.Contracts.Requests
 {
     public record CreateMemberRequestDto(
-        [Required(ErrorMessage = "Organization ID is required")]
+        // OrgId is taken from the route (/api/orgs/{orgId}/members), not the body. It is kept
+        // here for callers that pass it but must NOT be [Required] — the FE add-member form
+        // sends only { userId, role }, and requiring it here produced a spurious 400.
         Guid OrgId,
 
         [Required(ErrorMessage = "User ID is required")]

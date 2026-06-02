@@ -77,7 +77,9 @@ namespace Organization.Api.Controllers
             if (existing != null)
                 return BadRequest(new ApiResponse(Success: false, Message: "User is already a member of this organization."));
 
-            var validRoles = new[] { "Student", "Teacher", "OrgAdmin", "Owner" };
+            // Org-level roles are ONLY 'Member' and 'OrgAdmin' (plus 'Owner' for the creator).
+            // Teacher/Student is NOT an org role — it is assigned per-course in Content.Api.
+            var validRoles = new[] { "Member", "OrgAdmin", "Owner" };
             if (!validRoles.Contains(request.Role))
                 return BadRequest(new ApiResponse(Success: false, Message: $"Invalid role. Valid roles: {string.Join(", ", validRoles)}"));
 
@@ -96,8 +98,9 @@ namespace Organization.Api.Controllers
             ));
         }
 
-        // POST /api/orgs/{orgId}/members/self - any authenticated User joins the org as Student
-        // Spec §1: "Can join Organizations." Self-service join produces a Student member.
+        // POST /api/orgs/{orgId}/members/self - any authenticated User joins the org as a Member.
+        // Spec §1: "Can join Organizations." Org-level role is 'Member' (Teacher/Student is
+        // assigned later, per-course, by an OrgAdmin).
         [HttpPost("self")]
         public async Task<IActionResult> JoinSelf(Guid orgId)
         {
@@ -116,7 +119,7 @@ namespace Organization.Api.Controllers
             {
                 UserId = userId.Value,
                 OrgId = orgId,
-                Role = "Student"
+                Role = "Member"
             };
             var created = await _memberRepository.CreateAsync(member);
             return Ok(new ApiResponse<MemberResponseDto>(
@@ -126,22 +129,25 @@ namespace Organization.Api.Controllers
             ));
         }
 
-        // PUT /api/orgs/{orgId}/members/{memberId} - update role (OrgAdmin or SysAdmin)
-        [HttpPut("{memberId:guid}")]
-        public async Task<IActionResult> UpdateMember(Guid orgId, Guid memberId, [FromBody] UpdateMemberRequestDto request)
+        // PUT /api/orgs/{orgId}/members/{userId} - update role (OrgAdmin or SysAdmin).
+        // The path segment is the member's USER id (what the FE has on hand), not the
+        // internal MemberModel.Id — the member row is resolved by (userId, orgId).
+        [HttpPut("{userId:guid}")]
+        public async Task<IActionResult> UpdateMember(Guid orgId, Guid userId, [FromBody] UpdateMemberRequestDto request)
         {
             if (!await CanManageOrg(orgId)) return Forbid();
 
-            var member = await _memberRepository.GetByIdAsync(memberId);
-            if (member == null || member.OrgId != orgId)
+            var member = await _memberRepository.GetByUserAndOrgAsync(userId, orgId);
+            if (member == null)
                 return NotFound(new ApiResponse(Success: false, Message: "Member does not exist."));
 
             if (member.Role == "Owner")
                 return BadRequest(new ApiResponse(Success: false, Message: "Owner role cannot be changed."));
 
-            var validRoles = new[] { "Student", "Teacher", "OrgAdmin" };
+            // Org-level roles are ONLY 'Member' and 'OrgAdmin' (Teacher/Student live per-course).
+            var validRoles = new[] { "Member", "OrgAdmin" };
             if (!validRoles.Contains(request.Role))
-                return BadRequest(new ApiResponse(Success: false, Message: "Invalid role."));
+                return BadRequest(new ApiResponse(Success: false, Message: "Invalid role. Valid roles: Member, OrgAdmin"));
 
             member.Role = request.Role;
             var updated = await _memberRepository.UpdateAsync(member);
@@ -153,20 +159,21 @@ namespace Organization.Api.Controllers
             ));
         }
 
-        // DELETE /api/orgs/{orgId}/members/{memberId} - remove member
-        [HttpDelete("{memberId:guid}")]
-        public async Task<IActionResult> RemoveMember(Guid orgId, Guid memberId)
+        // DELETE /api/orgs/{orgId}/members/{userId} - remove member.
+        // Path segment is the member's USER id (resolved by (userId, orgId)).
+        [HttpDelete("{userId:guid}")]
+        public async Task<IActionResult> RemoveMember(Guid orgId, Guid userId)
         {
             if (!await CanManageOrg(orgId)) return Forbid();
 
-            var member = await _memberRepository.GetByIdAsync(memberId);
-            if (member == null || member.OrgId != orgId)
+            var member = await _memberRepository.GetByUserAndOrgAsync(userId, orgId);
+            if (member == null)
                 return NotFound(new ApiResponse(Success: false, Message: "Member does not exist."));
 
             if (member.Role == "Owner")
                 return BadRequest(new ApiResponse(Success: false, Message: "Cannot remove Owner from the organization."));
 
-            await _memberRepository.DeleteAsync(memberId);
+            await _memberRepository.DeleteAsync(member.Id);
             return Ok(new ApiResponse(Success: true, Message: "Member removed from the organization."));
         }
     }

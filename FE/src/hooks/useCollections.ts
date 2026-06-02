@@ -87,6 +87,21 @@ export const useCollections = () => {
     [refresh]
   )
 
+  // Sections = child modules (ParentId == collectionId) of a collection — the optional
+  // "divide content into parts" mechanism. GetMine (`/collections`) returns owned modules
+  // with their parentId; we filter to the requested parent.
+  const getSections = useCallback(async (collectionId: string): Promise<Collection[]> => {
+    try {
+      const res = await apiClient.get<Array<{ id: string; title: string; description: string | null; parentId: string | null; createdAt: string }>>('/collections')
+      if (!res.success || !res.data) return []
+      return res.data
+        .filter((m) => m.parentId === collectionId)
+        .map((m) => ({ id: m.id, title: m.title, description: m.description, parentId: m.parentId, createdAt: m.createdAt, ownedByCaller: true }))
+    } catch {
+      return []
+    }
+  }, [])
+
   const getItems = useCallback(async (collectionId: string): Promise<CollectionItem[]> => {
     try {
       const res = await apiClient.get<CollectionItem[]>(`/collections/${collectionId}/items`)
@@ -118,5 +133,5 @@ export const useCollections = () => {
     }
   }, [])
 
-  return { collections, isLoading, error, refresh, create, remove, getItems, addItem, removeItem }
+  return { collections, isLoading, error, refresh, create, remove, getSections, getItems, addItem, removeItem }
 }

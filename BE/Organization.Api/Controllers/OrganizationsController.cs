@@ -14,12 +14,36 @@ namespace Organization.Api.Controllers;
 public class OrganizationsController : ControllerBase
 {
     private readonly IOrganizationRepository _organizationRepository;
+    private readonly IMemberRepository _memberRepository;
     private readonly IMapper _mapper;
 
-    public OrganizationsController(IOrganizationRepository organizationRepository, IMapper mapper)
+    public OrganizationsController(IOrganizationRepository organizationRepository, IMemberRepository memberRepository, IMapper mapper)
     {
         _organizationRepository = organizationRepository;
+        _memberRepository = memberRepository;
         _mapper = mapper;
+    }
+
+    /// <summary>Organizations the current user is a MEMBER of (any role), with their org role.
+    /// Powers the user's "Browse Courses" org picker and org-scoped views.</summary>
+    [HttpGet("mine")]
+    [ProducesResponseType(typeof(ApiResponse<List<MyOrganizationDto>>), 200)]
+    public async Task<IActionResult> GetMyOrganizations()
+    {
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId))
+            return BadRequest(new ApiResponse(false, "Invalid user ID"));
+
+        var memberships = await _memberRepository.GetByUserIdAsync(userId);
+        var result = new List<MyOrganizationDto>();
+        foreach (var m in memberships)
+        {
+            var org = await _organizationRepository.GetByIdAsync(m.OrgId);
+            if (org != null)
+                result.Add(new MyOrganizationDto(org.Id, org.Name, org.Slug, m.Role));
+        }
+
+        return Ok(new ApiResponse<List<MyOrganizationDto>>(true, result, null));
     }
 
     [HttpGet]

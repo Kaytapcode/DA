@@ -1,5 +1,6 @@
 // User Pages
 export { CourseListPage } from './CourseListPage'
+export { CourseBrowsePage } from './CourseBrowsePage'
 export { UserDashboardPage } from './UserDashboardPage'
 export { UserAnalyticsDashboardPage } from './UserAnalyticsDashboardPage'
 export { UserProfilePage } from './UserProfilePage'

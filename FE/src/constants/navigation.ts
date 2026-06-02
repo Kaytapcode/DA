@@ -16,6 +16,7 @@ export const USER_NAV_ITEMS: NavItem[] = [
   // Primary Learning Tasks
   { id: 'home', labelKey: 'common.home', icon: 'home', path: '/user/home' },
   { id: 'courses', labelKey: 'common.courses', icon: 'school', path: '/user/courses' },
+  { id: 'browse-courses', labelKey: 'user.browseCourses', icon: 'travel_explore', path: '/user/courses/browse' },
   { id: 'dashboard', labelKey: 'common.dashboard', icon: 'dashboard', path: '/user/dashboard' },
   { id: 'learning', labelKey: 'user.learning', icon: 'history', path: '/user/learning' },
   

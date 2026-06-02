@@ -7,6 +7,9 @@ namespace Shared.Contracts.Responses
         Guid CourseId,
         Guid UserId,
         string Role,
-        DateTime EnrolledAt
+        DateTime EnrolledAt,
+        // 'Pending' | 'Approved' | 'Rejected'. Self-service requests start 'Pending';
+        // OrgAdmin-created enrollments are 'Approved'. Only 'Approved' grants course access.
+        string Status = "Approved"
     );
 }

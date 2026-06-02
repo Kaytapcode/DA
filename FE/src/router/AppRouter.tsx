@@ -26,6 +26,7 @@ import {
 } from '@pages/auth'
 import {
   CourseListPage,
+  CourseBrowsePage,
   UserDashboardPage,
   UserAnalyticsDashboardPage,
   UserProfilePage,
@@ -119,6 +120,9 @@ export const AppRouter: React.FC = () => {
           } />
           <Route path="/user/courses" element={
             <ProtectedRoute roles={['Student', 'Teacher']}><CourseListPage /></ProtectedRoute>
+          } />
+          <Route path="/user/courses/browse" element={
+            <ProtectedRoute roles={['Student', 'Teacher']}><CourseBrowsePage /></ProtectedRoute>
           } />
           <Route path="/user/learning" element={
             <ProtectedRoute roles={['Student', 'Teacher']}><LearningHistoryPage /></ProtectedRoute>
@@ -298,34 +302,34 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/auth/futuristic_user_registration_screen" element={<RegisterPage />} />
           <Route path="/fe/auth/guest_homepage_light_mode" element={<HomePage />} />
           <Route path="/fe/auth/user_login_light_mode" element={<LoginPage />} />
-          <Route path="/fe/user/course_list_light" element={<CourseListPage />} />
-          <Route path="/fe/user/document_viewer_light" element={<DocumentViewerPage />} />
-          <Route path="/fe/user/interactive_flashcards_light" element={<InteractiveFlashcardsPage />} />
-          <Route path="/fe/user/learning_history_light" element={<LearningHistoryPage />} />
-          <Route path="/fe/user/organization_list_light" element={<OrganizationListPage />} />
-          <Route path="/fe/user/specific_course_page_light" element={<SpecificCoursePage />} />
-          <Route path="/fe/user/user_content_library_light" element={<UserContentLibraryPage />} />
-          <Route path="/fe/user/user_home_page_light" element={<UserHomePageLightPage />} />
-          <Route path="/fe/user/user_learning_dashboard_light" element={<UserLearningDashboardPage />} />
-          <Route path="/fe/user/user_profile_settings_light" element={<UserProfilePage />} />
-          <Route path="/fe/user/user_quiz_interface_light" element={<UserQuizInterfacePage />} />
-          <Route path="/fe/user/video_lesson_light" element={<VideoLessonPage />} />
-          <Route path="/fe/orgadmin/course_editor_curriculum_tab" element={<CourseEditorCurriculumTabPage />} />
-          <Route path="/fe/orgadmin/course_editor_member_roles_tab" element={<CourseEditorMemberRolesTabPage />} />
-          <Route path="/fe/orgadmin/course_management" element={<CourseManagementPage />} />
-          <Route path="/fe/orgadmin/member_management" element={<MemberManagementPage />} />
-          <Route path="/fe/orgadmin/orgadmin_dashboard_reports" element={<OrgAdminDashboardPage />} />
-          <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<SystemadminOrganizationDirectoryPage />} />
-          <Route path="/fe/orgadmin/unified_settings_organizations" element={<UnifiedSettingsOrganizationsPage />} />
-          <Route path="/fe/sysadmin/global_content_courses" element={<GlobalContentCoursesPage />} />
-          <Route path="/fe/sysadmin/global_user_management" element={<GlobalUserManagementPage />} />
-          <Route path="/fe/sysadmin/organization_directory" element={<OrganizationDirectoryPage />} />
-          <Route path="/fe/sysadmin/org_details_systemadmin" element={<OrgDetailsSystemadminPage />} />
-          <Route path="/fe/sysadmin/platform_settings_logs" element={<PlatformSettingsLogsPage />} />
-          <Route path="/fe/sysadmin/systemadmin_dashboard_overview" element={<SysAdminDashboardPage />} />
-          <Route path="/fe/sysadmin/systemadmin_organization_directory_light_2" element={<SystemadminOrganizationDirectoryAltPage />} />
-          <Route path="/fe/sysadmin/user_details_systemadmin" element={<UserDetailsSystemadminPage />} />
-          <Route path="/fe/notification/system_notifications_success_error_states" element={<NotificationPage />} />
+          <Route path="/fe/user/course_list_light" element={<ProtectedRoute><CourseListPage /></ProtectedRoute>} />
+          <Route path="/fe/user/document_viewer_light" element={<ProtectedRoute><DocumentViewerPage /></ProtectedRoute>} />
+          <Route path="/fe/user/interactive_flashcards_light" element={<ProtectedRoute><InteractiveFlashcardsPage /></ProtectedRoute>} />
+          <Route path="/fe/user/learning_history_light" element={<ProtectedRoute><LearningHistoryPage /></ProtectedRoute>} />
+          <Route path="/fe/user/organization_list_light" element={<ProtectedRoute><OrganizationListPage /></ProtectedRoute>} />
+          <Route path="/fe/user/specific_course_page_light" element={<ProtectedRoute><SpecificCoursePage /></ProtectedRoute>} />
+          <Route path="/fe/user/user_content_library_light" element={<ProtectedRoute><UserContentLibraryPage /></ProtectedRoute>} />
+          <Route path="/fe/user/user_home_page_light" element={<ProtectedRoute><UserHomePageLightPage /></ProtectedRoute>} />
+          <Route path="/fe/user/user_learning_dashboard_light" element={<ProtectedRoute><UserLearningDashboardPage /></ProtectedRoute>} />
+          <Route path="/fe/user/user_profile_settings_light" element={<ProtectedRoute><UserProfilePage /></ProtectedRoute>} />
+          <Route path="/fe/user/user_quiz_interface_light" element={<ProtectedRoute><UserQuizInterfacePage /></ProtectedRoute>} />
+          <Route path="/fe/user/video_lesson_light" element={<ProtectedRoute><VideoLessonPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/course_editor_curriculum_tab" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><CourseEditorCurriculumTabPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/course_editor_member_roles_tab" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><CourseEditorMemberRolesTabPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/course_management" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><CourseManagementPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/member_management" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><MemberManagementPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/orgadmin_dashboard_reports" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><OrgAdminDashboardPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><SystemadminOrganizationDirectoryPage /></ProtectedRoute>} />
+          <Route path="/fe/orgadmin/unified_settings_organizations" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><UnifiedSettingsOrganizationsPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/global_content_courses" element={<ProtectedRoute roles={['SysAdmin']}><GlobalContentCoursesPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/global_user_management" element={<ProtectedRoute roles={['SysAdmin']}><GlobalUserManagementPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/organization_directory" element={<ProtectedRoute roles={['SysAdmin']}><OrganizationDirectoryPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/org_details_systemadmin" element={<ProtectedRoute roles={['SysAdmin']}><OrgDetailsSystemadminPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/platform_settings_logs" element={<ProtectedRoute roles={['SysAdmin']}><PlatformSettingsLogsPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/systemadmin_dashboard_overview" element={<ProtectedRoute roles={['SysAdmin']}><SysAdminDashboardPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/systemadmin_organization_directory_light_2" element={<ProtectedRoute roles={['SysAdmin']}><SystemadminOrganizationDirectoryAltPage /></ProtectedRoute>} />
+          <Route path="/fe/sysadmin/user_details_systemadmin" element={<ProtectedRoute roles={['SysAdmin']}><UserDetailsSystemadminPage /></ProtectedRoute>} />
+          <Route path="/fe/notification/system_notifications_success_error_states" element={<ProtectedRoute><NotificationPage /></ProtectedRoute>} />
 
           {/* ── Org-scoped Routes /org/:slug/ ──────────────────── */}
           <Route path="/org/:slug" element={

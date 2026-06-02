@@ -81,8 +81,7 @@ export const RegisterOrgAdminPage: React.FC = () => {
       });
 
       if (res.success && res.data) {
-        // Redirect to login with org ID pre-filled via query param
-        navigate(`/login?orgId=${res.data.orgId}&registered=orgadmin`, { replace: true });
+        navigate('/login?registered=orgadmin', { replace: true });
       } else {
         setSubmitError(res.message || 'Registration failed.');
       }
@@ -161,7 +160,7 @@ export const RegisterOrgAdminPage: React.FC = () => {
               data-testid="register-orgadmin-org-name"
               value={formData.organizationName}
               onChange={(e) => handleFieldChange('organizationName', e.target.value)}
-              placeholder="Hanoi University of Technology"
+              placeholder="HCM University of Technology"
               className={`w-full rounded-lg border px-4 py-3 text-sm outline-none transition ${errors.organizationName ? 'border-red-400' : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'}`}
             />
             {errors.organizationName && <p className="mt-1 text-xs text-red-500">{errors.organizationName}</p>}
@@ -176,7 +175,7 @@ export const RegisterOrgAdminPage: React.FC = () => {
               data-testid="register-orgadmin-org-slug"
               value={formData.organizationSlug}
               onChange={(e) => handleFieldChange('organizationSlug', e.target.value)}
-              placeholder="hanoi-university-of-technology"
+              placeholder="HCM-university-of-technology"
               className={`w-full rounded-lg border px-4 py-3 text-sm font-mono outline-none transition ${errors.organizationSlug ? 'border-red-400' : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'}`}
             />
             {errors.organizationSlug && <p className="mt-1 text-xs text-red-500">{errors.organizationSlug}</p>}

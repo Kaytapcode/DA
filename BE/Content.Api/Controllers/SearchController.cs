@@ -134,8 +134,10 @@ namespace Content.Api.Controllers
 
             if (typeUpper is null || typeUpper == "COLLECTION")
             {
+                // Only TOP-LEVEL collections (ParentId == null). Child modules are "sections"
+                // shown inside their parent collection, not as standalone collections.
                 var colQuery = _db.Modules.IgnoreQueryFilters()
-                    .Where(m => m.OrgId == null && m.CreatedBy.HasValue);
+                    .Where(m => m.OrgId == null && m.CreatedBy.HasValue && m.ParentId == null);
 
                 if (!string.IsNullOrWhiteSpace(q))
                     colQuery = colQuery.Where(m =>
