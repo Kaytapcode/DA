@@ -132,9 +132,11 @@ namespace Content.Api.Data
                 .HasForeignKey(fum => fum.FlashcardId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Student progress: unique per (course, user, module) combination
+            // Student progress: unique per (course, user, module, content) — progress is tracked per
+            // CONTENT, so ContentId must be part of the key (else two contents in one module collide
+            // and opening one wipes the other's completion).
             modelBuilder.Entity<StudentProgressModel>()
-                .HasIndex(sp => new { sp.CourseId, sp.UserId, sp.ModuleId })
+                .HasIndex(sp => new { sp.CourseId, sp.UserId, sp.ModuleId, sp.ContentId })
                 .IsUnique();
 
             modelBuilder.Entity<StudentProgressModel>()

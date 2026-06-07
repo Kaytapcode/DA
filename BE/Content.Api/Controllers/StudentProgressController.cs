@@ -16,23 +16,24 @@ namespace Content.Api.Controllers
         private readonly IStudentProgressRepository _progressRepo;
         private readonly ICourseRepository _courseRepo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ICourseAccessService _access;
 
         public StudentProgressController(
             IStudentProgressRepository progressRepo,
             ICourseRepository courseRepo,
-            IOrgContextService orgCtx)
+            IOrgContextService orgCtx,
+            ICourseAccessService access)
         {
             _progressRepo = progressRepo;
             _courseRepo = courseRepo;
             _orgCtx = orgCtx;
+            _access = access;
         }
 
-        private async Task<bool> VerifyCourseAccessAsync(Guid courseId)
-        {
-            var course = await _courseRepo.GetByIdAsync(courseId);
-            if (course == null) return false;
-            return _orgCtx.IsSysAdmin() || course.OrgId == _orgCtx.GetCurrentOrgId();
-        }
+        // Per-course access: an enrolled student usually has NO globally-selected org, so progress
+        // must gate on CanViewAsync (enrollment/OrgAdmin/SysAdmin) — never org-equality alone.
+        // Without this, every in-course progress write 404'd and all course/home counters stayed 0.
+        private Task<bool> VerifyCourseAccessAsync(Guid courseId) => _access.CanViewAsync(courseId);
 
         private static StudentProgressDto ToDto(StudentProgressModel p) => new(
             p.Id, p.CourseId, p.UserId, p.ModuleId, p.ContentId,

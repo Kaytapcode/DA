@@ -15,6 +15,7 @@ export interface NavItem {
 export const USER_NAV_ITEMS: NavItem[] = [
   // Primary Learning Tasks
   { id: 'home', labelKey: 'common.home', icon: 'home', path: '/user/home' },
+  { id: 'organizations', labelKey: 'common.organizations', icon: 'corporate_fare', path: '/user/organizations' },
   { id: 'courses', labelKey: 'common.courses', icon: 'school', path: '/user/courses' },
   { id: 'browse-courses', labelKey: 'user.browseCourses', icon: 'travel_explore', path: '/user/courses/browse' },
   { id: 'dashboard', labelKey: 'common.dashboard', icon: 'dashboard', path: '/user/dashboard' },
@@ -48,9 +49,6 @@ export const ORG_ADMIN_NAV_ITEMS: NavItem[] = [
   
   // Content Management
   { id: 'editor', labelKey: 'admin.courseEditor', icon: 'edit', path: '/admin/editor' },
-  
-  // Settings & Configuration
-  { id: 'settings', labelKey: 'common.settings', icon: 'settings', path: '/admin/settings' },
 ]
 
 // System Admin Navigation - organized by system oversight priority
@@ -66,14 +64,14 @@ export const SYSADMIN_NAV_ITEMS: NavItem[] = [
   // Content Oversight
   { id: 'courses', labelKey: 'sysadmin.courses', icon: 'school', path: '/sysadmin/courses' },
 
-  // System Monitoring & Logs
-  { id: 'logs', labelKey: 'sysadmin.logs', icon: 'receipt_long', path: '/sysadmin/logs' },
+  // // System Monitoring & Logs
+  // { id: 'logs', labelKey: 'sysadmin.logs', icon: 'receipt_long', path: '/sysadmin/logs' },
 
-  // AI configuration (spec §1: SysAdmin "Configure AI API Keys")
-  { id: 'ai-keys', labelKey: 'sysadmin.aiKeys', icon: 'vpn_key', path: '/sysadmin/ai-keys' },
+  // // AI configuration (spec §1: SysAdmin "Configure AI API Keys")
+  // { id: 'ai-keys', labelKey: 'sysadmin.aiKeys', icon: 'vpn_key', path: '/sysadmin/ai-keys' },
 
-  // Settings & Configuration
-  { id: 'settings', labelKey: 'sysadmin.settings', icon: 'settings', path: '/sysadmin/settings' },
+  // // Settings & Configuration
+  // { id: 'settings', labelKey: 'sysadmin.settings', icon: 'settings', path: '/sysadmin/settings' },
 ]
 
 // Branding

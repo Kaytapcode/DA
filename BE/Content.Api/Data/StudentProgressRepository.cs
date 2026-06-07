@@ -43,9 +43,24 @@ namespace Content.Api.Data
 
         public async Task<StudentProgressModel> UpsertAsync(StudentProgressModel progress, CancellationToken ct = default)
         {
-            var existing = progress.CourseId.HasValue
-                ? await GetByKeyAsync(progress.CourseId.Value, progress.UserId, progress.ModuleId, ct)
-                : await GetPersonalByContentAsync(progress.UserId, progress.ContentId ?? Guid.Empty, ct);
+            // Course progress is tracked PER CONTENT: the key must include ContentId, otherwise two
+            // contents in the same module collapse onto one row and opening content B wipes content A's
+            // completion. (A module-level row — ContentId == null — is still matched the old way.)
+            StudentProgressModel? existing;
+            if (progress.CourseId.HasValue)
+            {
+                existing = progress.ContentId.HasValue
+                    ? await _db.StudentProgress.FirstOrDefaultAsync(p =>
+                        p.CourseId == progress.CourseId &&
+                        p.UserId == progress.UserId &&
+                        p.ModuleId == progress.ModuleId &&
+                        p.ContentId == progress.ContentId, ct)
+                    : await GetByKeyAsync(progress.CourseId.Value, progress.UserId, progress.ModuleId, ct);
+            }
+            else
+            {
+                existing = await GetPersonalByContentAsync(progress.UserId, progress.ContentId ?? Guid.Empty, ct);
+            }
 
             if (existing != null)
             {
@@ -57,9 +72,6 @@ namespace Content.Api.Data
                     existing.IsCompleted = true;
                     existing.CompletedAt = DateTime.UtcNow;
                 }
-
-                if (progress.ContentId.HasValue)
-                    existing.ContentId = progress.ContentId;
 
                 existing.ProgressPercentage = progress.ProgressPercentage;
                 _db.StudentProgress.Update(existing);

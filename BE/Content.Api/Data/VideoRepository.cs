@@ -95,6 +95,7 @@ namespace Content.Api.Data
             return await _context.Videos
                 .Where(v => v.DeletedAt == null &&
                             v.Content != null &&
+                            !v.Content.IsCourseScoped && // course-created content stays inside its course
                             !v.Content.ModuleContents.Any() &&
                             v.Content.CreatedByUserId == userId)
                 .OrderByDescending(v => v.CreatedAt)

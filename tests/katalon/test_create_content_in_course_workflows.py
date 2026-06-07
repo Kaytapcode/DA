@@ -56,19 +56,30 @@ def _module_content_count(token, cid, mid, org=ORG1_ID):
     return len((m or {}).get("contents") or [])
 
 
+def _library_titles(token, path):
+    """Titles in a personal-library list endpoint (quizzes/videos/personal/decks/documents)."""
+    r = requests.get(f"{API_BASE}/api/{path}",
+                     headers={"Authorization": f"Bearer {token}"}, timeout=TIMEOUT)
+    items = (r.json().get("data") or []) if r.status_code == 200 else []
+    return [(it.get("title") or it.get("fileName") or "") for it in items]
+
+
 @pytest.fixture(scope="module")
 def oa_token():
     return _api_login(ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
 
 
 def _course_with_module(oa_token, code="CC1"):
+    # A new course auto-creates 3 default modules (Topic 1/2/3). We target the FIRST one (which is
+    # also what the UI's first module-expand-btn opens), so the in-UI add + the API content-count
+    # assertion refer to the same module.
     cid = requests.post(f"{API_BASE}/api/courses",
                         json={"title": f"CC_{uuid.uuid4().hex[:6]}", "courseCode": code},
                         headers={"Authorization": f"Bearer {oa_token}", "X-Org-Id": ORG1_ID}, timeout=TIMEOUT).json()
     cid = (cid.get("data") or cid)["id"]
-    mr = requests.post(f"{API_BASE}/api/courses/{cid}/modules", json={"title": "Module One"},
-                       headers={"Authorization": f"Bearer {oa_token}", "X-Org-Id": ORG1_ID}, timeout=TIMEOUT).json()
-    mid = (mr.get("data") or mr)["id"]
+    mods = requests.get(f"{API_BASE}/api/courses/{cid}/modules",
+                        headers={"Authorization": f"Bearer {oa_token}", "X-Org-Id": ORG1_ID}, timeout=TIMEOUT).json()
+    mid = (mods.get("data") or mods)[0]["id"]
     return cid, mid
 
 
@@ -172,7 +183,8 @@ class TestTeacherCreatesQuizInCourse:
         page.wait_for_load_state("networkidle")
         _shot(page, "cc_quiz_creator")
         # Author a minimal valid quiz.
-        page.locator("[data-testid='quiz-title-input']").fill(f"CourseQuiz {uuid.uuid4().hex[:4]}")
+        quiz_title = f"CourseQuiz {uuid.uuid4().hex[:4]}"
+        page.locator("[data-testid='quiz-title-input']").fill(quiz_title)
         page.locator("[data-testid='quiz-question-0-text']").fill("What is 2 + 2?")
         # All 4 options must be non-empty (validation); option 0 is the default correct answer.
         for i, val in enumerate(["4", "3", "5", "6"]):
@@ -185,3 +197,7 @@ class TestTeacherCreatesQuizInCourse:
         page.wait_for_timeout(1000)
         _shot(page, "cc_quiz_linked")
         assert _module_content_count(oa_token, cid, mid) == 1, "quiz should be linked into the module"
+        # Spec-pending (2026-06-06): content created INSIDE a course is course-scoped — it must NOT
+        # appear in the creator's personal library (only inside the course).
+        assert quiz_title not in _library_titles(ttok, "quizzes"), \
+            "course-created quiz must be hidden from the teacher's personal library"

@@ -69,14 +69,15 @@ namespace Organization.Api.Data
 
         public async Task<MemberModel?> GetOrgAdminOrgAsync(Guid userId, CancellationToken ct = default)
             => await _context.Members.FirstOrDefaultAsync(m =>
-                m.UserId == userId && (m.Role == "OrgAdmin" || m.Role == "Owner"), ct);
+                m.UserId == userId && m.Status == "Approved" && (m.Role == "OrgAdmin" || m.Role == "Owner"), ct);
 
         public async Task<bool> IsUserOrgAdminAsync(Guid userId, Guid orgId, CancellationToken ct = default)
             => await _context.Members.AnyAsync(m =>
-                m.UserId == userId && m.OrgId == orgId &&
+                m.UserId == userId && m.OrgId == orgId && m.Status == "Approved" &&
                 (m.Role == "OrgAdmin" || m.Role == "Owner"), ct);
 
+        // Only an APPROVED membership counts — a Pending join request grants no org access.
         public async Task<bool> IsUserMemberAsync(Guid userId, Guid orgId, CancellationToken ct = default)
-            => await _context.Members.AnyAsync(m => m.UserId == userId && m.OrgId == orgId, ct);
+            => await _context.Members.AnyAsync(m => m.UserId == userId && m.OrgId == orgId && m.Status == "Approved", ct);
     }
 }

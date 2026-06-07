@@ -86,7 +86,9 @@ try
     builder.Services.AddScoped<IUserRepository, UserRepository>();
     builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
     builder.Services.AddScoped<ITokenService, TokenService>();
-    builder.Services.AddScoped<Identity.Api.Services.IEmailService, Identity.Api.Services.ConsoleEmailService>();
+    // Spec §1 — Forgot Password email. Real SMTP when "Smtp" is configured; otherwise the
+    // service reports IsConfigured=false and AuthController returns the reset link on-screen.
+    builder.Services.AddScoped<Identity.Api.Services.IEmailService, Identity.Api.Services.SmtpEmailService>();
 
     // HTTP client for inter-service membership check (Identity → Organization)
     builder.Services.AddHttpClient<IOrganizationServiceClient, OrganizationServiceClient>();

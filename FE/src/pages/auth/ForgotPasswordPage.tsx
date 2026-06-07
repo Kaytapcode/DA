@@ -4,18 +4,27 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { Button } from '@components/ui/Button'
 import { apiClient } from '@/utils/apiClient'
 
+interface ForgotPasswordResponse {
+  resetLink?: string
+  ResetLink?: string
+}
+
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('')
   const [isSent, setIsSent] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Populated only when the backend has no SMTP transport configured (dev/demo fallback).
+  const [resetLink, setResetLink] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setIsLoading(true)
     try {
-      await apiClient.post('/auth/forgot-password', { email })
+      const res = await apiClient.post<ForgotPasswordResponse>('/auth/forgot-password', { email })
+      const link = res?.data?.resetLink ?? res?.data?.ResetLink ?? null
+      setResetLink(link)
       setIsSent(true)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.'
@@ -41,6 +50,23 @@ export const ForgotPasswordPage: React.FC = () => {
           </div>
 
           <div className="bg-surface-container rounded-2xl p-8 border border-outline-variant">
+            {resetLink && (
+              <div
+                className="mb-6 rounded-xl border border-warning/40 bg-warning/10 p-4"
+                data-testid="forgot-password-reset-link-box"
+              >
+                <p className="text-sm font-medium text-on-surface mb-2">
+                  Email delivery isn't configured — use this reset link directly:
+                </p>
+                <Link
+                  to={resetLink.replace(/^https?:\/\/[^/]+/, '')}
+                  className="text-primary text-sm font-medium break-all hover:underline"
+                  data-testid="forgot-password-reset-link"
+                >
+                  {resetLink}
+                </Link>
+              </div>
+            )}
             <div className="space-y-4 mb-8">
               <div className="flex gap-3">
                 <MaterialIcon icon="check_circle" className="text-green-500 flex-shrink-0" />

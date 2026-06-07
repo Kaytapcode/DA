@@ -22,7 +22,8 @@ namespace Organization.Api.Mappings
                     src.Name,
                     src.Slug,
                     src.Members != null ? src.Members.Count : 0,
-                    src.CreatedAt
+                    src.CreatedAt,
+                    src.Status
                 ));
 
             CreateMap<CreateOrganizationRequestDto, OrganizationModel>()

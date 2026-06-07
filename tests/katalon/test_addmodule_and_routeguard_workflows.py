@@ -72,26 +72,33 @@ def _new_course(oa_token, code="AM1"):
 @pytest.mark.orgadmin
 @pytest.mark.timeout(140)
 class TestOrgAdminAddModuleValidation:
-    def test_short_title_blocked_then_valid_persists(self, page: Page, oa_token):
+    def test_short_and_blank_titles_work_and_persist(self, page: Page, oa_token):
         cid = _new_course(oa_token, "AMO")
         ui_login_orgadmin(page, ORGADMIN1_USER, ORGADMIN1_PASS, org_id=ORG1_ID)
         page.goto(f"{FE_BASE}/admin/editor/curriculum?courseId={cid}")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(700)
+        # New courses already have 3 default modules (Topic 1/2/3).
+        for n in ("Topic 1", "Topic 2", "Topic 3"):
+            expect(page.locator(f"text={n}").first).to_be_visible(timeout=8000)
+        _shot(page, "rg_default_modules")
+
+        # A 1-char title is now allowed (min 1, no silent failure).
         page.locator("[data-testid='module-add-toggle-btn']").click()
-        # Too-short title (< 3 chars) -> Add button disabled (no more silent 400).
-        page.locator("[data-testid='module-title-input']").fill("ab")
-        _shot(page, "rg_module_short")
-        expect(page.locator("[data-testid='module-add-btn']")).to_be_disabled()
-        # Valid title -> enabled -> add -> appears + persists after reload.
-        mod = f"Real Module {uuid.uuid4().hex[:4]}"
-        page.locator("[data-testid='module-title-input']").fill(mod)
+        page.locator("[data-testid='module-title-input']").fill("A")
         expect(page.locator("[data-testid='module-add-btn']")).to_be_enabled()
         page.locator("[data-testid='module-add-btn']").click()
-        expect(page.locator(f"text={mod}")).to_be_visible(timeout=8000)
+        expect(page.locator("text=A").first).to_be_visible(timeout=8000)
+
+        # A BLANK title creates a default "Topic N" module.
+        page.locator("[data-testid='module-add-toggle-btn']").click()
+        page.locator("[data-testid='module-title-input']").fill("")
+        page.locator("[data-testid='module-add-btn']").click()
+        page.wait_for_timeout(1200)
         page.reload()
         page.wait_for_load_state("networkidle")
-        expect(page.locator(f"text={mod}")).to_be_visible(timeout=8000)
+        # At least 5 modules now (3 default + "A" + a blank-default "Topic N").
+        assert page.locator("text=/^Topic \\d+/").count() >= 4
         _shot(page, "rg_module_added")
 
 
@@ -118,10 +125,11 @@ class TestTeacherAddModuleValidation:
         page.goto(f"{FE_BASE}/user/course/{cid}")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(1200)
+        # Course already shows the 3 default modules.
+        expect(page.locator("text=Topic 1").first).to_be_visible(timeout=8000)
+        # A short (1-char) title is allowed now.
         page.locator("[data-testid='teacher-add-module-toggle']").click()
-        page.locator("[data-testid='teacher-module-title-input']").fill("ab")
-        expect(page.locator("[data-testid='teacher-module-add-btn']")).to_be_disabled()
-        mod = f"Teacher Mod {uuid.uuid4().hex[:4]}"
+        mod = f"TM{uuid.uuid4().hex[:3]}"
         page.locator("[data-testid='teacher-module-title-input']").fill(mod)
         expect(page.locator("[data-testid='teacher-module-add-btn']")).to_be_enabled()
         page.locator("[data-testid='teacher-module-add-btn']").click()

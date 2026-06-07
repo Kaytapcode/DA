@@ -17,12 +17,14 @@ namespace Content.Api.Controllers
     {
         private readonly IQuestionRepository _repo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ICourseAccessService _access;
         private readonly ContentDbContext _db;
 
-        public QuestionsController(IQuestionRepository repo, IOrgContextService orgCtx, ContentDbContext db)
+        public QuestionsController(IQuestionRepository repo, IOrgContextService orgCtx, ICourseAccessService access, ContentDbContext db)
         {
             _repo = repo;
             _orgCtx = orgCtx;
+            _access = access;
             _db = db;
         }
 
@@ -32,7 +34,11 @@ namespace Content.Api.Controllers
             // Personal/draft quiz (not attached to any module/course): allow any authenticated user.
             // Per spec section 1, personal resources are public and accessible to all users.
             if (orgId == null) return _orgCtx.GetCurrentUserId().HasValue;
-            return _orgCtx.IsSysAdmin() || orgId == _orgCtx.GetCurrentOrgId();
+            if (_orgCtx.IsSysAdmin() || orgId == _orgCtx.GetCurrentOrgId()) return true;
+            // In-course quiz, caller has no matching selected org: allow if they are enrolled
+            // (Teacher/Student) in the course that contains it — access is per-course, not org-equality.
+            var contentId = await _db.Quizzes.Where(q => q.Id == quizId).Select(q => q.ContentId).FirstOrDefaultAsync();
+            return contentId != Guid.Empty && await _access.CanViewContentAsync(contentId);
         }
 
         private bool IsTeacherOrAbove()

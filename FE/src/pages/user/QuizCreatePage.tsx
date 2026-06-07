@@ -190,10 +190,11 @@ export const QuizCreatePage: React.FC = () => {
 				if (!qRes.success) throw new Error(qRes.message || `Failed at question ${i + 1}`)
 			}
 
+			// If launched to add content to a course module, link the new quiz FIRST (throws on
+			// failure → the catch shows the error and we stay here), then return to the course.
+			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId); return }
 			setSuccess(t('Tạo quiz thành công! Đang chuyển hướng...', 'Quiz created! Redirecting...'))
-			// If launched to add content to a course module, link the new quiz and return there.
-			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId) }
-			else setTimeout(() => navigate('/user/library'), 1200)
+			setTimeout(() => navigate('/user/library'), 1200)
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to create quiz')
 		} finally {
@@ -205,8 +206,24 @@ export const QuizCreatePage: React.FC = () => {
 	const loadLibraryDocs = async () => {
 		setIsLoadingLibrary(true)
 		try {
-			const res = await apiClient.get<LibraryDoc[]>('/documents')
-			if (res.success && res.data) setLibraryDocs(res.data)
+			if (courseLink.active && courseLink.courseId) {
+				// In-course AI quiz: source documents FROM THE COURSE (its own documents),
+				// not the creator's personal library.
+				const res = await apiClient.get<Array<{ contents?: Array<{ contentType: string; title: string; documentId?: string | null }> }>>(
+					`/courses/${courseLink.courseId}/modules`
+				)
+				if (res.success && res.data) {
+					const docs: LibraryDoc[] = []
+					for (const m of res.data)
+						for (const c of (m.contents ?? []))
+							if ((c.contentType === 'PDF' || c.contentType === 'DOCUMENT') && c.documentId)
+								docs.push({ id: c.documentId, fileName: c.title || 'Document', fileType: 'PDF' })
+					setLibraryDocs(docs)
+				}
+			} else {
+				const res = await apiClient.get<LibraryDoc[]>('/documents')
+				if (res.success && res.data) setLibraryDocs(res.data)
+			}
 		} catch { /* silently fail */ }
 		finally { setIsLoadingLibrary(false) }
 	}
@@ -325,9 +342,9 @@ export const QuizCreatePage: React.FC = () => {
 			})
 			if (!saveRes.success) throw new Error(saveRes.message || 'Failed to save questions')
 
+			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId); return }
 			setSuccess(t('Đã lưu quiz nháp! Đang chuyển về thư viện...', 'Draft quiz saved! Redirecting to library...'))
-			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId) }
-			else setTimeout(() => navigate('/user/library'), 1400)
+			setTimeout(() => navigate('/user/library'), 1400)
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to save quiz')
 		} finally {
@@ -400,16 +417,19 @@ export const QuizCreatePage: React.FC = () => {
 								</div>
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Giới hạn thời gian (phút)', 'Time Limit (min)')}
+										{t('Giới hạn thời gian', 'Time Limit')}
 									</label>
-									<input
-										type="number"
-										min={0}
-										value={timeLimit}
-										onChange={(e) => setTimeLimit(e.target.value)}
-										placeholder={t('Không giới hạn', 'Unlimited')}
-										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
-									/>
+									<select
+											value={timeLimit}
+											onChange={(e) => setTimeLimit(e.target.value)}
+											data-testid="quiz-timelimit-select"
+											className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
+										>
+											<option value="">{t('Không giới hạn', 'Unlimited')}</option>
+											{[5, 10, 15, 20, 30, 45, 60, 90, 120].map((m) => (
+												<option key={m} value={String(m)}>{m} {t('phút', 'min')}</option>
+											))}
+										</select>
 								</div>
 							</div>
 
@@ -670,7 +690,9 @@ export const QuizCreatePage: React.FC = () => {
 												}`}
 											>
 												<MaterialIcon icon="library_books" size="xs" />
-												{t('Chọn từ thư viện', 'From My Library')}
+												{courseLink.active
+													? t('Tài liệu trong khoá học', 'From Course')
+													: t('Chọn từ thư viện', 'From My Library')}
 											</button>
 										</div>
 
@@ -682,7 +704,7 @@ export const QuizCreatePage: React.FC = () => {
 														{t('File tài liệu', 'Document File')}
 													</span>
 													<span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
-														PDF · TXT · max 10 MB
+														PDF · TXT · max 200 MB
 													</span>
 												</div>
 												<div
@@ -710,7 +732,7 @@ export const QuizCreatePage: React.FC = () => {
 																{t('Nhấn hoặc kéo thả file vào đây', 'Click or drag & drop a file here')}
 															</p>
 															<p className="text-xs text-[#60708a]">
-																{t('Chỉ hỗ trợ PDF và TXT, tối đa 10 MB', 'PDF and TXT only, max 10 MB')}
+																{t('Chỉ hỗ trợ PDF và TXT, tối đa 200 MB', 'PDF and TXT only, max 200 MB')}
 															</p>
 														</>
 													)}
@@ -780,7 +802,7 @@ export const QuizCreatePage: React.FC = () => {
 									</div>
 
 										<div className="flex justify-end">
-											<Button onClick={() => void generateWithAi()} disabled={isGenerating || !aiFile}>
+											<Button onClick={() => void generateWithAi()} disabled={isGenerating || !aiFile} data-testid="quiz-ai-generate-btn">
 												<MaterialIcon icon="auto_awesome" size="xs" />
 												<span className="ml-1">
 													{isGenerating
@@ -840,6 +862,7 @@ export const QuizCreatePage: React.FC = () => {
 													value={q.questionText}
 													onChange={(e) => updateEQ(qIdx, { questionText: e.target.value })}
 													rows={2}
+													data-testid={`quiz-ai-question-${qIdx}-text`}
 													className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 												/>
 
@@ -897,7 +920,7 @@ export const QuizCreatePage: React.FC = () => {
 											<MaterialIcon icon="add" size="xs" />
 											<span className="ml-1">{t('Thêm câu hỏi', 'Add Question')}</span>
 										</Button>
-										<Button onClick={() => void saveAsDraft()} disabled={isSubmitting}>
+										<Button onClick={() => void saveAsDraft()} disabled={isSubmitting} data-testid="quiz-ai-save-btn">
 											<MaterialIcon icon="save" size="xs" />
 											<span className="ml-1">
 												{isSubmitting ? t('Đang lưu...', 'Saving...') : t('Lưu', 'Save')}

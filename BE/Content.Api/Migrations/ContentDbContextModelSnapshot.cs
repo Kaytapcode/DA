@@ -43,6 +43,10 @@ namespace Content.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_user_id");
 
+                    b.Property<bool>("IsCourseScoped")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_course_scoped");
+
                     b.Property<bool>("IsPublic")
                         .HasColumnType("boolean")
                         .HasColumnName("is_public");
@@ -654,7 +658,7 @@ namespace Content.Api.Migrations
 
                     b.HasIndex("ModuleId");
 
-                    b.HasIndex("CourseId", "UserId", "ModuleId")
+                    b.HasIndex("CourseId", "UserId", "ModuleId", "ContentId")
                         .IsUnique();
 
                     b.ToTable("student_progress");

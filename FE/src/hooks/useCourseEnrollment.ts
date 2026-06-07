@@ -8,6 +8,7 @@ export interface CourseEnrollment {
   id: string
   courseId: string
   userId: string
+  username?: string | null
   role: 'Teacher' | 'Student'
   enrolledAt: string
   status: EnrollmentStatus

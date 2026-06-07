@@ -242,7 +242,7 @@ export const RegisterPage: React.FC = () => {
                   className={inputCls('username')}
                 />
                 {errors.username && <p className="mt-1 text-xs text-red-500" data-testid="register-error-username">{errors.username}</p>}
-                <p className="mt-1 text-xs text-[#9ca3af]">3–20 characters: letters, numbers, underscores, hyphens</p>
+                {/* <p className="mt-1 text-xs text-[#9ca3af]">3–20 characters: letters, numbers, underscores, hyphens</p> */}
               </div>
 
               <div>
@@ -279,6 +279,9 @@ export const RegisterPage: React.FC = () => {
                     <span className="material-symbols-outlined text-lg">{showPassword ? 'visibility' : 'visibility_off'}</span>
                   </button>
                 </div>
+                <p className="mt-1 text-xs text-[#6b7280]" data-testid="password-requirements">
+                  At least 8 characters, including uppercase, lowercase, a number, and a special character.
+                </p>
                 {formData.password && passwordStrength && (
                   <div className="mt-2">
                     <div className="flex items-center justify-between mb-1">

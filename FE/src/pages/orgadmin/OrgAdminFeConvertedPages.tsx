@@ -500,10 +500,12 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
   }
 
   const handleAddModule = async () => {
-    if (!courseId || !newModuleTitle.trim()) return
-    // createModule now surfaces server errors via the hook's `error` (shown below); only clear &
+    if (!courseId) return
+    // Title is optional: blank → default "Topic N" (N = next ordinal). Min 1 char if typed.
+    const title = newModuleTitle.trim() || `Topic ${modules.length + 1}`
+    // createModule surfaces server errors via the hook's `error` (shown below); only clear &
     // close the form when the module is actually created so failures stay visible & editable.
-    const created = await createModule(courseId, newModuleTitle.trim())
+    const created = await createModule(courseId, title)
     if (created) {
       setNewModuleTitle('')
       setAddingModule(false)
@@ -610,7 +612,7 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                     data-testid="module-title-input"
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
-                    placeholder={isVi ? 'Ten module (toi thieu 3 ky tu)' : 'Module title (min 3 characters)'}
+                    placeholder={isVi ? 'Ten module (de trong se la "Topic N")' : 'Module title (blank → "Topic N")'}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddModule()}
                   />
                   {/* Server/validation errors are surfaced (no more silent failure). */}
@@ -620,7 +622,6 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                       size="sm"
                       data-testid="module-add-btn"
                       onClick={handleAddModule}
-                      disabled={newModuleTitle.trim().length < 3}
                     >
                       {isVi ? 'Them' : 'Add'}
                     </Button>
@@ -812,7 +813,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                   className="text-on-surface-variant hover:text-error">✕</button>
               </div>
             )}
-            {!selectedMember && (
+            {/* {!selectedMember && (
               <Input
                 data-testid="enrollment-userid-input"
                 value={newUserId}
@@ -820,7 +821,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                 placeholder={isVi ? 'User ID (UUID) — tu nhap neu can' : 'User ID (UUID) — manual entry'}
                 className="flex-1 min-w-[200px]"
               />
-            )}
+            )} */}
             <select
               data-testid="enrollment-role-select"
               className="px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
@@ -858,7 +859,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
             {pendingRequests.map((e) => (
               <div key={e.id} data-testid={`enrollment-request-${e.userId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-warning/5 border border-warning/30 p-3">
                 <Badge variant="warning" size="sm">{isVi ? 'Dang cho' : 'Pending'}</Badge>
-                <span className="font-mono text-xs text-on-surface-variant">{e.userId}</span>
+                <span className="text-sm font-medium text-on-surface" title={e.userId}>{e.username ?? e.userId}</span>
                 <div className="ml-auto flex gap-2">
                   <Button
                     size="sm"
@@ -906,7 +907,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                   <Badge variant={e.role === 'Teacher' ? 'warning' : 'primary'} size="sm">
                     {e.role}
                   </Badge>
-                  <span className="font-mono text-xs text-on-surface-variant">{e.userId}</span>
+                  <span className="text-sm font-medium text-on-surface" title={e.userId}>{e.username ?? e.userId}</span>
                   <span className="ml-auto text-xs text-on-surface-variant">
                     {new Date(e.enrolledAt).toLocaleDateString()}
                   </span>
@@ -995,46 +996,4 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
   )
 }
 
-export const UnifiedSettingsOrganizationsPage: React.FC = () => {
-  const isVi = useLang()
-
-  return (
-    <OrgShell
-      titleEn="Unified Settings - Organizations"
-      titleVi="Cai dat hop nhat - To chuc"
-      subtitleEn="Control organization-level defaults"
-      subtitleVi="Dieu khien cac cai dat mac dinh cap to chuc"
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 space-y-4">
-          <h3 className="font-bold text-on-surface">{isVi ? 'Cau hinh hoc tap' : 'Learning Configuration'}</h3>
-          <div className="space-y-3">
-            {[
-              isVi ? 'Bat che do duyet khoa hoc' : 'Enable course review flow',
-              isVi ? 'Tu dong cap chung chi' : 'Auto-issue certificates',
-              isVi ? 'Bat gio hoc toi da moi ngay' : 'Enable daily learning cap',
-            ].map((label) => (
-              <label key={label} className="flex items-center justify-between p-3 rounded-lg bg-surface-container-low">
-                <span className="text-sm text-on-surface">{label}</span>
-                <input type="checkbox" defaultChecked className="h-4 w-4" />
-              </label>
-            ))}
-          </div>
-        </Card>
-        <Card className="p-6 space-y-4">
-          <h3 className="font-bold text-on-surface">{isVi ? 'Tuong tac thong bao' : 'Notification Rules'}</h3>
-          <div className="space-y-3">
-            {['Daily digest', 'Course publish alert', 'Weekly analytics summary'].map((rule) => (
-              <div key={rule} className="p-3 rounded-lg bg-surface-container-low flex items-center justify-between">
-                <span>{rule}</span>
-                <Badge variant="secondary" size="sm">{isVi ? 'Bat' : 'On'}</Badge>
-              </div>
-            ))}
-          </div>
-          <Button className="w-full">{isVi ? 'Luu cai dat' : 'Save Settings'}</Button>
-        </Card>
-      </div>
-    </OrgShell>
-  )
-}
 

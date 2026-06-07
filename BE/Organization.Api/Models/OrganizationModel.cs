@@ -28,6 +28,12 @@ namespace Organization.Api.Models
         [Column("owner_id")]
         public Guid OwnerId { get; set; }
 
+        // 'Active' | 'Suspended'. A SysAdmin may suspend an org (spec §6.6); while Suspended, access
+        // to the org's courses/content is frozen (enforced in Content.Api's CourseAccessService).
+        [Column("status")]
+        [StringLength(20)]
+        public string Status { get; set; } = "Active";
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

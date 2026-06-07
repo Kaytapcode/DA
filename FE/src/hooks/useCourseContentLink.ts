@@ -24,17 +24,25 @@ export function useCourseContentLink() {
     : `/admin/editor/curriculum?courseId=${courseId}`
 
   // Link the content into the module WITHOUT navigating (e.g. a Deck: link the shell, keep editing
-  // cards, then return separately). Safe to call when inactive (no-op).
+  // cards, then return separately). Safe to call when inactive (no-op). THROWS on failure so the
+  // caller's catch surfaces the error to the user — a silent failure here was why "content created
+  // in a course wasn't saved to the course" went unnoticed.
   const linkOnly = useCallback(async (contentId: string): Promise<boolean> => {
     if (!active || !contentId) return false
     try {
-      await apiClient.post(`/courses/${courseId}/modules/${moduleId}/contents/link`, { contentId })
+      const res = await apiClient.post(`/courses/${courseId}/modules/${moduleId}/contents/link`, { contentId })
+      if (res && (res as { success?: boolean }).success === false) {
+        throw new Error((res as { message?: string }).message || 'Failed to add the content to the course.')
+      }
       return true
-    } catch {
-      return false
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string }; message?: string }
+      throw new Error(err?.data?.message || err?.message || 'Failed to add the content to the course.')
     }
   }, [active, courseId, moduleId])
 
+  // Link then navigate back to the course. On failure linkOnly throws → the caller stays on the
+  // page and shows the error (we do NOT navigate away on a failed link).
   const linkAndReturn = useCallback(async (contentId: string): Promise<boolean> => {
     await linkOnly(contentId)
     if (active) navigate(destination)

@@ -34,6 +34,14 @@ namespace Content.Api.Models
         [Column("is_public")]
         public bool IsPublic { get; set; } = true;
 
+        // True when this content was CREATED INSIDE a course (via the in-course "add content" flow).
+        // Course-scoped content is hidden from the creator's personal Library and from public
+        // search/clone — it is visible ONLY inside the course it was created for. Set at link time
+        // in ContentRepository.LinkExistingAsync. (Dev requirement 2026-06-06; see SPEC_ADDITIONS.md —
+        // this narrows spec §5 invariant 1 "all User-created resources are public".)
+        [Column("is_course_scoped")]
+        public bool IsCourseScoped { get; set; } = false;
+
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

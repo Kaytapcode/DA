@@ -42,6 +42,7 @@ namespace Content.Api.Data
                 // owned by the current user (Content.CreatedByUserId, no module attachment).
                 query = query.Where(q =>
                     q.Content != null &&
+                    !q.Content.IsCourseScoped && // course-created content stays inside its course
                     (
                         (orgId.HasValue && q.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
                         || (userId.HasValue && q.Content.CreatedByUserId == userId.Value)

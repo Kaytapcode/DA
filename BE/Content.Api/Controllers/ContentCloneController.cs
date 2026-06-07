@@ -44,7 +44,8 @@ namespace Content.Api.Controllers
                 .FirstOrDefaultAsync(c => c.Id == contentId, ct);
 
             if (source == null) return NotFound(new ApiResponse(false, "Content not found."));
-            if (!source.IsPublic) return Forbid();
+            // Course-scoped content cannot be copied out of its course (it is not public).
+            if (!source.IsPublic || source.IsCourseScoped) return Forbid();
             if (source.CreatedByUserId == userId)
                 return BadRequest(new ApiResponse(false, "You already own this resource."));
 

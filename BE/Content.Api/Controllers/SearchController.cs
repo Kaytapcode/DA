@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using Content.Api.Data;
 using Content.Api.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -14,12 +15,42 @@ namespace Content.Api.Controllers
     {
         private readonly ContentDbContext _db;
         private readonly IOrgContextService _orgCtx;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IConfiguration _config;
 
-        public SearchController(ContentDbContext db, IOrgContextService orgCtx)
+        public SearchController(ContentDbContext db, IOrgContextService orgCtx,
+            IHttpClientFactory httpClientFactory, IConfiguration config)
         {
             _db = db;
             _orgCtx = orgCtx;
+            _httpClientFactory = httpClientFactory;
+            _config = config;
         }
+
+        // Resolve userId -> display name via Identity.Api's internal batch endpoint (spec §6.4:
+        // search shows the original author). Best-effort: on failure, authors are left null.
+        private async Task<Dictionary<Guid, string>> ResolveAuthorsAsync(IEnumerable<Guid> ids, CancellationToken ct)
+        {
+            var distinct = ids.Distinct().ToList();
+            var map = new Dictionary<Guid, string>();
+            if (distinct.Count == 0) return map;
+            try
+            {
+                var baseUrl = (_config["Identity:InternalBaseUrl"] ?? "http://localhost:5001").TrimEnd('/');
+                var qs = string.Join("&", distinct.Select(id => $"ids={id}"));
+                var client = _httpClientFactory.CreateClient();
+                client.Timeout = TimeSpan.FromSeconds(8);
+                var resp = await client.GetFromJsonAsync<ApiResponse<IEnumerable<UserInfoLite>>>(
+                    $"{baseUrl}/api/internal/users/batch?{qs}", ct);
+                if (resp?.Data != null)
+                    foreach (var u in resp.Data)
+                        map[u.Id] = u.Username;
+            }
+            catch { /* author name is best-effort */ }
+            return map;
+        }
+
+        private record UserInfoLite(Guid Id, string Username, string? Email, string? Role);
 
         public record SearchResultDto(
             Guid ContentId,
@@ -27,7 +58,8 @@ namespace Content.Api.Controllers
             string ContentType,
             bool OwnedByCaller,
             Guid? ResourceId,
-            DateTime CreatedAt
+            DateTime CreatedAt,
+            string? AuthorName = null
         );
 
         // GET /api/search?q=&type=&scope=&limit=
@@ -57,6 +89,10 @@ namespace Content.Api.Controllers
             if (typeUpper != "COLLECTION")
             {
                 var query = _db.Contents.IgnoreQueryFilters().AsQueryable();
+
+                // Course-scoped content (created inside a course) never appears in search — not even
+                // for its own creator. It is reachable only inside the course.
+                query = query.Where(c => !c.IsCourseScoped);
 
                 query = query.Where(c =>
                     c.CreatedByUserId == uid ||
@@ -113,6 +149,10 @@ namespace Content.Api.Controllers
                     var deckLookup  = deckMap.ToDictionary(x => x.ContentId, x => x.ResourceId);
                     var docLookup   = docMap.ToDictionary(x => x.ContentId, x => x.ResourceId);
 
+                    // Resolve author display names (spec §6.4).
+                    var authors = await ResolveAuthorsAsync(
+                        contents.Where(c => c.CreatedByUserId.HasValue).Select(c => c.CreatedByUserId!.Value), ct);
+
                     contentDtos = contents.Select(c =>
                     {
                         Guid? resourceId = c.ContentType switch
@@ -123,8 +163,9 @@ namespace Content.Api.Controllers
                             "PDF"       => docLookup.TryGetValue(c.Id, out var doc)   ? doc : null,
                             _           => null,
                         };
+                        var author = c.CreatedByUserId.HasValue && authors.TryGetValue(c.CreatedByUserId.Value, out var an) ? an : null;
                         return new SearchResultDto(c.Id, c.Title, c.ContentType,
-                            c.CreatedByUserId == uid, resourceId, c.CreatedAt);
+                            c.CreatedByUserId == uid, resourceId, c.CreatedAt, author);
                     }).ToList();
                 }
             }
@@ -151,8 +192,11 @@ namespace Content.Api.Controllers
                     .ToListAsync(ct);
 
                 // ContentId == ResourceId == module Id (collections have no Content row).
+                var colAuthors = await ResolveAuthorsAsync(
+                    collections.Where(m => m.CreatedBy.HasValue).Select(m => m.CreatedBy!.Value), ct);
                 collectionDtos = collections.Select(m =>
-                    new SearchResultDto(m.Id, m.Title, "COLLECTION", m.CreatedBy == uid, m.Id, m.CreatedAt));
+                    new SearchResultDto(m.Id, m.Title, "COLLECTION", m.CreatedBy == uid, m.Id, m.CreatedAt,
+                        m.CreatedBy.HasValue && colAuthors.TryGetValue(m.CreatedBy.Value, out var an) ? an : null));
             }
 
             // ── Merge, re-sort by recency, cap at limit ──────────────────────────────

@@ -71,6 +71,10 @@ export const UserLearningDashboardPage: React.FC = () => {
   }, [])
 
   const featured = rows[0] ?? null
+  // The "Most recent activity" card is a COURSE resume card, so pick the newest row that actually
+  // belongs to a course. rows[0] is just the newest overall (often a personal viewer row with no
+  // courseTitle → it wrongly showed "No course activity yet" despite real course activity).
+  const featuredCourse = rows.find((r) => r.courseId) ?? null
   const completedItems = rows.filter((r) => r.isCompleted).length
   const distinctCourses = new Set(rows.map((r) => r.courseId).filter(Boolean)).size
   const avgProgress = rows.length === 0
@@ -95,27 +99,27 @@ export const UserLearningDashboardPage: React.FC = () => {
               <h3 className="mt-1 text-2xl font-bold text-on-surface">
                 {isLoading
                   ? '…'
-                  : featured?.courseTitle ?? (isVi ? 'Chua co khoa hoc nao' : 'No course activity yet')}
+                  : featuredCourse?.courseTitle ?? (isVi ? 'Chua co khoa hoc nao' : 'No course activity yet')}
               </h3>
             </div>
-            {featured && (
-              <Badge variant="primary">{featured.progressPercentage}%</Badge>
+            {featuredCourse && (
+              <Badge variant="primary">{featuredCourse.progressPercentage}%</Badge>
             )}
           </div>
-          {featured && (
+          {(featuredCourse ?? featured) && (
             <p className="text-on-surface-variant">
-              {featured.contentTitle ?? featured.moduleTitle ?? (isVi ? 'Tiep tuc bai hoc tiep theo.' : 'Continue with the next item.')}
+              {(featuredCourse ?? featured)?.contentTitle ?? (featuredCourse ?? featured)?.moduleTitle ?? (isVi ? 'Tiep tuc bai hoc tiep theo.' : 'Continue with the next item.')}
             </p>
           )}
           <div className="mt-5 h-2 rounded-full bg-surface-container-low">
             <div
               className="h-2 rounded-full bg-primary"
-              style={{ width: `${featured?.progressPercentage ?? 0}%` }}
+              style={{ width: `${featuredCourse?.progressPercentage ?? 0}%` }}
             />
           </div>
           <div className="mt-6 flex gap-3">
             <Link
-              to={featured?.courseId ? `/user/course/${featured.courseId}` : '/user/courses'}
+              to={featuredCourse?.courseId ? `/user/course/${featuredCourse.courseId}` : '/user/courses'}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary"
             >
               {isVi ? 'Mo khoa hoc' : 'Open Course'}
@@ -1081,61 +1085,118 @@ export const OrganizationListPage: React.FC = () => {
   const isVi = useLang()
   const { organizations, isLoading, error, fetchOrganizations, joinSelf } = useOrganization()
   const [pendingJoin, setPendingJoin] = useState<string | null>(null)
-  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set())
+  // Orgs the user already belongs to — resolved from the server (GET /organizations/mine),
+  // not just this session's joins, so the Join button reflects real membership after reload.
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set())
+  // Orgs the user has REQUESTED to join (Pending OrgAdmin approval) but isn't yet a member of.
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set())
+
+  const refreshMine = React.useCallback(async () => {
+    try {
+      const res = await apiClient.get<Array<{ id: string }>>('/organizations/mine')
+      const ids = res.success && res.data ? res.data.map((o) => o.id) : []
+      setMemberIds(new Set(ids))
+    } catch {
+      /* non-fatal — Join button just won't be pre-marked */
+    }
+  }, [])
 
   useEffect(() => {
     void fetchOrganizations(0, 50)
-  }, [fetchOrganizations])
+    void refreshMine()
+  }, [fetchOrganizations, refreshMine])
 
   const handleJoin = async (org: OrganizationList) => {
     setPendingJoin(org.id)
+    // Joining is now a REQUEST → Pending OrgAdmin approval (not immediate membership).
     const ok = await joinSelf(org.id)
-    if (ok) setJoinedIds((prev) => new Set(prev).add(org.id))
+    if (ok) setRequestedIds((prev) => new Set(prev).add(org.id))
     setPendingJoin(null)
   }
 
   return (
     <UserShell
-      titleEn="Organization List"
-      titleVi="Danh sach to chuc"
-      subtitleEn="Join and follow learning organizations"
-      subtitleVi="Tham gia va theo doi cac to chuc hoc tap"
+      titleEn="Organizations"
+      titleVi="To chuc"
+      subtitleEn="Join an organization, then browse its courses to request enrollment"
+      subtitleVi="Tham gia to chuc, sau do xem khoa hoc de yeu cau ghi danh"
     >
+      {/* Flow guidance — clarifies join-org vs enroll-course (spec §4.2). */}
+      <div
+        className="mb-6 flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+        data-testid="org-flow-hint"
+      >
+        <div className="flex items-start gap-3">
+          <MaterialIcon icon="info" className="mt-0.5 text-primary" />
+          <p className="text-sm text-on-surface-variant">
+            {isVi
+              ? 'Buoc 1: Tham gia mot to chuc. Buoc 2: Vao "Kham pha khoa hoc" de yeu cau ghi danh; quan tri to chuc se duyet.'
+              : 'Step 1: Join an organization. Step 2: go to "Browse Courses" to request enrollment; an OrgAdmin approves it.'}
+          </p>
+        </div>
+        <Link to="/user/courses/browse">
+          <Button size="sm" variant="secondary" data-testid="org-browse-courses-cta">
+            {isVi ? 'Kham pha khoa hoc' : 'Browse Courses'}
+          </Button>
+        </Link>
+      </div>
+
       {isLoading && (
         <div className="flex justify-center py-8">
           <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
         </div>
       )}
-      {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
+      {error && !isLoading && (
+        <p className="text-sm text-error" data-testid="org-list-error">{error}</p>
+      )}
       {!isLoading && !error && organizations.length === 0 && (
-        <p className="text-sm text-on-surface-variant text-center py-4">
+        <p className="text-sm text-on-surface-variant text-center py-4" data-testid="org-list-empty">
           {isVi ? 'Chua co to chuc nao.' : 'No organizations yet.'}
         </p>
       )}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {organizations.map((org) => (
-          <Card key={org.id} className="p-6">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <MaterialIcon icon="corporate_fare" className="text-primary" />
-            </div>
-            <h3 className="mb-2 font-bold text-on-surface">{org.name}</h3>
-            <p className="mb-4 text-sm text-on-surface-variant">
-              {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
-            </p>
-            <Button
-              size="sm"
-              className="w-full"
-              onClick={() => void handleJoin(org)}
-              disabled={pendingJoin === org.id || joinedIds.has(org.id)}
-            >
-              {joinedIds.has(org.id)
-                ? (isVi ? 'Da tham gia' : 'Joined')
-                : pendingJoin === org.id
-                  ? (isVi ? 'Dang xu ly...' : 'Joining...')
-                  : (isVi ? 'Tham gia' : 'Join')}
-            </Button>
-          </Card>
-        ))}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="org-list">
+        {organizations.map((org) => {
+          const joined = memberIds.has(org.id)
+          return (
+            <Card key={org.id} className="p-6" data-testid="org-card">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+                <MaterialIcon icon="corporate_fare" className="text-primary" />
+              </div>
+              <h3 className="mb-2 font-bold text-on-surface" data-testid="org-card-name">{org.name}</h3>
+              <p className="mb-4 text-sm text-on-surface-variant">
+                {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+              </p>
+              {joined ? (
+                <div className="space-y-2">
+                  <Badge variant="secondary" size="sm" data-testid="org-joined-badge">
+                    {isVi ? 'Da tham gia' : 'Joined'}
+                  </Badge>
+                  <Link to="/user/courses/browse" className="block">
+                    <Button size="sm" variant="secondary" className="w-full" data-testid="org-card-browse-courses">
+                      {isVi ? 'Xem khoa hoc' : 'Browse courses'}
+                    </Button>
+                  </Link>
+                </div>
+              ) : requestedIds.has(org.id) ? (
+                <Badge variant="warning" size="sm" data-testid="org-pending-badge">
+                  {isVi ? 'Cho duyet' : 'Pending approval'}
+                </Badge>
+              ) : (
+                <Button
+                  size="sm"
+                  className="w-full"
+                  onClick={() => void handleJoin(org)}
+                  disabled={pendingJoin === org.id}
+                  data-testid="org-join-btn"
+                >
+                  {pendingJoin === org.id
+                    ? (isVi ? 'Dang xu ly...' : 'Requesting...')
+                    : (isVi ? 'Yeu cau tham gia' : 'Request to Join')}
+                </Button>
+              )}
+            </Card>
+          )
+        })}
       </div>
     </UserShell>
   )
@@ -1256,8 +1317,10 @@ export const SpecificCoursePage: React.FC = () => {
   }, [courseId])
 
   const handleTeacherAddModule = async () => {
-    if (!courseId || !newModuleTitle.trim()) return
-    const created = await createModule(courseId, newModuleTitle.trim())
+    if (!courseId) return
+    // Title optional: blank → default "Topic N" (N = next ordinal). Min 1 char if typed.
+    const title = newModuleTitle.trim() || `Topic ${modules.length + 1}`
+    const created = await createModule(courseId, title)
     if (created) {
       setNewModuleTitle('')
       setAddingModule(false)
@@ -1280,6 +1343,23 @@ export const SpecificCoursePage: React.FC = () => {
     setUploadModuleId(null)
     setContentModuleId(null)
     if (courseId) await fetchModules(courseId)
+  }
+
+  // Spec invariant 10: progress is recorded automatically when a student opens course content.
+  // The per-resource viewers only log a PERSONAL activity row (CourseId=null); the course %
+  // bar + OrgAdmin/Teacher analytics read course-scoped rows, so we record one here on open.
+  // Teachers/OrgAdmins viewing their own course are not "students" — skip to keep analytics clean.
+  const recordCourseView = (moduleId: string, contentId: string) => {
+    if (!courseId || isTeacher) return
+    void apiClient
+      .post(`/courses/${courseId}/progress`, { moduleId, contentId, isCompleted: true, timeSpentSeconds: 0 })
+      .then(() => {
+        setProgressByContent((prev) => ({
+          ...prev,
+          [contentId]: { contentId, moduleId, progressPercentage: 100, isCompleted: true, updatedAt: new Date().toISOString() },
+        }))
+      })
+      .catch(() => { /* progress is best-effort; never block navigation */ })
   }
 
   const totalContents = modules.reduce((sum: number, m: ModuleItem) => sum + (m.contents?.length ?? 0), 0)
@@ -1365,11 +1445,11 @@ export const SpecificCoursePage: React.FC = () => {
                     data-testid="teacher-module-title-input"
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
-                    placeholder="Module title (min 3 characters)"
+                    placeholder='Module title (blank → "Topic N")'
                     className="flex-1 min-w-[220px] rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface"
                     onKeyDown={(e) => { if (e.key === 'Enter') void handleTeacherAddModule() }}
                   />
-                  <Button size="sm" data-testid="teacher-module-add-btn" onClick={() => void handleTeacherAddModule()} disabled={newModuleTitle.trim().length < 3}>
+                  <Button size="sm" data-testid="teacher-module-add-btn" onClick={() => void handleTeacherAddModule()}>
                     Add
                   </Button>
                 </div>
@@ -1460,7 +1540,7 @@ export const SpecificCoursePage: React.FC = () => {
                       </div>
                     )
                     return href ? (
-                      <Link key={c.id} to={href} className="block hover:opacity-80">{row}</Link>
+                      <Link key={c.id} to={href} className="block hover:opacity-80" onClick={() => recordCourseView(m.id, c.id)}>{row}</Link>
                     ) : (
                       <div key={c.id}>{row}</div>
                     )
@@ -1736,6 +1816,18 @@ export const UserQuizInterfacePage: React.FC = () => {
   }, [questions.length, result])
 
   const remainingSeconds = timeLimitSeconds !== null ? Math.max(0, timeLimitSeconds - elapsedSeconds) : null
+
+  // Auto-submit once the countdown hits 0 (the time limit must actually enforce, not just display).
+  const autoSubmittedRef = React.useRef(false)
+  React.useEffect(() => { autoSubmittedRef.current = false }, [quizId])
+  React.useEffect(() => {
+    if (remainingSeconds === 0 && timeLimitSeconds !== null && !result && !isSubmitting
+        && questions.length > 0 && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true
+      void submitQuiz()
+    }
+  }, [remainingSeconds, timeLimitSeconds, result, isSubmitting, questions.length, submitQuiz, quizId])
+
   const canGoNext = currentQuestionIndex < questions.length - 1
   const questionsById = React.useMemo(() => new Map(questions.map((question) => [question.id, question])), [questions])
 
@@ -1924,14 +2016,14 @@ export const UserQuizInterfacePage: React.FC = () => {
           <div className="space-y-4">
             <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
               <h3 className="text-xl font-bold text-on-surface">{isVi ? 'Ket qua bai quiz' : 'Quiz Results'}</h3>
-              <p className="mt-1 text-on-surface-variant">
+              <p className="mt-1 text-on-surface-variant" data-testid="quiz-play-score">
                 {isVi ? 'Diem so' : 'Score'}: <span className="font-semibold text-on-surface">{result.scorePercentage}%</span> ({result.correctCount}/{result.totalCount})
               </p>
             </div>
 
             <div className="space-y-3">
               {result.results.map((item) => (
-                <div key={item.questionId} className="rounded-lg border border-outline-variant p-4">
+                <div key={item.questionId} className="rounded-lg border border-outline-variant p-4" data-testid="quiz-result-item">
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-sm font-semibold text-on-surface">
                       {questionsById.get(item.questionId)?.questionText ?? `#${item.questionId.slice(0, 8)}`}
@@ -1944,7 +2036,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                     {isVi ? 'Ban chon' : 'Selected'}: {getOptionText(item.questionId, item.selectedOptionId)} • {isVi ? 'Dap an dung' : 'Correct'}:{' '}
                     {getOptionText(item.questionId, item.correctOptionId)}
                   </p>
-                  {item.explanation && <p className="mt-2 text-sm text-on-surface">{item.explanation}</p>}
+                  {item.explanation && <p className="mt-2 text-sm text-on-surface" data-testid="quiz-play-explanation">{item.explanation}</p>}
                 </div>
               ))}
             </div>
@@ -1958,7 +2050,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                 {isVi ? `Cau ${currentQuestionIndex + 1}/${questions.length}` : `Question ${currentQuestionIndex + 1}/${questions.length}`}
               </p>
               {remainingSeconds !== null && (
-                <p className="text-sm font-semibold text-on-surface">
+                <p className="text-sm font-semibold text-on-surface" data-testid="quiz-play-timer">
                   {isVi ? 'Con lai' : 'Time left'}: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
                 </p>
               )}
@@ -1970,6 +2062,7 @@ export const UserQuizInterfacePage: React.FC = () => {
               {currentQuestion.options.map((option) => (
                 <button
                   key={option.id}
+                  data-testid={`quiz-play-option-${option.id}`}
                   onClick={() => selectAnswer(currentQuestion.id, option.id)}
                   className={`w-full rounded-lg border p-4 text-left transition-colors ${
                     selectedOptionId === option.id
@@ -1997,7 +2090,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                     {isVi ? 'Cau tiep theo' : 'Next Question'}
                   </Button>
                 ) : (
-                  <Button onClick={() => void submitQuiz()} disabled={isSubmitting}>
+                  <Button onClick={() => void submitQuiz()} disabled={isSubmitting} data-testid="quiz-play-submit">
                     {isSubmitting ? (isVi ? 'Dang nop...' : 'Submitting...') : (isVi ? 'Nop bai' : 'Submit Quiz')}
                   </Button>
                 )}

@@ -20,17 +20,20 @@ namespace Content.Api.Controllers
         private readonly IVideoRepository _videoRepository;
         private readonly IContentRepository _contentRepository;
         private readonly IOrgContextService _orgContext;
+        private readonly ICourseAccessService _access;
         private readonly ContentDbContext _db;
 
         public VideosController(
             IVideoRepository videoRepository,
             IContentRepository contentRepository,
             IOrgContextService orgContext,
+            ICourseAccessService access,
             ContentDbContext db)
         {
             _videoRepository = videoRepository;
             _contentRepository = contentRepository;
             _orgContext = orgContext;
+            _access = access;
             _db = db;
         }
 
@@ -88,7 +91,10 @@ namespace Content.Api.Controllers
             var orgId = await _videoRepository.GetModuleOrgIdAsync(moduleId.Value);
             if (orgId == null)
                 return _orgContext.GetCurrentUserId().HasValue;
-            return _orgContext.IsSysAdmin() || orgId == _orgContext.GetCurrentOrgId();
+            if (_orgContext.IsSysAdmin() || orgId == _orgContext.GetCurrentOrgId()) return true;
+            // In-course video: an enrolled (Teacher/Student) user usually has no selected org, so
+            // fall back to per-course access — same fix already applied to quizzes/decks/documents.
+            return await _access.CanViewContentAsync(contentId);
         }
 
         // POST /api/videos - Create YouTube video

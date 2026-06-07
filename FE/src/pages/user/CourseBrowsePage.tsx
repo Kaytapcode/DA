@@ -31,6 +31,10 @@ export const CourseBrowsePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  // Global public catalog (spec §6.3) — shown when the user is not yet in any organization.
+  const [catalog, setCatalog] = useState<BrowseCourse[]>([])
+  const [catalogStatus, setCatalogStatus] = useState<Record<string, Status>>({})
+  const [catalogLoading, setCatalogLoading] = useState(false)
 
   // Per-request org header so this page never depends on the global OrgContext.
   const orgHeader = useCallback((id: string) => ({ headers: { 'X-Org-Id': id } }), [])
@@ -77,6 +81,39 @@ export const CourseBrowsePage: React.FC = () => {
   }, [orgHeader, loadStatus])
 
   useEffect(() => { if (orgId) void loadCourses(orgId) }, [orgId, loadCourses])
+
+  // When the user belongs to no org, load the GLOBAL public catalog so they can still discover a
+  // course and request to join (approval auto-provisions org membership — spec §6.3).
+  const loadCatalog = useCallback(async () => {
+    setCatalogLoading(true)
+    try {
+      const res = await apiClient.get<BrowseCourse[]>('/courses/catalog?pageSize=100')
+      setCatalog(res.success && res.data ? res.data : [])
+    } catch {
+      setCatalog([])
+    } finally {
+      setCatalogLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isLoadingOrgs && orgs.length === 0) void loadCatalog()
+  }, [isLoadingOrgs, orgs.length, loadCatalog])
+
+  const requestEnrollGlobal = async (courseId: string) => {
+    setBusyId(courseId)
+    setError(null)
+    try {
+      // No org header — the request endpoint accepts any authenticated user (spec §6.3).
+      const res = await apiClient.post<{ status: Status }>(`/courses/${courseId}/enrollments/request`, {})
+      if (!res.success) throw new Error(res.message || 'Request failed')
+      setCatalogStatus((s) => ({ ...s, [courseId]: (res.data?.status as Status) ?? 'Pending' }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Request failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   const requestEnroll = async (courseId: string) => {
     setBusyId(courseId)
@@ -128,15 +165,75 @@ export const CourseBrowsePage: React.FC = () => {
           )}
 
           {!isLoadingOrgs && orgs.length === 0 && (
-            <Card className="p-8 text-center" data-testid="browse-no-org">
-              <MaterialIcon icon="domain" className="mb-3 text-5xl text-on-surface-variant" />
-              <p className="text-on-surface-variant">
-                {isVi ? 'Bạn chưa tham gia tổ chức nào.' : 'You have not joined any organization yet.'}
-              </p>
-              <Link to="/user/organizations" data-testid="browse-join-org-link" className="mt-4 inline-block text-primary underline">
-                {isVi ? 'Tham gia một tổ chức' : 'Join an organization'}
-              </Link>
-            </Card>
+            <>
+              <Card className="p-6 text-center" data-testid="browse-no-org">
+                <MaterialIcon icon="domain" className="mb-3 text-5xl text-on-surface-variant" />
+                <p className="text-on-surface-variant">
+                  {isVi
+                    ? 'Bạn chưa tham gia tổ chức nào — nhưng bạn vẫn có thể tìm khoá học công khai bên dưới và gửi yêu cầu tham gia. Khi được duyệt, bạn sẽ tự động trở thành thành viên của tổ chức.'
+                    : 'You have not joined any organization — but you can still browse the public catalog below and request to join. On approval you are auto-added to the organization.'}
+                </p>
+                <Link to="/user/organizations" data-testid="browse-join-org-link" className="mt-3 inline-block text-primary underline">
+                  {isVi ? 'Hoặc tham gia một tổ chức' : 'Or join an organization'}
+                </Link>
+              </Card>
+
+              <Card className="p-4">
+                <Input
+                  data-testid="catalog-search"
+                  placeholder={isVi ? 'Tìm khoá học công khai...' : 'Search the public catalog...'}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </Card>
+
+              {error && (
+                <Card className="border border-error/30 p-4"><p className="text-sm text-error" data-testid="catalog-error">{error}</p></Card>
+              )}
+              {catalogLoading && (
+                <div className="flex justify-center py-10"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>
+              )}
+              {!catalogLoading && (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3" data-testid="catalog-grid">
+                  {catalog
+                    .filter((c) => { const t = search.trim().toLowerCase(); return !t || c.title.toLowerCase().includes(t) })
+                    .map((course) => {
+                      const status = catalogStatus[course.id] ?? 'None'
+                      const canRequest = status === 'None' || status === 'Rejected'
+                      return (
+                        <Card key={course.id} data-testid={`catalog-course-card-${course.id}`} className="flex flex-col">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-lg font-bold text-on-surface" data-testid="catalog-course-title">{course.title}</h3>
+                            <span data-testid={`catalog-status-${course.id}`}>{statusBadge(status)}</span>
+                          </div>
+                          <p className="mt-2 line-clamp-3 flex-1 text-sm text-on-surface-variant">
+                            {course.description || (isVi ? 'Chưa có mô tả.' : 'No description.')}
+                          </p>
+                          <div className="mt-4 border-t border-outline-variant pt-4">
+                            {canRequest ? (
+                              <Button
+                                size="sm"
+                                className="w-full justify-center"
+                                data-testid={`catalog-request-enroll-${course.id}`}
+                                onClick={() => void requestEnrollGlobal(course.id)}
+                                disabled={busyId === course.id}
+                              >
+                                {busyId === course.id ? (isVi ? 'Đang gửi...' : 'Requesting...') : (isVi ? 'Yêu cầu tham gia' : 'Request to join')}
+                              </Button>
+                            ) : (
+                              <p className="text-center text-sm text-on-surface-variant" data-testid={`catalog-state-${course.id}`}>
+                                {status === 'Approved'
+                                  ? (isVi ? 'Đã ghi danh.' : 'Enrolled.')
+                                  : (isVi ? 'Đang chờ duyệt.' : 'Pending approval.')}
+                              </p>
+                            )}
+                          </div>
+                        </Card>
+                      )
+                    })}
+                </div>
+              )}
+            </>
           )}
 
           {!isLoadingOrgs && orgs.length > 0 && (

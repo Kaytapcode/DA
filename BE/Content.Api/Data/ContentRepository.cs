@@ -130,10 +130,19 @@ namespace Content.Api.Data
                 .FirstOrDefaultAsync(c => c.Id == contentId, ct);
             if (content == null) return null;
 
+            // Content linked into a course module was created FOR the course (the in-course "add
+            // content" flow is the only caller). Mark it course-scoped so it is hidden from the
+            // creator's personal Library and from public search/clone — visible only in the course.
+            content.IsCourseScoped = true;
+
             // Prevent duplicate links
             var already = await _context.ModuleContents
                 .AnyAsync(mc => mc.ContentId == contentId && mc.ModuleId == moduleId, ct);
-            if (already) return content;
+            if (already)
+            {
+                await _context.SaveChangesAsync(ct); // persist the course-scoped flag even on re-link
+                return content;
+            }
 
             var maxOrder = await _context.ModuleContents
                 .Where(mc => mc.ModuleId == moduleId)

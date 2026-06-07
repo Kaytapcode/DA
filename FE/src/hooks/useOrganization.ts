@@ -216,6 +216,25 @@ export const useOrganization = (): UseOrganizationReturn => {
     [handleError]
   );
 
+  // OrgAdmin approves / rejects a pending join request (mirrors course-enrollment approval).
+  const approveMember = useCallback(async (orgId: string, userId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const r = await apiClient.post(`/orgs/${orgId}/members/${userId}/approve`);
+      if (!r.success) throw new Error(r.message || 'Failed to approve member');
+      return true;
+    } catch (err) { handleError(err); return false; }
+  }, [handleError]);
+
+  const rejectMember = useCallback(async (orgId: string, userId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const r = await apiClient.post(`/orgs/${orgId}/members/${userId}/reject`);
+      if (!r.success) throw new Error(r.message || 'Failed to reject member');
+      return true;
+    } catch (err) { handleError(err); return false; }
+  }, [handleError]);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -231,6 +250,8 @@ export const useOrganization = (): UseOrganizationReturn => {
     updateOrganization,
     deleteOrganization,
     joinSelf,
+    approveMember,
+    rejectMember,
     setCurrentOrganization,
     clearError,
   };

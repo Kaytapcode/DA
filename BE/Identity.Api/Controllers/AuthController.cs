@@ -18,6 +18,7 @@ namespace Identity.Api.Controllers
         private readonly AuthDbContext _db;
         private readonly IEmailService _emailService;
         private readonly IWebHostEnvironment _env;
+        private readonly IConfiguration _config;
 
         public AuthController(
             IUserRepository userRepository,
@@ -25,7 +26,8 @@ namespace Identity.Api.Controllers
             IOrganizationServiceClient orgClient,
             AuthDbContext db,
             IEmailService emailService,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IConfiguration config)
         {
             _userRepository = userRepository;
             _tokenService = tokenService;
@@ -33,6 +35,7 @@ namespace Identity.Api.Controllers
             _db = db;
             _emailService = emailService;
             _env = env;
+            _config = config;
         }
 
         [HttpPost("register")]
@@ -344,11 +347,22 @@ namespace Identity.Api.Controllers
             });
             await _db.SaveChangesAsync(ct);
 
-            await _emailService.SendPasswordResetAsync(user.Email, user.Username, rawToken, ct);
+            var frontendBaseUrl = (_config["Frontend:BaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
+            var resetLink = $"{frontendBaseUrl}/reset-password?token={rawToken}";
 
-            // In Development, expose the token directly so automated tests can consume it
-            if (_env.IsDevelopment())
-                return Ok(new { Success = true, Message = "Reset token generated (dev mode).", DevToken = rawToken });
+            await _emailService.SendPasswordResetAsync(user.Email, user.Username, resetLink, ct);
+
+            // Fallback (Spec §1 — chosen behavior "SMTP + on-screen"): when no real SMTP transport
+            // is configured (or in Development), surface the reset link so the user/test can proceed
+            // without an inbox. When SMTP IS configured, the link travels by email only.
+            if (!_emailService.IsConfigured || _env.IsDevelopment())
+                return Ok(new
+                {
+                    Success = true,
+                    Message = "Email delivery is not configured — use this reset link directly.",
+                    DevToken = rawToken,
+                    ResetLink = resetLink
+                });
 
             return Ok(new ApiResponse(Success: true, Message: "If that email is registered, a reset link has been sent."));
         }

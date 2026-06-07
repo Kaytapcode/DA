@@ -17,6 +17,7 @@ namespace Content.Api.Controllers
         private readonly IDocumentRepository _repo;
         private readonly IStorageService _storage;
         private readonly IOrgContextService _orgCtx;
+        private readonly ICourseAccessService _access;
         private readonly IConfiguration _config;
         private readonly ContentDbContext _db;
 
@@ -32,12 +33,14 @@ namespace Content.Api.Controllers
             IDocumentRepository repo,
             IStorageService storage,
             IOrgContextService orgCtx,
+            ICourseAccessService access,
             IConfiguration config,
             ContentDbContext db)
         {
             _repo = repo;
             _storage = storage;
             _orgCtx = orgCtx;
+            _access = access;
             _config = config;
             _db = db;
         }
@@ -162,9 +165,26 @@ namespace Content.Api.Controllers
             if (doc == null)
                 return NotFound(new ApiResponse(false, "Document not found."));
 
-            // Access check: owner, public document, or SysAdmin
-            if (doc.CreatedByUserId != userId && !doc.IsPublic && !_orgCtx.IsSysAdmin())
-                return Forbid();
+            // Access check. Personal docs: owner, any public doc, or SysAdmin. Course-scoped docs are
+            // ISOLATED — a course PDF must not be readable by id from outside the course. Only the
+            // owner, SysAdmin, OrgAdmin of the owning org, or an Approved-enrolled member may read it
+            // (per-course access, not org-equality — same rule as in-course quizzes/decks).
+            if (doc.CreatedByUserId != userId && !_orgCtx.IsSysAdmin())
+            {
+                var courseScoped = doc.ContentId.HasValue && await _db.Contents
+                    .Where(c => c.Id == doc.ContentId.Value)
+                    .Select(c => c.IsCourseScoped)
+                    .FirstOrDefaultAsync(ct);
+                if (courseScoped)
+                {
+                    if (!await _access.CanViewContentAsync(doc.ContentId!.Value, ct))
+                        return Forbid();
+                }
+                else if (!doc.IsPublic)
+                {
+                    return Forbid();
+                }
+            }
 
             FileStream stream;
             try

@@ -45,6 +45,37 @@ namespace Organization.Api.Controllers
             return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(true, member.Role), null));
         }
 
+        // GET /api/internal/orgs/{orgId}/status -> { status } (Active|Suspended). Used by Content.Api's
+        // course-access guard to freeze access when an org is suspended (spec §6.6).
+        [HttpGet("{orgId:guid}/status")]
+        public async Task<IActionResult> GetStatus(Guid orgId, CancellationToken ct)
+        {
+            var org = await _orgRepository.GetByIdAsync(orgId, ct);
+            if (org == null) return NotFound(new ApiResponse(false, "Organization not found."));
+            return Ok(new ApiResponse<OrgStatusDto>(true, new OrgStatusDto(org.Status), null));
+        }
+
+        // POST /api/internal/orgs/{orgId}/members/{userId} — idempotently add userId as a 'Member'.
+        // Called by Content.Api when an OrgAdmin approves a course enrollment, so an approved student
+        // is auto-provisioned into the course's organization (Demo flow 3 — atomic org membership).
+        [HttpPost("{orgId:guid}/members/{userId:guid}")]
+        public async Task<IActionResult> EnsureMember(Guid orgId, Guid userId, CancellationToken ct)
+        {
+            var existing = await _memberRepository.GetByUserAndOrgAsync(userId, orgId, ct);
+            if (existing != null)
+                return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(true, existing.Role), "Already a member."));
+
+            await _memberRepository.CreateAsync(new MemberModel
+            {
+                Id = Guid.NewGuid(),
+                OrgId = orgId,
+                UserId = userId,
+                Role = "Member",
+                JoinDate = DateTime.UtcNow,
+            }, ct);
+            return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(true, "Member"), "Member added."));
+        }
+
         // POST /api/internal/orgs/setup — creates an org and adds userId as OrgAdmin member.
         // Called by Identity.Api during OrgAdmin self-registration. Idempotent on slug conflict.
         [HttpPost("setup")]
@@ -76,6 +107,7 @@ namespace Organization.Api.Controllers
     }
 
     public record MembershipCheckDto(bool IsMember, string? Role);
+    public record OrgStatusDto(string Status);
     public record AdminOrgDto(Guid OrgId, string Role);
     public record SetupOrgRequest(string Name, string Slug, Guid AdminUserId);
     public record OrgSetupResultDto(Guid OrgId, string Name, string Slug);

@@ -19,7 +19,9 @@ namespace Content.Api.Data
 
         public async Task<List<DocumentModel>> GetByUserIdAsync(Guid userId, CancellationToken ct = default)
             => await _db.Documents
-                .Where(d => d.CreatedByUserId == userId && d.DeletedAt == null)
+                // Exclude documents created inside a course (course-scoped content stays in the course).
+                .Where(d => d.CreatedByUserId == userId && d.DeletedAt == null
+                            && (d.Content == null || !d.Content.IsCourseScoped))
                 .OrderByDescending(d => d.CreatedAt)
                 .ToListAsync(ct);
 

@@ -18,6 +18,7 @@ interface MemberRow {
   email: string
   role: string
   joinDate: string
+  status?: string
 }
 
 // Org-level roles only: a member is either a plain 'Member' or an 'OrgAdmin' ('Owner' is shown
@@ -104,6 +105,28 @@ export const MemberManagementPage: React.FC = () => {
     }
   }
 
+  // Approve / reject a pending join request (spec: org membership requires OrgAdmin approval).
+  const handleApprove = async (m: MemberRow) => {
+    setBusyUserId(m.userId); setError(null)
+    try {
+      const res = await apiClient.post(`/orgs/${orgId}/members/${m.userId}/approve`)
+      if (!res.success) throw new Error(res.message || 'Failed to approve')
+      await refresh()
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to approve') }
+    finally { setBusyUserId(null) }
+  }
+  const handleReject = async (m: MemberRow) => {
+    setBusyUserId(m.userId); setError(null)
+    try {
+      const res = await apiClient.post(`/orgs/${orgId}/members/${m.userId}/reject`)
+      if (!res.success) throw new Error(res.message || 'Failed to reject')
+      await refresh()
+    } catch (err) { setError(err instanceof Error ? err.message : 'Failed to reject') }
+    finally { setBusyUserId(null) }
+  }
+
+  const pendingMembers = members.filter((m) => m.status === 'Pending')
+
   const searchUsers = async () => {
     if (!addSearch.trim()) return
     setIsSearching(true)
@@ -146,6 +169,7 @@ export const MemberManagementPage: React.FC = () => {
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase()
     return members.filter((m) => {
+      if (m.status === 'Pending') return false // shown in the Pending requests card, not the roster
       if (roleFilter !== 'ALL' && m.role !== roleFilter) return false
       if (!term) return true
       return m.username.toLowerCase().includes(term) || m.email.toLowerCase().includes(term)
@@ -168,6 +192,31 @@ export const MemberManagementPage: React.FC = () => {
               {showAddMember ? 'Cancel' : '+ Add Member'}
             </Button>
           </div>
+
+          {pendingMembers.length > 0 && (
+            <Card className="mb-6 p-6 border border-warning/30 bg-warning/5" data-testid="member-pending-card">
+              <h3 className="font-bold text-on-surface mb-4">
+                Pending join requests ({pendingMembers.length})
+              </h3>
+              <div className="space-y-2">
+                {pendingMembers.map((m) => (
+                  <div key={m.userId} data-testid={`member-pending-${m.userId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-surface-container-low p-3">
+                    <Badge variant="warning" size="sm">Pending</Badge>
+                    <span className="text-sm font-medium text-on-surface">{m.username || m.userId}</span>
+                    <span className="text-xs text-on-surface-variant">{m.email}</span>
+                    <div className="ml-auto flex gap-2">
+                      <Button size="sm" data-testid={`member-approve-${m.userId}`} disabled={busyUserId === m.userId} onClick={() => void handleApprove(m)}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="ghost" data-testid={`member-reject-${m.userId}`} disabled={busyUserId === m.userId} onClick={() => void handleReject(m)}>
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
 
           {showAddMember && (
             <Card className="mb-6 p-6 border border-primary/20">
@@ -209,13 +258,13 @@ export const MemberManagementPage: React.FC = () => {
                     <p className="font-medium text-on-surface">{selectedUser.username}</p>
                     <p className="text-sm text-on-surface-variant">{selectedUser.email}</p>
                   </div>
-                  <select
+                  {/* <select
                     className="rounded border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface"
                     value={addRole}
                     onChange={(e) => setAddRole(e.target.value as (typeof ADD_ROLES)[number])}
                   >
                     {ADD_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                  </select> */}
                   <Button onClick={() => void handleAddMember()} disabled={isAdding}>
                     {isAdding ? 'Adding...' : 'Add'}
                   </Button>
@@ -245,14 +294,14 @@ export const MemberManagementPage: React.FC = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <select
+              {/* <select
                 className="px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as 'ALL' | (typeof ROLES)[number])}
               >
                 <option value="ALL">All Roles</option>
                 {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+              </select> */}
               <Button variant="secondary" onClick={() => void refresh()} disabled={isLoading}>
                 Refresh
               </Button>
@@ -296,14 +345,14 @@ export const MemberManagementPage: React.FC = () => {
                           {m.joinDate ? new Date(m.joinDate).toLocaleDateString() : '—'}
                         </td>
                         <td className="px-6 py-4">
-                          <select
+                          {/* <select
                             className="px-2 py-1 rounded border border-outline-variant bg-surface text-on-surface text-sm mr-2"
                             value={m.role}
                             disabled={busyUserId === m.userId}
                             onChange={(e) => void handleRoleChange(m, e.target.value)}
                           >
                             {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                          </select>
+                          </select> */}
                           <Button
                             size="sm"
                             variant="ghost"

@@ -1,176 +1,148 @@
-# LUMINA - TECHNICAL SPECIFICATIONS
+# LUMINA - TECHNICAL SPECIFICATIONS (REVISED 2026)
 
 ## 1. Authentication & Authorization (Auth & RBAC)
 
-Uses Token-based authentication (e.g., JWT).
+Hệ thống Lumina sử dụng cơ chế xác thực dựa trên Token (JWT - JSON Web Token), đảm bảo an toàn thông tin mã hóa dữ liệu đầu cuối bằng thuật toán ký bất đối xứng hoặc HMAC-SHA256 nghiêm ngặt.
 
-* **Registration & Login Flows (Authentication):**
-    * **Unified Public Registration Form:** The system provides a single, public registration page where any visitor can create an account. On this form, the user **MUST explicitly select their desired initial role** via a choice selector (e.g., radio buttons, toggle, or dropdown). The options are:
-        * **Option 1: User (Normal User)** - Registers a standard global student/teacher account.
-        * **Option 2: OrgAdmin (Organization Administrator)** - Registers an administrative account and requires filling in additional mandatory fields regarding their Organization details (e.g., Organization Name, Business Domain).
-    * **Third-Party SSO (Single Sign-On - Google & Microsoft):**
-        * **SSO Login:** Users and OrgAdmins can log in instantly using their Google or Microsoft accounts via OAuth2 / OpenID Connect protocols.
-        * **SSO Registration (First-time Login):** If the email from the SSO provider does not exist in the Lumina database, the system will redirect the user to a **Role Selection Intermediary Page**. 
-            * The user must explicitly choose to become a **User** or an **OrgAdmin** (with mandatory Organization details) to complete the account provisioning.
-            * Subsequent logins via SSO will automatically bypass this step and route the user to their designated dashboard based on the mapped role.
-    * **User Login:** Logs in via the standard credentials form (Email/Password) or Third-Party SSO.
-    * **OrgAdmin Login:** Logs in via the standard form, dedicated Organization portal, or Third-Party SSO.
-    * **SysAdmin Login & Creation:** Cannot self-register and **cannot bypass via public SSO**. A SysAdmin account can **ONLY** be created manually by another existing SysAdmin account via the administrative dashboard. Logs in via a dedicated secure Admin portal.
-* **Account Management:**
-    * **Change Password:** Allows authenticated users (who registered via standard Email/Password) to change their current password by providing the old password, a new password, and a password confirmation.
-    * **Forgot Password:** Allows unauthenticated users to request a password reset link/OTP via their registered Email to securely set a new password.
-* **Localization & Internationalization (i18n):**
-    * **System Interface Languages:** Supports multi-language switching across the entire platform interface. Supported languages: **Vietnamese, Japanese, and English**.
-    * **User Preference:** Stores the user's selected language preference in their profile/local storage to persist across sessions.
-* **Main System Roles & Scopes:**
+* **Quy tắc Kiến trúc Cơ sở Dữ liệu (Shared Database Schema):**
+    * Hệ thống loại bỏ hoàn toàn kiến trúc hạ tầng Multi-tenancy phân tách (Không sử dụng cơ chế chia nhiều database độc lập hay thay đổi kết nối connection string động theo từng tổ chức).
+    * Toàn bộ dữ liệu của tất cả các tổ chức và người dùng đều nằm tập trung trong một **Cơ sở dữ liệu dùng chung (Single Shared Database)**. Sự cô lập giữa các tổ chức (Tenant Isolation) hoàn toàn dựa trên logic mã nguồn, được ràng buộc chặt chẽ qua các bảng liên kết quan hệ (`organization_members`, `course_enrollments`) và các bộ lọc truy vấn dữ liệu ở tầng Server.
 
-    * **User (Normal User):**
-        * Has CRUD rights for personal learning resources (Quiz, Document, Deck).
-        * Resources created by a User **must be public**.
-        * Can view other public resources but cannot edit resources not owned by them.
-        * Can copy other public resources to create a personal version and has CRUD rights to this new version. This new version must also be public.
-        * Can group resources (personal or public) into Collections.
-        * Can join Organizations.
-        * Can join Courses within an Organization when added by an Admin (can only access courses they have been explicitly added to).
-        * Holds one of two roles within a Course: Teacher or Student.
+* **Luồng Đăng ký & Đăng nhập:**
+    * **Form đăng ký công khai tập trung:** Hệ thống cung cấp một trang đăng ký duy nhất. Người dùng bắt buộc phải chủ động chọn vai trò khởi tạo ban đầu:
+        * **Lựa chọn 1: User (Người dùng thông thường)** - Khởi tạo hồ sơ tài khoản học tập/chia sẻ tự do toàn cầu.
+        * **Lựa chọn 2: OrgAdmin (Quản trị viên Tổ chức)** - Khởi tạo hồ sơ quản trị và bắt buộc điền thêm thông tin thành lập Tổ chức mới (Tên tổ chức, Domain doanh nghiệp/trường học).
+    * **Đăng nhập bên thứ ba (Google & Microsoft OAuth2):**
+        * **Đăng ký qua SSO (Lần đầu đăng nhập):** Nếu email nhận về từ nhà cung cấp OAuth2 chưa tồn tại trong cơ sở dữ liệu, hệ thống sẽ điều hướng người dùng đến một **Trang trung gian chọn vai trò**. Người dùng phải xác nhận muốn trở thành User thông thường hay OrgAdmin (đi kèm khai báo tổ chức) để hoàn tất quy trình tạo tài khoản.
+        * **Đăng nhập qua SSO (Các lần tiếp theo):** Hệ thống tự động bỏ qua bước thiết lập, giải mã token và điều hướng trực tiếp vào giao diện tương ứng với vai trò hiện tại.
+    * **Cấp tài khoản SysAdmin:** Tài khoản SysAdmin không thể tự đăng ký trực tuyến và hoàn toàn bị chặn khỏi luồng đăng ký công khai qua SSO. Tài khoản SysAdmin MỚI chỉ có thể được tạo thủ công bởi một SysAdmin hiện tại thông qua bảng điều khiển quản trị bảo mật cao. (Lưu ý: Hệ thống chỉ chấp nhận các vai trò hợp lệ gồm Student, Teacher, OrgAdmin, SysAdmin. Chuỗi vai trò "User" thô sẽ bị Backend từ chối).
 
-    * **OrgAdmin (Organization Administrator):**
-        * Management scope is restricted to a specific Organization.
-        * Has the right to create Courses within that Organization.
-        * Assign roles (Teacher/Student) to Users within a Course belonging to the Organization.
-        * Manage Users within the Organization.
-        * View Organization analytics/statistics.
-        * Has full Teacher privileges in every course within that Organization.
-        * **Content Override Right:** Has the authority to delete any content inside any course within their own Organization.
+* **Quản lý Tài khoản & Phiên làm việc (Session):**
+    * **Chức năng Tự phục vụ (Self-Service):** Hỗ trợ đổi mật khẩu (có kiểm tra mật khẩu cũ) và quên mật khẩu (cấp mã OTP hoặc liên kết đặt lại mật khẩu an toàn qua Email).
+    * **Đồng bộ hóa một phiên (Single Session Synchronization):** Token xác thực và trạng thái ngữ cảnh được lưu trữ trong `localStorage`. Vòng đời của token và sự thay đổi quyền hạn sẽ được đồng bộ hóa theo thời gian thực (reactive) trên tất cả các tab trình duyệt đang mở cùng nguồn (`same-origin`). 
+    * **Cơ chế kiểm soát định tuyến (Route Access Matrix):** Tất cả các route ở Frontend bao gồm cả các route bản sao thiết kế (`/fe/*`) đều phải được kiểm tra quyền nghiêm ngặt. Trang của OrgAdmin yêu cầu quyền `OrgAdmin` hoặc `SysAdmin`, trang của SysAdmin yêu cầu quyền `SysAdmin`, và trang của User yêu cầu trạng thái đã đăng nhập. Mọi sự sai lệch quyền hạn giữa Client (`localStorage`) và yêu cầu định tuyến sẽ kích hoạt lệnh tự động điều hướng người dùng về đúng trang chủ của vai trò đó.
 
-    * **SysAdmin (System Administrator):**
-        * Highest authority across the entire system.
-        * Manage Organizations.
-        * Manage Global Users.
-        * Configure AI API Keys.
-        * View global analytics/statistics.
-        * Exclusive right to create other SysAdmin accounts.
-        * **Absolute Destructive Right:** Has global authority to delete any course, any content inside any course, and any learning resource/content across the entire system.
+* **Bản địa hóa & Đa ngôn ngữ (i18n):**
+    * Hỗ trợ chuyển đổi ngôn ngữ giao diện động ngay tại thời điểm chạy (runtime) trên toàn hệ thống. Bộ từ điển tích hợp bao gồm 3 ngôn ngữ: **Tiếng Việt, Tiếng Nhật và Tiếng Anh**. Lựa chọn của người dùng được lưu lại cục bộ để duy trì tính nhất quán cho các phiên đăng nhập sau.
 
-## 2. Learning Resources Management (CRUD)
+* **Phân định Vai trò Hệ thống (CRITICAL DECOUPLING):**
+    * **Vai trò Định danh Toàn cầu (Lưu trong JWT):**
+        * **User:** Tầng tài khoản mặc định toàn hệ thống. Có quyền sáng tạo các học liệu công khai dựa trên crowdsourcing.
+        * **OrgAdmin:** Phạm vi quyền hạn giới hạn trong việc quản trị nội bộ một Tổ chức cụ thể do tài khoản đó khởi tạo hoặc sở hữu.
+        * **SysAdmin:** Quyền hạn tối cao trên toàn bộ nền tảng Lumina.
+    * **Tách biệt Vai trò cấp Tổ chức và cấp Khóa học:**
+        * **Vai trò thành viên Tổ chức:** Mối quan hệ giữa một người dùng và một Tổ chức chỉ bao gồm các cấp độ: `Owner` (Chủ sở hữu), `OrgAdmin` (Quản trị viên tổ chức), và `Member` (Thành viên thông thường). **Quyền `Teacher` (Giáo viên) và `Student` (Học sinh) HOÀN TOÀN KHÔNG PHẢI là vai trò ở cấp tổ chức.**
+        * **Ràng buộc nhân sự tối thiểu:** Hệ thống chặn hoàn toàn hành động xóa hoặc hạ quyền quản trị viên đối với tài khoản **OrgAdmin cuối cùng** của một Tổ chức nhằm tránh hiện tượng Tổ chức bị mồ côi (vô chủ). Trên giao diện người dùng, nút xóa/hạ quyền trên chính dòng của tài khoản đang đăng nhập sẽ tự động bị ẩn.
+        * **Vai trò cục bộ trong Khóa học:** Vai trò `Teacher` và `Student` chỉ có giá trị cục bộ bên trong ngữ cảnh của một Khóa học cụ thể (được lưu trữ tại trường `role` của bảng `course_enrollments`). Một người dùng có thể là `Teacher` trong Khóa học A nhưng đồng thời là `Student` trong Khóa học B. Vai trò cấp khóa học này được tính toán động từ phía Server khi có request và **không bao giờ mã hóa cứng vào JWT token** toàn cầu.
+        * **Quyền hạn Giáo viên khóa học:** Tài khoản có vai trò `Teacher` trong khóa học sẽ có toàn quyền biên soạn học liệu bên trong khóa học đó (thêm/sửa/xóa module và nội dung), được kiểm soát bởi bộ lọc `CourseAccessService.CanTeachAsync` (áp dụng cho Giáo viên đã được duyệt tham gia khóa học, OrgAdmin của tổ chức đó, hoặc SysAdmin) - hoàn toàn không dựa vào chính sách phân quyền thô của JWT token.
 
-### 2.1. Quiz Management (AI-Powered)
+---
 
-* **Manual CRUD:** Manually create, edit, delete multiple-choice questions/answers. The Explanation field is not mandatory when creating manually.
-* **AI Auto-Generation (Core Feature):**
-    * **Source Document Selection:** The system allows the user to select a document to generate the quiz from. The user can either:
-        * Choose an existing document that they own on the system (**Owned Document**).
-        * Upload a new document directly from their local device.
-    * **Upload File Size Limitation:** The system strictly restricts the uploaded file size to a **maximum of 200MB** per file. Any file exceeding this limit must be rejected with a clear error message before processing.
-    * **Action:** Calls the API configured in the system, specifically using the **`stepfun/step-3.5-flash`** model, with a Prompt enforcing Zero Hallucination (only uses knowledge from the provided file).
-    * **Language Matching:** The AI must generate the quiz elements (questions, options, explanations) in the same language as the uploaded source document.
-    * **Output:** Returns strict JSON format (Question, Options, correct_index, Explanation). **The Explanation field is mandatory and must be based on the original document.**
-    * **Verification:** Automatically parses JSON and saves it to the Database as a Draft Quiz. The User has the right to verify/edit before Publishing.
+## 2. Learning Resources Management (Kho học liệu Crowdsourcing)
 
-### 2.2. Document Management
+### 2.1. Quản lý Quiz (Hỗ trợ bởi AI)
+* **Biên soạn thủ công (CRUD):** Người dùng nhập câu hỏi trắc nghiệm bằng tay. Trường giải thích (`Explanation`) không bắt buộc khi tạo thủ công.
+* **Tạo tự động bằng AI (`stepfun/step-3.5-flash`):**
+    * **Lựa chọn ngữ cảnh văn bản:** Bộ câu hỏi Quiz được sinh ra từ một tài liệu văn bản dạng chữ được chọn từ kho `Owned Documents` (Tài liệu sở hữu) của người dùng hoặc tải lên trực tiếp thông qua luồng multipart file upload.
+    * **Giới hạn kích thước file:** Hệ thống áp đặt hard-cap nghiêm ngặt đối với tệp tin tải lên, **tối đa là 200MB**. Mọi luồng tải lên vượt quá giới hạn này sẽ bị hệ thống ngắt kết nối và trả về lỗi kiểm tra dữ liệu ngay lập tức trước khi gọi sang bên thứ ba.
+    * **Ràng buộc Zero-Hallucination:** Hệ thống gọi pipeline của mô hình `stepfun/step-3.5-flash` đi kèm bộ prompt ràng buộc ngữ cảnh khắt khe. Kết quả trả về phải khớp với ngôn ngữ của tài liệu gốc và tuân thủ cấu trúc định dạng JSON nghiêm ngặt.
+    * **Bắt buộc đi kèm Lời giải thích:** Không giống như tạo thủ công, các bộ Quiz do AI sinh ra **BẮT BUỘC phải đi kèm nội dung giải thích chi tiết câu hỏi (`Explanation`)** dựa trên dữ liệu thô của tài liệu. Kết quả khởi tạo sẽ nằm ở trạng thái `Draft Quiz` (Quiz dự thảo) để con người kiểm duyệt, chỉnh sửa thủ công trước khi bấm xuất bản công khai.
 
-* **Upload:** Supports uploading PDF files, images, and text files with a strict **maximum file size limit of 200MB**.
-* **Storage:** Secure file storage inside the database.
-* **Viewer:** Integrated PDF/Image viewer directly on the Lumina interface.
+### 2.2. Quản lý Tài liệu (Document)
+* **Xử lý tải lên:** Hệ thống hỗ trợ tải lên các tài liệu định dạng văn bản (PDF, tệp text) và các tệp hình ảnh tương thích, tuân thủ giới hạn dung lượng chung là **200MB**.
+* **Lưu trữ bảo mật:** Tệp tin tài liệu được lưu trữ an toàn trong vùng quản lý database storage của hệ thống tập trung.
+* **Trình xem tài liệu trực tuyến (Inline Viewer):** Tài liệu được truyền trực tiếp ra giao diện người dùng dưới dạng raw byte stream với cấu hình header `Content-Disposition: inline` và đúng định dạng MIME type. Giao diện Frontend sử dụng thẻ `<iframe>` an toàn trong môi trường sandbox để hiển thị file từ luồng byte thô này, tránh hoàn toàn việc re-encode file ở phía Client gây nặng trình duyệt.
 
-### 2.3. Flashcard Management
+### 2.3. Quản lý Flashcard
+* **Cấu trúc Flashcard (CRUD):** Bao gồm mặt trước (Mặt hiển thị Từ khóa/Khái niệm) và mặt sau (Mặt hiển thị Định nghĩa/Mô tả chi tiết).
+* **Đóng gói bộ thẻ (Deck):** Các Flashcard rời rạc được gom nhóm lại thành các bộ thẻ học tập (Deck) theo chủ đề bài học.
+* **Cơ chế Tự học:** Hỗ trợ hiệu ứng lật thẻ ghi nhớ, thuật toán trộn bài ngẫu nhiên (`Shuffle`), và tính năng đánh dấu thẻ đã thành thục ("Mastered"). Các thẻ được đánh dấu "Mastered" sẽ tự động loại khỏi luồng hiển thị của phiên học cho đến khi người dùng bấm nút reset phiên.
 
-* **Card CRUD:** Create flashcards (Front: Keyword/Concept; Back: Definition/Description).
-* **Deck CRUD:** Group Flashcards into Decks by topic.
-* **Study Mode:**
-    * Flashcard flipping mode for Users.
-    * Supports the Shuffle function.
-    * Allows Users to mark cards as "Mastered". The system will not display these cards in subsequent study sessions unless the User resets them.
+### 2.4. Quản lý Video (Tích hợp YouTube API)
+* **Tối ưu hóa tài nguyên:** Hệ thống không lưu trữ trực tiếp các tệp video gốc nhằm tối ưu không gian đĩa cứng, thay vào đó chỉ quản lý thông qua các đường dẫn URL trỏ đến các bản ghi video công khai trên nền tảng YouTube.
+* **Trích xuất thông tin tự động:** Khi người dùng dán liên kết video, hệ thống Backend sẽ bóc tách mã ID định danh duy nhất của video và gọi sang **YouTube Data API v3** để tự động thu thập các trường tiêu đề (Title) và ảnh thu nhỏ (Thumbnail URL) để lưu vào database tập trung.
+* **Trình phát nhúng nội bộ:** Tầng Frontend sẽ dựng các thẻ iframe nhúng trỏ trực tiếp đến cấu trúc URL bảo mật `https://www.youtube.com/embed/[Video_ID]` để người học xem video trực tiếp mà không bị điều hướng ra ngoài Lumina.
 
-### 2.4. Video Management (YouTube)
+### 2.5. Cơ chế hiển thị Định danh Tác giả khi Tìm kiếm
+* Các kết quả tìm kiếm toàn cầu và danh mục học liệu công khai **phải hiển thị rõ ràng danh tính của người sở hữu/tác giả gốc** (Author Display Name) kế bên từng tài nguyên công khai, giúp người tiêu thụ nội dung nhận biết uy tín nguồn học liệu trước khi bấm nhân bản (Clone).
 
-* **Upload Link:** Users provide YouTube links (no direct video file uploads to optimize storage resources).
-* **Metadata:** Automatically extract video Title and Thumbnail from the YouTube API.
-* **Embedded Viewer:** Integrated YouTube video player directly within the Lumina platform.
+---
 
-## 3. Resource Grouping Mechanism (Module)
+## 3. Resource Grouping Architecture (Gom nhóm Học liệu)
 
-A Module is a general resource grouping mechanism that operates similarly to a Folder. Modules support nesting (a Module can contain other Modules).
+### 3.1. Bộ sưu tập cá nhân (Collections - Phạm vi User)
+* Bộ sưu tập là một cấu phần do Người dùng thông thường (User) chủ động khởi tạo để gom nhóm các học liệu hỗn hợp (Tài liệu, Quiz, Flashcard, Video link).
+* **Quy tắc Phạm vi dữ liệu:** Mọi học liệu cá nhân hoặc Bộ sưu tập được tạo ra bên ngoài ranh giới tổ chức **BẮT BUỘC phải mặc định ở trạng thái công khai (Public)** để phục vụ mục đích học tập cộng đồng và cơ chế crowdsourcing.
+* **Hỗ trợ gom nhóm phân cấp:** Bộ sưu tập hỗ trợ cơ chế phân chia thành các thư mục con thông qua ràng buộc khóa ngoại `parent_id` (cho phép cấu trúc lồng nhau). Các truy vấn danh sách lớp ngoài cùng sẽ tự động loại bỏ các thư mục con để đảm bảo giao diện gọn gàng. Người dùng có thể thêm học liệu vào bộ sưu tập trực tiếp ngay từ trang quản lý của chính bộ sưu tập đó.
 
-### 3.1. Module Classification by Scope and Role
+### 3.2. Module bài giảng (Course Modules - Phạm vi Khóa học)
+* Cấu trúc gom nhóm bài học được xây dựng biệt lập bên trong một Khóa học (Course) bởi Giáo viên được phân quyền hoặc OrgAdmin.
+* **Quy tắc Phạm vi dữ liệu:** Quyền truy cập hoàn toàn bị cô lập và khóa chặt bên trong Khóa học đó (Strictly Private).
+* **Khởi tạo bố cục tự động:** Nhằm chuẩn hóa cấu trúc sư phạm, **mọi Khóa học khi được tạo mới thành công trên hệ thống sẽ tự động khởi tạo sẵn 3 module trống mặc định với tiêu đề lần lượt là "Topic 1", "Topic 2", và "Topic 3"**. Quy tắc này không áp dụng cho bộ sưu tập cá nhân (Bộ sưu tập cá nhân khi tạo ra sẽ hoàn toàn trống rỗng).
+* **Ràng buộc độ dài dữ liệu:** Tiêu đề của các Module bài giảng bắt buộc phải vượt qua khâu kiểm tra độ dài chuỗi ký tự từ **1 đến 255 ký tự** (Giới hạn dưới tối thiểu là 1 ký tự, không chấp nhận chuỗi rỗng). Trường hợp người dùng để trống tiêu đề, hệ thống tự động fallback về giá trị dạng `"Topic N"` (với N là số thứ tự tăng dần của module).
 
-* **Collection (For Users):**
-    * Created by Users to group learning resources (personal or public).
-    * Has a public scope.
+---
 
-* **Course Module (For Teachers):**
-    * Created by Teachers (or OrgAdmins with Teacher privileges) to group learning resources created within a course.
-    * Scope is restricted entirely to the course.
+## 4. Course Management & Unified Enrollment Lifecycle
 
-### 3.2. Module Structure
+### 4.1. Cô lập Khóa học và An toàn Học liệu (Course Isolation)
+* Mỗi Khóa học bắt buộc phải giữ một mối quan hệ khóa ngoại (`org_id`) liên kết trực tiếp với một Tổ chức cha. Toàn bộ nội dung, tiến độ, và dữ liệu học liệu của khóa học được bảo vệ nghiêm ngặt phía sau bức tường phân quyền cấp khóa học.
+* **Ràng buộc Phạm vi Khóa học đối với Tài liệu (`IsCourseScoped`):** Tất cả các tài nguyên bao gồm Quiz, Flashcard và nay là cả Tài liệu văn bản (PDF) được đẩy vào khóa học sẽ kích hoạt cờ bảo mật `IsCourseScoped = true`. Endpoint tải/download file (`DocumentsController.DownloadDocument`) sẽ kiểm tra: Nếu là Chủ sở hữu tài liệu hoặc `SysAdmin` $\rightarrow$ cho phép truy cập; nếu file đang thuộc phạm vi khóa học (`IsCourseScoped`) $\rightarrow$ bắt buộc người gọi phải vượt qua bộ lọc `CanViewContentAsync` (đã được duyệt tham gia khóa học hoặc là OrgAdmin sở hữu trường). Người dùng bên ngoài không thể tải tài liệu này bằng ID trực tiếp (Tránh lỗi rò rỉ dữ liệu). Các tài liệu cá nhân ngoài khóa học vẫn áp dụng quy tắc `IsPublic` công khai như cũ.
 
-* **Module CRUD:** Create, edit, delete Modules (by Users for Collections; by Teachers/OrgAdmins for Course Modules).
-* **Resource Items:**
-    * Users can add/remove resources (Quiz, Document, Deck, Video link) to/from a Collection.
-    * Teachers/OrgAdmins can add/remove resources (Quiz, Document, Deck, Video link) to/from a Course Module.
-    * Supports custom ordering/sorting.
+### 4.2. Luồng Khám phá Khóa học và Tự động hóa Thành viên Tổ chức
+* **Tính hiển thị của Khóa học:** Người dùng thông thường khi chưa gia nhập Tổ chức sẽ không thể nhìn thấy cấu trúc nội bộ bên trong của Tổ chức đó. Tuy nhiên, để giải quyết bài toán rào cản tham gia, **Người dùng có toàn quyền tìm kiếm và xem thông tin tổng quan của tất cả các Khóa học được OrgAdmin cấu hình ở trạng thái công khai (`Public`) trên trang catalog toàn cầu.**
+* **Quy trình Đăng ký tự phục vụ liên tầng (The Unified Enrollment Workflow):**
+    1. Người dùng tìm thấy một khóa học public phù hợp và bấm nút gửi đơn đăng ký tham gia thông qua endpoint: `POST /api/courses/{id}/enrollments/request`
+    2. Hệ thống khởi tạo một bản ghi trong bảng lưu trữ `course_enrollments` với trường trạng thái `status` thuộc tập `Pending | Approved | Rejected`, mặc định ban đầu là Chờ duyệt (`Pending`) và vai trò yêu cầu là `Student`. Tại thời điểm này, người dùng **hoàn toàn chưa có quyền** truy cập vào nội dung khóa học.
+    3. Quản trị viên Tổ chức (`OrgAdmin`) truy cập vào bảng điều khiển, xem danh sách đơn đăng ký và thực hiện lệnh phê duyệt hoặc từ chối thông qua endpoint: `.../enrollments/{userId}/approve` hoặc `.../enrollments/{userId}/reject`
+    4. **Quy tắc Giao dịch Nguyên tử liên tầng (CRITICAL LOGIC):** Khi OrgAdmin bấm nút Phê duyệt (Approve), hệ thống Backend bắt buộc phải bọc toàn bộ mã lệnh xử lý trong một **Giao dịch Cơ sở dữ liệu Nguyên tử (Atomic Database Transaction)** duy nhất để thực hiện đồng thời 2 hành động:
+        * *Hành động 1:* Thay đổi trường trạng thái `course_enrollments.status` thành `Approved`, đồng thời kích hoạt quyền học tập cục bộ cho user trong khóa học.
+        * *Hành động 2:* Hệ thống tự động kiểm tra bảng liên kết thành viên tổ chức (`organization_members`). Nếu người dùng này **chưa tồn tại** trong danh sách thành viên của Tổ chức cha, hệ thống **bắt buộc phải tự động thực hiện một lệnh insert ngầm dưới nền (background insert)** để thêm tài khoản người dùng này thành một `Member` (Thành viên thông thường) của Tổ chức ngay lập tức.
+    5. *Luồng thay thế (Chỉ định trực tiếp):* Nếu OrgAdmin chủ động tìm kiếm một tài khoản từ danh sách tổng của hệ thống và add trực tiếp vào khóa học thông qua tab "Member Roles", luồng kiểm tra phê duyệt trên sẽ được bỏ qua, bản ghi lập tức lưu ở trạng thái `Approved` và tự động add user vào Tổ chức nếu chưa có.
 
-## 4. Course Management & Learning Functions
+### 4.3. Luồng Học sinh & Ghi nhận Tiến độ Học tập
+* **Tiêu thụ nội dung:** Học sinh học tập tuần tự các tài liệu, làm quiz và xem video được thiết kế bên trong các module bài học theo đúng lộ trình sư phạm định sẵn.
+* **Lưu vết tương tác chi tiết:** Hệ thống kích hoạt các hàm lắng nghe sự kiện để lưu vết chi tiết số lượt thực hành (`Attempt` counter), ghi nhận chính xác mảng câu trả lời của từng lượt làm bài (`Answer` object matrices) và tính toán phần trăm hoàn thành để cập nhật thanh tiến trình (`Progress bar`).
+* **Chấm điểm tự động:** Hệ thống tự động so khớp đáp án và chấm điểm ngay khi học sinh nộp bài Quiz. Do Quiz sinh từ AI bắt buộc phải có giải thích, hệ thống sẽ cưỡng bức hiển thị trường Lời giải thích (`Explanation`) ra màn hình kết quả để học sinh tự đối chiếu và sửa sai.
 
-### 4.1. Strict Privacy & Access Control
-* **Course Isolation:** A Course belongs to a specific Organization. 
-* **Strict Access Restriction:** **All contents, modules, and learning resources within a Course are strictly private. Only users who have been explicitly added to the Course by the OrgAdmin/SysAdmin can view, access, or interact with these contents.** Any unauthenticated access or access from users outside the Course must be denied at both the API (Backend) and UI (Frontend) levels.
+---
 
-### 4.2. Course Roles
+## 5. Các Endpoint API Bổ sung mở rộng
 
-* **Teacher:**
-    * Has CRUD rights for learning resources within the course.
-    * Has the right to create Modules to group resources within the course.
-    * Can view the progress of Students in the course.
+Nhằm phục vụ tích hợp giao diện tối ưu, các API sau được bổ sung chính thức vào đặc tả hệ thống:
+* `GET /api/organizations/mine`: Trả về danh sách tất cả các Tổ chức mà người gọi API hiện đang là thành viên (đi kèm vai trò tương ứng của họ tại tổ chức đó).
+* `GET /api/courses/enrolled`: Trả về danh sách toàn bộ các khóa học mà người dùng hiện tại đã được duyệt tham gia (`Approved`) đi kèm vai trò cục bộ cấp khóa học của họ (`Student`/`Teacher`).
+* `POST /api/orgs/{orgId}/members`: Endpoint thêm thành viên vào tổ chức, hệ thống tối ưu hóa bằng cách bóc tách trực tiếp thông số `org_id` từ route định tuyến, không bắt buộc người dùng truyền biến này trong Request Body. Mọi hành động xóa thành viên hoặc sửa quyền đều lấy khóa chính định danh dựa trên trường `userId`.
 
-* **Student:**
-    * Can only view (study) learning resources within the course.
-    * The system records their viewing (study) progress in each course and updates the progress tracker.
+---
 
-### 4.3. Course Management (By OrgAdmin)
+## 6. Quyền hạn Đặc biệt của Quản trị viên Hệ thống (SysAdmin)
 
-* **Course CRUD:** Create, edit, delete courses within the Organization.
-* **User Management:** Add/remove Organization Users to/from courses.
-* **Role Assignment:** Assign Teacher or Student roles to Users within a course.
-* **Analytics:** View course statistics.
+### 6.1. Quyền Xóa tuyệt đối trên Giao diện (Absolute Destructive Right)
+* Bảng điều khiển toàn cục của tài khoản SysAdmin được trang bị quyền lực tối cao, cung cấp tính năng **"Absolute Deletion"** trực tiếp trên giao diện người dùng. Tính năng này cho phép SysAdmin dọn dẹp, xóa vĩnh viễn bất kỳ học liệu, tài liệu văn bản vi phạm quy định pháp luật ra khỏi cơ sở dữ liệu nền tảng trên toàn hệ thống.
 
-### 4.4. Learning Functions & Interaction (Student Flow in Course)
+### 6.2. Đóng băng Hoạt động Tổ chức (Organization Suspension)
+* Thực thể Tổ chức bổ sung trường thuộc tính trạng thái: `organizations.status` nhận giá trị thuộc tập `Active | Suspended`.
+* Tài khoản SysAdmin có đặc quyền **Đóng băng (Suspend)** hoặc **Kích hoạt lại (Reactivate)** bất kỳ Tổ chức nào từ bảng quản trị tổng.
+* Khi một Tổ chức rơi vào trạng thái `Suspended` (Đóng băng), **toàn bộ quyền truy cập vào các Khóa học trực thuộc và tài tài liệu bên trong sẽ bị khóa chặt lập tức**: Bộ lọc phân quyền hệ thống `CourseAccessService` sẽ ngay lập tức từ chối tất cả các yêu cầu đọc dữ liệu (`read`) hoặc giảng dạy (`teach`) đối với các khóa học thuộc tổ chức đó cho đến khi có lệnh mở khóa từ SysAdmin. Quyền giám sát tổng thể của SysAdmin vẫn giữ nguyên hiệu lực bất kể trạng thái tổ chức.
 
-* **Participation:** Users join a Course when added by an Admin.
-* **Study Flow:** Students study Items in a Module sequentially according to the learning path.
-* **Progress Tracking:** The system automatically records and updates the Student's learning progress for each resource and course.
-* **Doing Quiz:** Provides an interface for taking multiple-choice quizzes, including a timer and submission.
-* **Grading:** Automatically grades the quiz. The Explanation is only displayed if it was provided. For AI-generated quizzes, the Explanation must be displayed since it is a mandatory field.
+---
 
-## 5. Seed Data & System Testing Accounts
+## 7. System Seed Data Matrix
 
-To facilitate system testing, verification, and evaluation, the database must be pre-seeded with the following testing accounts adhering to a strict formatting rule:
-* **Username Format:** `[role_name][N]` (where N is a sequential natural number starting from 1).
-* **Password Format:** `[role_name]@123`
+Để thuận tiện cho quá trình kiểm thử, vận hành và đánh giá đồ án, cơ sở dữ liệu của hệ thống phải được cài đặt sẵn (seed data) các tài khoản thử nghiệm tuân thủ nghiêm ngặt quy tắc định dạng cấu trúc sau:
+* **Định dạng Username:** `[role_name][N]` (Với N là số tự nhiên tăng dần từ 1).
+* **Định dạng Password:** `[role_name]@123`
 
-### 5.1. System Administrator (SysAdmin) Accounts
-* **SysAdmin 1:**
-  * Username: `SysAdmin1`
-  * Password: `SysAdmin@123`
-* **SysAdmin 2:**
-  * Username: `SysAdmin2`
-  * Password: `SysAdmin@123`
+### 7.1. Tài khoản Quản trị viên Hệ thống (SysAdmin)
+* **SysAdmin 1:** `SysAdmin1` / `SysAdmin@123`
+* **SysAdmin 2:** `SysAdmin2` / `SysAdmin@123`
 
-### 5.2. Organization Administrator (OrgAdmin) Accounts
-* **OrgAdmin 1:**
-  * Username: `OrgAdmin1`
-  * Password: `OrgAdmin@123`
-* **OrgAdmin 2:**
-  * Username: `OrgAdmin2`
-  * Password: `OrgAdmin@123`
+### 7.2. Tài khoản Quản trị viên Tổ chức (OrgAdmin)
+* **OrgAdmin 1:** `OrgAdmin1` / `OrgAdmin@123`
+* **OrgAdmin 2:** `OrgAdmin2` / `OrgAdmin@123`
 
-### 5.3. Regular User (User) Accounts
-* **User 1:**
-  * Username: `User1`
-  * Password: `User@123`
-* **User 2:**
-  * Username: `User2`
-  * Password: `User@123`
-* **User 3:**
-  * Username: `User3`
-  * Password: `User@123`
+### 7.3. Tài khoản Người dùng Thông thường (User)
+* **User 1:** `User1` / `User@123`
+* **User 2:** `User2` / `User@123`
+* **User 3:** `User3` / `User@123`

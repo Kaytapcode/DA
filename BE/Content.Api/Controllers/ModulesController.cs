@@ -48,7 +48,8 @@ namespace Content.Api.Controllers
             var result = modules.Select((m, i) => new ModuleResponseDto(
                 m.Id, m.OrgId, m.Title, m.Description, i, m.CreatedAt,
                 m.ModuleContents?.OrderBy(mc => mc.OrderIndex)
-                    .Select(mc => new ContentResponseDto(mc.ContentId, mc.Content?.Title ?? "", mc.Content?.ContentType ?? "", mc.Content?.Status ?? "", mc.OrderIndex, mc.Content?.CreatedAt ?? DateTime.MinValue))
+                    .Select(mc => new ContentResponseDto(mc.ContentId, mc.Content?.Title ?? "", mc.Content?.ContentType ?? "", mc.Content?.Status ?? "", mc.OrderIndex, mc.Content?.CreatedAt ?? DateTime.MinValue,
+                        mc.Content?.Quiz?.Id, mc.Content?.FlashcardDeck?.Id, mc.Content?.Document?.Id, mc.Content?.Video?.Id))
                     .ToList()
             ));
             return Ok(new ApiResponse<IEnumerable<ModuleResponseDto>>(true, result, null));

@@ -16,12 +16,14 @@ namespace Content.Api.Controllers
     {
         private readonly IFlashcardRepository _repo;
         private readonly IOrgContextService _orgCtx;
+        private readonly ICourseAccessService _access;
         private readonly ContentDbContext _db;
 
-        public FlashcardsController(IFlashcardRepository repo, IOrgContextService orgCtx, ContentDbContext db)
+        public FlashcardsController(IFlashcardRepository repo, IOrgContextService orgCtx, ICourseAccessService access, ContentDbContext db)
         {
             _repo = repo;
             _orgCtx = orgCtx;
+            _access = access;
             _db = db;
         }
 
@@ -38,10 +40,14 @@ namespace Content.Api.Controllers
                 .FirstOrDefaultAsync(d => d.Id == deckId);
             if (deck?.Content == null) return false;
 
-            // Public decks are readable by any authenticated user.
-            if (deck.Content.IsPublic) return true;
+            // Public PERSONAL decks are readable by any authenticated user (spec §1). Course-scoped
+            // decks are NOT public-by-id — they require course access (enforced below).
+            if (deck.Content.IsPublic && !deck.Content.IsCourseScoped) return true;
 
-            // Non-public decks are limited to same-org access.
+            // In-course deck: allow if enrolled (Teacher/Student) in a course containing it.
+            if (await _access.CanViewContentAsync(deck.ContentId)) return true;
+
+            // Legacy fallback: same selected-org access.
             var orgId = deck.Content.ModuleContents
                 .Where(mc => mc.Module != null)
                 .Select(mc => (Guid?)mc.Module!.OrgId)

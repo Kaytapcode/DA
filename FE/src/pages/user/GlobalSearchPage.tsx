@@ -15,6 +15,7 @@ interface SearchResult {
 	ownedByCaller: boolean
 	resourceId: string | null
 	createdAt: string
+	authorName?: string | null
 }
 
 type TypeFilter = 'ALL' | 'VIDEO' | 'QUIZ' | 'FLASHCARD' | 'PDF' | 'COLLECTION'
@@ -160,6 +161,7 @@ export const GlobalSearchPage: React.FC = () => {
 						<input
 							type="text"
 							value={query}
+							data-testid="global-search-input"
 							onChange={(e) => setQuery(e.target.value)}
 							placeholder={t(
 								'Nhap tu khoa tim kiem…',
@@ -299,6 +301,12 @@ export const GlobalSearchPage: React.FC = () => {
 											<h4 className="line-clamp-2 min-h-[40px] text-sm font-bold text-[#111b2d]">
 												{r.title}
 											</h4>
+											{r.authorName && (
+												<p className="flex items-center gap-1 text-xs text-[#6d7f98]" data-testid="search-result-author">
+													<MaterialIcon icon="person" size="xs" />
+													{isVi ? 'Tac gia: ' : 'By '}{r.authorName}
+												</p>
+											)}
 											<div className="flex items-center justify-between">
 												<p className="text-xs text-[#6d7f98]">
 													{meta
@@ -317,6 +325,7 @@ export const GlobalSearchPage: React.FC = () => {
 														) : (
 															<button
 																type="button"
+																data-testid={`search-clone-${r.contentId}`}
 																onClick={(e) => {
 																	e.preventDefault()
 																	e.stopPropagation()
@@ -345,9 +354,9 @@ export const GlobalSearchPage: React.FC = () => {
 								)
 
 								return (
-									<div key={r.contentId}>
+									<div key={r.contentId} data-testid={`search-result-${r.contentId}`} data-result-title={r.title}>
 										{href ? (
-											<Link to={href} className="block">
+											<Link to={href} className="block" data-testid={`search-result-link-${r.contentId}`}>
 												{cardBody}
 											</Link>
 										) : (

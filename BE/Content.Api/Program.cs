@@ -94,6 +94,10 @@ try
     // Removed: IOrganizationRepository, IUserRepository - use HttpClient through Gateway for inter-service queries
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
     builder.Services.AddScoped<ICourseAccessService, CourseAccessService>();
+    // For service-to-service calls (e.g. auto-provisioning an approved student into the org,
+    // and checking org suspension status for the course-access guard).
+    builder.Services.AddHttpClient();
+    builder.Services.AddMemoryCache();
 
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());

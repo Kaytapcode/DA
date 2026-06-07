@@ -55,7 +55,6 @@ import {
   CourseEditorCurriculumTabPage,
   CourseEditorMemberRolesTabPage,
   SystemadminOrganizationDirectoryPage,
-  UnifiedSettingsOrganizationsPage,
 } from '@pages/orgadmin'
 import GuestHomePage from '@pages/public/GuestHomePage'
 import {
@@ -221,11 +220,6 @@ export const AppRouter: React.FC = () => {
               <CourseEditorMemberRolesTabPage />
             </ProtectedRoute>
           } />
-          <Route path="/admin/settings" element={
-            <ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}>
-              <UnifiedSettingsOrganizationsPage />
-            </ProtectedRoute>
-          } />
           <Route path="/admin/system-organization-directory-light-1" element={
             <ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}>
               <SystemadminOrganizationDirectoryPage />
@@ -320,7 +314,6 @@ export const AppRouter: React.FC = () => {
           <Route path="/fe/orgadmin/member_management" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><MemberManagementPage /></ProtectedRoute>} />
           <Route path="/fe/orgadmin/orgadmin_dashboard_reports" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><OrgAdminDashboardPage /></ProtectedRoute>} />
           <Route path="/fe/orgadmin/systemadmin_organization_directory_light_1" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><SystemadminOrganizationDirectoryPage /></ProtectedRoute>} />
-          <Route path="/fe/orgadmin/unified_settings_organizations" element={<ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}><UnifiedSettingsOrganizationsPage /></ProtectedRoute>} />
           <Route path="/fe/sysadmin/global_content_courses" element={<ProtectedRoute roles={['SysAdmin']}><GlobalContentCoursesPage /></ProtectedRoute>} />
           <Route path="/fe/sysadmin/global_user_management" element={<ProtectedRoute roles={['SysAdmin']}><GlobalUserManagementPage /></ProtectedRoute>} />
           <Route path="/fe/sysadmin/organization_directory" element={<ProtectedRoute roles={['SysAdmin']}><OrganizationDirectoryPage /></ProtectedRoute>} />

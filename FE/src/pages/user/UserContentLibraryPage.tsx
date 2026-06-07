@@ -328,7 +328,7 @@ export const UserContentLibraryPage: React.FC = () => {
 							})}
 						</div>
 
-						<div className="flex items-center gap-2">
+						<div className="flex flex-wrap items-center gap-2">
 							<Link
 								to="/user/quizzes/new"
 								className="inline-flex items-center gap-2 rounded-lg border border-[#1463ff] bg-white px-4 py-2 text-sm font-semibold text-[#1463ff] transition hover:bg-[#eef4ff]"
@@ -353,6 +353,7 @@ export const UserContentLibraryPage: React.FC = () => {
 							<button
 								type="button"
 								onClick={() => setIsUploadModalOpen(true)}
+								data-testid="library-upload-btn"
 								className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
 							>
 								<MaterialIcon icon="upload_file" size="xs" />

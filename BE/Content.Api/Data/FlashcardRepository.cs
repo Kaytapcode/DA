@@ -40,6 +40,7 @@ namespace Content.Api.Data
                 // Show decks belonging to the user's org OR any public deck.
                 query = query.Where(d =>
                     d.Content != null &&
+                    !d.Content.IsCourseScoped && // course-created content stays inside its course
                     (
                         (orgId.HasValue && d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
                         || d.Content.IsPublic

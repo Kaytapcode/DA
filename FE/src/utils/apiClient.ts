@@ -123,7 +123,26 @@ class ApiClient {
           }
         }
 
-        return Promise.reject(error.response?.data || error);
+        // Normalize the rejected payload so callers always get a readable `.message`.
+        // ASP.NET FluentValidation/model errors come back as RFC7807 ValidationProblemDetails
+        // ({ title, errors: { Field: [msgs] } }) with NO `success`/`message` field — without this
+        // mapping the FE showed a generic "Failed to ..." and the real reason (e.g. weak password,
+        // duplicate username) was lost. See SysAdmin create-user "works sometimes" bug.
+        const data: any = error.response?.data;
+        if (data && typeof data === 'object') {
+          if (typeof data.message === 'string' && data.message) {
+            return Promise.reject(data);
+          }
+          if (data.errors && typeof data.errors === 'object') {
+            const flat = Object.values(data.errors).flat().filter(Boolean) as string[];
+            const msg = flat.join(' ') || data.title || 'Request failed.';
+            return Promise.reject({ success: false, message: msg, errors: data.errors });
+          }
+          if (typeof data.title === 'string' && data.title) {
+            return Promise.reject({ success: false, message: data.title });
+          }
+        }
+        return Promise.reject(data || { success: false, message: error.message || 'Network error.' });
       }
     );
   }

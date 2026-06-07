@@ -43,7 +43,7 @@ namespace AI.Api.Services
             try
             {
                 var apiKey = await _keyResolver.ResolveAsync("OpenRouter");
-                var model = _configuration["OpenRouter:Model"] ?? "stepfun/step-3.5-flash";
+                var model = _configuration["OpenRouter:Model"] ?? "openai/gpt-4o-mini";
                 var fallbackModel = _configuration["OpenRouter:FallbackModel"] ?? "meta-llama/llama-3.1-8b-instruct";
 
                 if (string.IsNullOrEmpty(apiKey))
@@ -81,22 +81,26 @@ namespace AI.Api.Services
                 var activeContent = documentContent;
                 var (temp, topP) = DifficultyParams(difficulty);
                 _logger.LogInformation("Generating quiz: target={Max}, difficulty={Diff}, temp={Temp}, model={Model}", maxQ, difficulty, temp, activeModel);
-                string firstRaw;
+                // Call + parse the primary model. On ANY primary failure — timeout, empty output, or
+                // unparseable output — retry once with the non-reasoning fallback model and parse that.
+                List<QuizQuestion> questions;
                 try
                 {
-                    firstRaw = await CallApiAsync(client, activeModel,
-                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), maxTokens, temp, topP);
+                    // Short leash on the primary so a slow/garbage reasoning model fails fast.
+                    var firstRaw = await CallApiAsync(client, activeModel,
+                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), maxTokens, temp, topP, timeoutSeconds: 55);
+                    questions = ParseQuizResponse(firstRaw).Questions;
                 }
-                catch (Exception ex) when (IsTransient(ex) && activeModel != fallbackModel)
+                catch (Exception ex) when (activeModel != fallbackModel && (IsTransient(ex) || ex is InvalidOperationException))
                 {
                     activeModel = fallbackModel;
                     activeContent = TruncateForRetry(documentContent);
                     var retryTokens = ReduceTokens(maxTokens);
-                    _logger.LogWarning(ex, "Primary model failed/timed out — retrying with fallback model {Model}", activeModel);
-                    firstRaw = await CallApiAsync(client, activeModel,
-                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), retryTokens, temp, topP);
+                    _logger.LogWarning(ex, "Primary model failed (timeout/empty/parse) — retrying with fallback model {Model}", activeModel);
+                    var firstRaw = await CallApiAsync(client, activeModel,
+                        BuildQuizPrompt(activeContent, documentTitle, difficulty, maxQ), retryTokens, temp, topP, timeoutSeconds: 150);
+                    questions = ParseQuizResponse(firstRaw).Questions;
                 }
-                var questions = ParseQuizResponse(firstRaw).Questions;
                 _logger.LogInformation("First pass returned {Count} questions (need {Min}–{Max})", questions.Count, minQ, maxQ);
 
                 // Top-up pass — if still below the minimum, ask for exactly the shortfall
@@ -132,7 +136,7 @@ namespace AI.Api.Services
             }
         }
 
-        private async Task<string> CallApiAsync(HttpClient client, string model, string userPrompt, int maxTokens, double temperature = 0.6, double topP = 0.85)
+        private async Task<string> CallApiAsync(HttpClient client, string model, string userPrompt, int maxTokens, double temperature = 0.6, double topP = 0.85, int timeoutSeconds = 90)
         {
             var request = new OpenRouterRequest
             {
@@ -153,7 +157,19 @@ namespace AI.Api.Services
 
             var json = JsonSerializer.Serialize(request, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
             var httpContent = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            var response = await client.PostAsync($"{OPENROUTER_BASE_URL}/chat/completions", httpContent);
+
+            // Per-call leash: a slow/garbage primary (reasoning) model is abandoned quickly so the
+            // reliable fallback runs well within the gateway timeout. TaskCanceledException is transient.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+            HttpResponseMessage response;
+            try
+            {
+                response = await client.PostAsync($"{OPENROUTER_BASE_URL}/chat/completions", httpContent, cts.Token);
+            }
+            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+            {
+                throw new TaskCanceledException($"OpenRouter model '{model}' timed out after {timeoutSeconds}s.");
+            }
 
             if (!response.IsSuccessStatusCode)
             {
@@ -168,12 +184,23 @@ namespace AI.Api.Services
             if (parsed?.Choices == null || parsed.Choices.Count == 0)
                 throw new InvalidOperationException("OpenRouter API returned no content");
 
-            return parsed.Choices[0].Message.Content;
+            // Reasoning models can return null/empty "content" (output lands in "reasoning", or the
+            // reasoning consumed all tokens). Prefer content, fall back to reasoning, then signal a
+            // transient failure so GenerateQuizAsync retries with the non-reasoning fallback model.
+            var msg = parsed.Choices[0].Message;
+            var content = !string.IsNullOrWhiteSpace(msg.Content) ? msg.Content : msg.Reasoning;
+            if (string.IsNullOrWhiteSpace(content))
+                throw new EmptyAiContentException($"OpenRouter model '{model}' returned empty content.");
+            return content;
         }
 
         private static bool IsTransient(Exception ex)
         {
             if (ex is TaskCanceledException)
+                return true;
+
+            // Empty model output → retry with the fallback model.
+            if (ex is EmptyAiContentException)
                 return true;
 
             if (ex is HttpRequestException httpEx)
@@ -310,8 +337,12 @@ DOCUMENT:
 ---";
 
 
-        private QuizGenerationResponse ParseQuizResponse(string rawContent)
+        private QuizGenerationResponse ParseQuizResponse(string? rawContent)
         {
+            // Defensive: a null/empty payload here would otherwise NRE on .Length.
+            if (string.IsNullOrWhiteSpace(rawContent))
+                throw new EmptyAiContentException("AI returned an empty response to parse.");
+
             // Always log the raw model response for debugging. Truncated to 1000 chars.
             _logger.LogInformation("AI raw response ({Len} chars): {Preview}",
                 rawContent.Length, rawContent[..Math.Min(1000, rawContent.Length)]);
@@ -532,7 +563,18 @@ DOCUMENT:
         public required string Role { get; set; }
 
         [JsonPropertyName("content")]
-        public required string Content { get; set; }
+        public string? Content { get; set; }
+
+        // Some "reasoning" models (e.g. stepfun/step-3.5-flash) put their answer in a separate
+        // "reasoning" field and leave "content" null/empty. Read it as a fallback source.
+        [JsonPropertyName("reasoning")]
+        public string? Reasoning { get; set; }
+    }
+
+    /// <summary>Model returned an empty/null message — treated as transient so the fallback model is tried.</summary>
+    public class EmptyAiContentException : Exception
+    {
+        public EmptyAiContentException(string message) : base(message) { }
     }
 
     public class OpenRouterResponse

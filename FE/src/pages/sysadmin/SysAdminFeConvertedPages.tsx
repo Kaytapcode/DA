@@ -44,11 +44,62 @@ const SysShell: React.FC<SysShellProps> = ({ titleEn, titleVi, subtitleEn, subti
   )
 }
 
+interface ModResult {
+  contentId: string
+  title: string
+  contentType: 'VIDEO' | 'QUIZ' | 'FLASHCARD' | 'PDF' | 'COLLECTION'
+  resourceId: string | null
+  authorName?: string | null
+}
+
+// Maps a search result's contentType to its owner-or-SysAdmin DELETE endpoint.
+const DELETE_PATH: Record<string, (id: string) => string> = {
+  PDF: (id) => `/documents/${id}`,
+  QUIZ: (id) => `/quizzes/${id}`,
+  FLASHCARD: (id) => `/decks/${id}`,
+  VIDEO: (id) => `/videos/${id}`,
+}
+
 export const GlobalContentCoursesPage: React.FC = () => {
   const isVi = useLang()
   const { data, isLoading } = useSysAdminAnalytics()
 
   const stat = (n: number | undefined | null) => (n ?? 0).toLocaleString()
+
+  // ── Absolute Deletion / content moderation (spec §6.5) ──────────────────
+  const [modQuery, setModQuery] = useState('')
+  const [modResults, setModResults] = useState<ModResult[]>([])
+  const [modSearching, setModSearching] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [modError, setModError] = useState<string | null>(null)
+
+  const runModSearch = async () => {
+    setModError(null); setModSearching(true)
+    try {
+      const res = await apiClient.get<ModResult[]>(`/search?q=${encodeURIComponent(modQuery.trim())}&limit=50`)
+      setModResults(res.success && res.data ? res.data.filter((r) => r.contentType !== 'COLLECTION') : [])
+    } catch (e: any) {
+      setModError(e?.message || 'Search failed'); setModResults([])
+    } finally {
+      setModSearching(false)
+    }
+  }
+
+  const absoluteDelete = async (r: ModResult) => {
+    const id = r.resourceId ?? r.contentId
+    const pathFn = DELETE_PATH[r.contentType]
+    if (!pathFn) return
+    setDeletingId(r.contentId); setModError(null)
+    try {
+      const res = await apiClient.delete(pathFn(id))
+      if (res.success) setModResults((prev) => prev.filter((x) => x.contentId !== r.contentId))
+      else setModError(res.message || 'Delete failed')
+    } catch (e: any) {
+      setModError(e?.message || 'Delete failed')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   return (
     <SysShell
@@ -97,6 +148,58 @@ export const GlobalContentCoursesPage: React.FC = () => {
             <p className="text-sm text-on-surface-variant">{isVi ? 'Tong to chuc' : 'Organizations'}</p>
             <p className="text-2xl font-bold">{stat(data.orgs?.totalOrgs)}</p>
           </div>
+        </div>
+      </Card>
+
+      {/* Absolute Deletion — SysAdmin can permanently remove any content platform-wide (spec §6.5). */}
+      <Card className="p-6 mt-6" data-testid="sysadmin-moderation-card">
+        <h3 className="mb-1 font-bold text-on-surface">{isVi ? 'Kiem duyet & Xoa vinh vien noi dung' : 'Content Moderation & Absolute Deletion'}</h3>
+        <p className="mb-3 text-sm text-on-surface-variant">
+          {isVi ? 'Tim noi dung vi pham va xoa vinh vien khoi nen tang.' : 'Find violating content and permanently remove it from the platform.'}
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={modQuery}
+            data-testid="sysadmin-content-search"
+            onChange={(e) => setModQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void runModSearch() }}
+            placeholder={isVi ? 'Tim theo tieu de...' : 'Search by title...'}
+            className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          />
+          <Button data-testid="sysadmin-content-search-btn" onClick={() => void runModSearch()} disabled={modSearching}>
+            {modSearching ? (isVi ? 'Dang tim...' : 'Searching...') : (isVi ? 'Tim' : 'Search')}
+          </Button>
+        </div>
+        {modError && <p className="mt-2 text-sm text-error" data-testid="sysadmin-mod-error">{modError}</p>}
+        <div className="mt-4 space-y-2" data-testid="sysadmin-mod-results">
+          {modResults.length === 0 && !modSearching && (
+            <p className="text-sm text-on-surface-variant" data-testid="sysadmin-mod-empty">
+              {isVi ? 'Khong co ket qua.' : 'No results.'}
+            </p>
+          )}
+          {modResults.map((r) => (
+            <div key={r.contentId} data-testid={`sysadmin-mod-item-${r.contentId}`}
+                 className="flex items-center justify-between rounded-lg border border-outline-variant p-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-on-surface">{r.title}</p>
+                <p className="text-xs text-on-surface-variant">
+                  {r.contentType}{r.authorName ? ` • ${isVi ? 'Tac gia' : 'by'} ${r.authorName}` : ''}
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                data-testid={`sysadmin-delete-${r.contentId}`}
+                onClick={() => void absoluteDelete(r)}
+                disabled={deletingId === r.contentId}
+                className="!bg-error hover:!bg-error/90"
+              >
+                <MaterialIcon icon="delete_forever" size="xs" className="mr-1" />
+                {deletingId === r.contentId ? '…' : (isVi ? 'Xoa vinh vien' : 'Absolute Delete')}
+              </Button>
+            </div>
+          ))}
         </div>
       </Card>
     </SysShell>
@@ -180,7 +283,7 @@ const CreateUserModal: React.FC<{
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+          <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700" data-testid="create-user-error">{error}</div>
         )}
 
         <div className="space-y-3">
@@ -188,17 +291,22 @@ const CreateUserModal: React.FC<{
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
               {isVi ? 'Ten dang nhap' : 'Username'}
             </label>
-            <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" />
+            <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" data-testid="create-user-username" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">Email</label>
-            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@example.com" />
+            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="user@example.com" data-testid="create-user-email" />
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
               {isVi ? 'Mat khau' : 'Password'}
             </label>
-            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 8 chars with upper/lower/digit/special" />
+            <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 8 chars with upper/lower/digit/special" data-testid="create-user-password" />
+            <p className="mt-1 text-xs text-on-surface-variant" data-testid="password-requirements">
+              {isVi
+                ? 'Tối thiểu 8 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt.'
+                : 'At least 8 characters, including uppercase, lowercase, a number, and a special character.'}
+            </p>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
@@ -207,6 +315,7 @@ const CreateUserModal: React.FC<{
             <select
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as RoleOption })}
+              data-testid="create-user-role"
               className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
             >
               <option value="Student">Student</option>
@@ -228,7 +337,7 @@ const CreateUserModal: React.FC<{
           <Button variant="secondary" onClick={close} disabled={submitting}>
             {isVi ? 'Huy' : 'Cancel'}
           </Button>
-          <Button onClick={submit} disabled={submitting}>
+          <Button onClick={submit} disabled={submitting} data-testid="create-user-submit">
             {submitting ? (isVi ? 'Dang tao...' : 'Creating...') : (isVi ? 'Tao' : 'Create')}
           </Button>
         </div>
@@ -247,6 +356,12 @@ export const GlobalUserManagementPage: React.FC = () => {
   const [createOpen, setCreateOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const PAGE_SIZE = 20
+
+  // The caller cannot delete their own account (BE blocks it). Hide the control on their own row
+  // so SysAdmins don't hit a confusing "cannot delete your own account" error.
+  const currentUserId: string | null = (() => {
+    try { return JSON.parse(localStorage.getItem('auth_user') || '{}')?.id ?? null } catch { return null }
+  })()
 
   const loadUsers = async (page = 0, search = '') => {
     setIsLoading(true)
@@ -344,9 +459,13 @@ export const GlobalUserManagementPage: React.FC = () => {
                   </Badge>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="secondary" onClick={() => handleDelete(user)} data-testid="user-delete-btn">
-                    {isVi ? 'Xoa' : 'Delete'}
-                  </Button>
+                  {user.id !== currentUserId ? (
+                    <Button size="sm" variant="secondary" onClick={() => handleDelete(user)} data-testid="user-delete-btn">
+                      {isVi ? 'Xoa' : 'Delete'}
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary" size="sm" data-testid="user-item-self">{isVi ? 'Ban' : 'You'}</Badge>
+                  )}
                 </div>
               </div>
             ))}
@@ -387,10 +506,25 @@ export const GlobalUserManagementPage: React.FC = () => {
 export const OrganizationDirectoryPage: React.FC = () => {
   const isVi = useLang()
   const [search, setSearch] = useState('')
-  const [organizations, setOrganizations] = useState<{ id: string; name: string; slug: string; memberCount?: number }[]>([])
+  const [organizations, setOrganizations] = useState<{ id: string; name: string; slug: string; memberCount?: number; status?: string }[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [busyOrg, setBusyOrg] = useState<string | null>(null)
   const PAGE_SIZE = 500
+
+  // Suspend / reactivate an organization (spec §6.6). On success, refetch so the badge updates.
+  const setOrgStatus = async (orgId: string, action: 'suspend' | 'reactivate') => {
+    setBusyOrg(orgId); setError(null)
+    try {
+      const res = await apiClient.post(`/organizations/${orgId}/${action}`, {})
+      if (!res.success) setError(res.message || `Failed to ${action}`)
+      await fetchOrganizations()
+    } catch (err: any) {
+      setError(err?.message || `Failed to ${action}`)
+    } finally {
+      setBusyOrg(null)
+    }
+  }
 
   const fetchOrganizations = React.useCallback(async () => {
     setIsLoading(true)
@@ -458,7 +592,11 @@ export const OrganizationDirectoryPage: React.FC = () => {
             <Card key={org.id} className="p-6" data-testid="org-item">
               <div className="flex items-center justify-between mb-3">
                 <MaterialIcon icon="apartment" className="text-primary" />
-                <Badge variant="primary" size="sm">{isVi ? 'Hoat dong' : 'Active'}</Badge>
+                {org.status === 'Suspended' ? (
+                  <Badge variant="error" size="sm" data-testid={`org-status-${org.id}`}>{isVi ? 'Da khoa' : 'Suspended'}</Badge>
+                ) : (
+                  <Badge variant="primary" size="sm" data-testid={`org-status-${org.id}`}>{isVi ? 'Hoat dong' : 'Active'}</Badge>
+                )}
               </div>
               <h3 className="font-bold text-on-surface" data-testid="org-item-name">{org.name}</h3>
               <p className="text-xs text-on-surface-variant mt-1" data-testid="org-item-slug">/{org.slug}</p>
@@ -467,6 +605,23 @@ export const OrganizationDirectoryPage: React.FC = () => {
                   {org.memberCount} {isVi ? 'thanh vien' : 'members'}
                 </p>
               )}
+              <div className="mt-4">
+                {org.status === 'Suspended' ? (
+                  <Button size="sm" variant="secondary" className="w-full justify-center"
+                    data-testid={`org-reactivate-${org.id}`} disabled={busyOrg === org.id}
+                    onClick={() => void setOrgStatus(org.id, 'reactivate')}>
+                    <MaterialIcon icon="lock_open" size="xs" className="mr-1" />
+                    {busyOrg === org.id ? '…' : (isVi ? 'Kich hoat lai' : 'Reactivate')}
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="primary" className="w-full justify-center !bg-error hover:!bg-error/90"
+                    data-testid={`org-suspend-${org.id}`} disabled={busyOrg === org.id}
+                    onClick={() => void setOrgStatus(org.id, 'suspend')}>
+                    <MaterialIcon icon="block" size="xs" className="mr-1" />
+                    {busyOrg === org.id ? '…' : (isVi ? 'Vo hieu hoa' : 'Suspend')}
+                  </Button>
+                )}
+              </div>
             </Card>
           ))}
         </div>

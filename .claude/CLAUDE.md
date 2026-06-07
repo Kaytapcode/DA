@@ -628,6 +628,19 @@ Tick only when the matching tests (API + FE display + at least one E2E) are gree
   user/notification → authenticated); wrong-role hits redirect to the role's home, anon → `/login`.
   (`/fe/auth/*` left public — they mirror the public login/register screens.)
 
+### Follow-up fixes round 8 (2026-06-01) — ⚠️ SPEC UPDATE PENDING
+
+> Module-title rules + default modules (dev request). Tests:
+> `tests/katalon/test_addmodule_and_routeguard_workflows.py` (updated).
+
+- [x] **Module title min length lowered 3 → 1** (`ContentValidators.cs` `ModuleRequestValidator`
+  `Length(1, 255)`). FE add-module forms accept a blank title and default it to **"Topic N"**
+  (N = `modules.length + 1`); the Add button is always enabled (no min-3 gate). Applies to both
+  OrgAdmin curriculum and per-course Teacher tools.
+- [x] **Every new course auto-creates 3 default modules "Topic 1/2/3"** in
+  `CreateCourseCommandHandler` (injects `IModuleRepository`). Courses only — **Collections are
+  unaffected** (separate `CollectionsController`, no default modules).
+
 ### Seeded test accounts (for manual testing — Spec §5)
 
 | Account | Password | Role | How to log in |

@@ -79,9 +79,10 @@ export const VideoCreatePage: React.FC = () => {
 			})
 			if (!res.success || !res.data) throw new Error(res.message || 'Failed to save video')
 			setSavedVideo(res.data)
+			// If launched to add content to a course module, link the new video FIRST (throws on
+			// failure → the catch shows the error and we stay here), then return to the course.
+			if (courseLink.active) { await courseLink.linkAndReturn(res.data.contentId); return }
 			setSuccess(t('Da luu vao thu vien!', 'Saved to library!'))
-			// If launched to add content to a course module, link the new video + return.
-			if (courseLink.active) { await courseLink.linkAndReturn(res.data.contentId) }
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to save video')
 		} finally {

@@ -48,6 +48,31 @@ namespace Content.Api.Controllers
             return Ok(new ApiResponse<IEnumerable<EnrolledCourseDto>>(true, rows, null));
         }
 
+        // GET /api/courses/catalog?query= — GLOBAL public course catalog (spec §6.3). Any authenticated
+        // user (even one not yet in any org) can discover courses across all orgs and request to join.
+        // Directory-level fields only.
+        public record CatalogCourseDto(Guid Id, string Title, string? Description, string? CourseCode, Guid OrgId);
+
+        [HttpGet("catalog")]
+        [ProducesResponseType(typeof(ApiResponse<IEnumerable<CatalogCourseDto>>), 200)]
+        public async Task<IActionResult> Catalog([FromQuery] string? query, [FromQuery] int pageSize = 50, CancellationToken ct = default)
+        {
+            var userId = _orgCtx.GetCurrentUserId();
+            if (!userId.HasValue) return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            var q = _db.Courses.IgnoreQueryFilters().AsQueryable();
+            if (!string.IsNullOrWhiteSpace(query))
+                q = q.Where(c => EF.Functions.ILike(c.Title, $"%{query.Trim()}%"));
+
+            var items = await q
+                .OrderByDescending(c => c.CreatedAt)
+                .Take(Math.Clamp(pageSize, 1, 200))
+                .Select(c => new CatalogCourseDto(c.Id, c.Title, c.Description, c.CourseCode, c.OrgId))
+                .ToListAsync(ct);
+
+            return Ok(new ApiResponse<IEnumerable<CatalogCourseDto>>(true, items, null));
+        }
+
         [HttpGet]
         [ProducesResponseType(typeof(PaginatedResponse<CourseListResponseDto>), 200)]
         public async Task<IActionResult> GetCourses(

@@ -14,6 +14,19 @@ interface FormErrors {
   password?: string;
 }
 
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: object) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
+}
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuthContext();
@@ -99,6 +112,58 @@ export const LoginPage: React.FC = () => {
           : (err as any)?.message || 'Failed to login. Please check your credentials and try again.'
       );
     }
+  };
+
+  const handleGoogleLogin = () => {
+    // Google SSO requires a configured OAuth client id (FE) AND the BE /auth/google verifier.
+    // When the client id isn't configured, show an honest message instead of a misleading
+    // "chưa load xong" that loops forever.
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+    if (!clientId) {
+      setSubmitError('Đăng nhập Google chưa được cấu hình. Vui lòng đăng nhập bằng tài khoản & mật khẩu.');
+      return;
+    }
+    if (!window.google) {
+      setSubmitError('Google Sign-In chưa load xong, thử lại sau giây lát.');
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: async (response: { credential: string }) => {
+        try {
+          const res = await apiClient.post<{
+            accessToken: string;
+            refreshToken: string;
+            accessTokenExpiresInSeconds: number;
+            user: { id: string; username: string; email: string; role: string };
+            orgId?: string;
+            isNewUser: boolean;
+          }>('/auth/google', { idToken: response.credential });
+
+          if (!res.success || !res.data) throw new Error(res.message || 'Google login failed');
+
+          const { accessToken, refreshToken, accessTokenExpiresInSeconds, user, orgId, isNewUser } = res.data;
+
+          // Lưu token (dùng tokenStore từ useAuth nếu exposed, hoặc gọi login flow)
+          // Cách đơn giản nhất: gọi endpoint rồi reload để bootstrap auth
+          localStorage.setItem('lms_rt', refreshToken);
+          // Sau khi set RT, doRefresh() trong useAuth bootstrap sẽ tự lấy AT mới
+
+          if (isNewUser) {
+            navigate('/sso/complete-profile');
+          } else {
+            const dest =
+              user.role === 'SysAdmin' ? '/sysadmin/dashboard' :
+              user.role === 'OrgAdmin' ? '/admin/dashboard' :
+              '/user/home';
+            navigate(dest, { replace: true });
+          }
+        } catch (err) {
+          setSubmitError((err as any)?.message || 'Google login thất bại.');
+        }
+      },
+    });
+    window.google.accounts.id.prompt();
   };
 
   return (
@@ -265,11 +330,11 @@ export const LoginPage: React.FC = () => {
                 <span className="mx-4 text-xs font-semibold uppercase tracking-widest text-[#9ca3af]">Or Sign In With</span>
                 <div className="flex-grow border-t border-[#e5e7eb]" />
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3">
                 <button
                   type="button"
                   data-testid="login-sso-google"
-                  onClick={() => alert('Google SSO — OAuth credentials not yet configured.')}
+                  onClick={handleGoogleLogin}
                   className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb] transition"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -280,7 +345,7 @@ export const LoginPage: React.FC = () => {
                   </svg>
                   Google
                 </button>
-                <button
+                {/* <button
                   type="button"
                   data-testid="login-sso-microsoft"
                   onClick={() => alert('Microsoft SSO — OAuth credentials not yet configured.')}
@@ -294,27 +359,27 @@ export const LoginPage: React.FC = () => {
                     <path fill="#ffba08" d="M12 12h10v10H12z"/>
                   </svg>
                   Microsoft
-                </button>
+                </button> */}
               </div>
             </div>
 
             {/* Create Account Link */}
             <div className="mt-8 text-center">
               <p className="text-sm text-[#6b7280]">
-                New to the Laboratory?{' '}
+                New to the Lumina?{' '}
                 <Link to="/register" className="font-semibold text-[#0066ff] hover:underline">
-                  Create
+                  Create Account
                 </Link>
               </p>
             </div>
           </div>
 
           {/* Footer - System Status */}
-          <div className="flex items-center gap-2 mt-8">
+          {/* <div className="flex items-center gap-2 mt-8">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
             <span className="text-xs font-medium text-[#6b7280]">SYSTEM STATUS</span>
             <span className="text-xs text-[#9ca3af]">All neural networks fully operational at 99.9% uptime.</span>
-          </div>
+          </div> */}
         </section>
       </div>
     </div>

@@ -34,7 +34,10 @@ public class OrganizationsController : ControllerBase
         if (!Guid.TryParse(userIdClaim, out var userId))
             return BadRequest(new ApiResponse(false, "Invalid user ID"));
 
-        var memberships = await _memberRepository.GetByUserIdAsync(userId);
+        // Only APPROVED memberships count as "mine" — a Pending join request is not yet membership.
+        var memberships = (await _memberRepository.GetByUserIdAsync(userId))
+            .Where(m => m.Status == "Approved")
+            .ToList();
         var result = new List<MyOrganizationDto>();
         foreach (var m in memberships)
         {
@@ -50,22 +53,12 @@ public class OrganizationsController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<OrganizationListResponseDto>>), 200)]
     public async Task<IActionResult> GetOrganizations()
     {
-        var isAdmin = User.IsInRole("SysAdmin");
-        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-        List<OrganizationModel> organizations;
-
-        if (isAdmin)
-        {
-            organizations = await _organizationRepository.GetAllAsync();
-        }
-        else
-        {
-            if (!Guid.TryParse(userId, out var userGuid))
-                return BadRequest(new ApiResponse(false, "Invalid user ID"));
-
-            organizations = await _organizationRepository.GetByOwnerIdAsync(userGuid);
-        }
+        // Spec §1 (User role "Can join Organizations") + §4.2 onboarding: any authenticated user
+        // must be able to discover the directory of organizations in order to join one. This list
+        // exposes only directory-level fields (name, slug, member count) — never internal course/
+        // member/analytics structure (which stays gated by CourseAccessService). SysAdmin and
+        // normal users alike get the full directory; "my organizations" is served by GET /mine.
+        var organizations = await _organizationRepository.GetAllAsync();
 
         return Ok(new ApiResponse<List<OrganizationListResponseDto>>(
             true,
@@ -173,6 +166,30 @@ public class OrganizationsController : ControllerBase
             _mapper.Map<OrganizationResponseDto>(organization),
             "Organization updated successfully"
         ));
+    }
+
+    // POST /api/organizations/{id}/suspend | /reactivate — SysAdmin only (spec §6.6).
+    [HttpPost("{id}/suspend")]
+    [Authorize(Roles = "SysAdmin")]
+    public Task<IActionResult> SuspendOrganization(Guid id) => SetStatusAsync(id, "Suspended");
+
+    [HttpPost("{id}/reactivate")]
+    [Authorize(Roles = "SysAdmin")]
+    public Task<IActionResult> ReactivateOrganization(Guid id) => SetStatusAsync(id, "Active");
+
+    private async Task<IActionResult> SetStatusAsync(Guid id, string status)
+    {
+        var organization = await _organizationRepository.GetByIdAsync(id);
+        if (organization == null)
+            return NotFound(new ApiResponse(false, "Organization not found"));
+
+        organization.Status = status;
+        organization.UpdatedAt = DateTime.UtcNow;
+        await _organizationRepository.UpdateAsync(organization);
+
+        return Ok(new ApiResponse<OrganizationResponseDto>(
+            true, _mapper.Map<OrganizationResponseDto>(organization),
+            status == "Suspended" ? "Organization suspended." : "Organization reactivated."));
     }
 
     [HttpDelete("{id}")]

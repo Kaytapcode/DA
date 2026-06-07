@@ -22,7 +22,14 @@ namespace Organization.Api.Models
         [Required]
         [Column("role")]
         [StringLength(50)]
-        public string Role { get; set; } = "Student"; // 'Student', 'Teacher', 'Owner', 'Admin'
+        public string Role { get; set; } = "Student"; // 'Member', 'OrgAdmin', 'Owner'
+
+        // 'Pending' | 'Approved' | 'Rejected'. A user self-requesting to join starts 'Pending' and
+        // only counts as a member once an OrgAdmin approves. OrgAdmin-added / founding rows are
+        // 'Approved' immediately. Only 'Approved' grants org membership/access.
+        [Column("status")]
+        [StringLength(20)]
+        public string Status { get; set; } = "Approved";
 
         [Column("join_date")]
         public DateTime JoinDate { get; set; } = DateTime.UtcNow;
