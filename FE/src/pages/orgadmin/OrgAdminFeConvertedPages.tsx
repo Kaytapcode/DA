@@ -840,7 +840,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
             )} */}
             <select
               data-testid="enrollment-role-select"
-              className="px-4 py-2 rounded-lg border border-outline-variant bg-surface text-on-surface"
+               className="min-w-[140px] px-2 py-1 pr-8 rounded border border-outline-variant bg-surface text-on-surface text-sm mr-2"
               value={newRole}
               onChange={(e) => setNewRole(e.target.value as 'Teacher' | 'Student')}
             >
@@ -928,7 +928,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                     {new Date(e.enrolledAt).toLocaleDateString()}
                   </span>
                   <select
-                    className="px-2 py-1 rounded border border-outline-variant bg-surface text-on-surface text-sm"
+                     className="min-w-[140px] px-2 py-1 pr-8 rounded border border-outline-variant bg-surface text-on-surface text-sm mr-2"
                     value={e.role}
                     disabled={busyUserId === e.userId}
                     onChange={(ev) => void handleChangeRole(e, ev.target.value as 'Teacher' | 'Student')}

@@ -36,9 +36,8 @@ export const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState<{ score: number; strength: string; message: string } | null>(null);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isLoading = authLoading || isSubmitting;
 
@@ -116,8 +115,8 @@ export const RegisterPage: React.FC = () => {
           setSubmitError(res.message || 'Registration failed. Please try again.');
         }
       }
-    } catch (err: any) {
-      setSubmitError(err?.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      setSubmitError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -135,6 +134,19 @@ export const RegisterPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <style>{`
+        /* Hide browser-native reveal/clear buttons for the confirm-password input only */
+        input[data-testid="register-confirm-password"]::-ms-reveal,
+        input[data-testid="register-confirm-password"]::-ms-clear {
+          display: none !important;
+        }
+        input[data-testid="register-confirm-password"]::-webkit-textfield-decoration-container,
+        input[data-testid="register-confirm-password"]::-webkit-password-reveal-button,
+        input[data-testid="register-confirm-password"]::-webkit-clear-button {
+          display: none !important;
+          -webkit-appearance: none !important;
+        }
+      `}</style>
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* Left — Branding */}
         <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#001a4d] via-[#0d2b7a] to-[#051535] p-12 text-white lg:flex lg:flex-col lg:justify-center">
@@ -264,21 +276,14 @@ export const RegisterPage: React.FC = () => {
                 <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
                   Password
                 </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    data-testid="register-password"
-                    placeholder="Min 8 chars with upper/lower/digit/special"
-                    value={formData.password}
-                    onChange={(e) => handleFieldChange('password', e.target.value)}
-                    className={inputCls('password') + ' pr-12'}
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-3 text-[#d1d5db] hover:text-[#6b7280] transition"
-                    data-testid="register-password-toggle">
-                    <span className="material-symbols-outlined text-lg">{showPassword ? 'visibility' : 'visibility_off'}</span>
-                  </button>
-                </div>
+                <input
+                  type="password"
+                  data-testid="register-password"
+                  placeholder="Min 8 chars with upper/lower/digit/special"
+                  value={formData.password}
+                  onChange={(e) => handleFieldChange('password', e.target.value)}
+                  className={inputCls('password')}
+                />
                 <p className="mt-1 text-xs text-[#6b7280]" data-testid="password-requirements">
                   At least 8 characters, including uppercase, lowercase, a number, and a special character.
                 </p>
@@ -292,7 +297,7 @@ export const RegisterPage: React.FC = () => {
                     </div>
                     <div className="w-full bg-[#f3f4f6] rounded-full h-1.5">
                       <div className={`h-1.5 rounded-full transition-all ${strengthColors[passwordStrength.strength] ?? 'bg-gray-300'}`}
-                        style={{ width: `${(passwordStrength.score + 1) * 25}%` }} />
+                        style={{ width: `${Math.min(100, Math.round((passwordStrength.score / 4) * 100))}%` }}/>
                     </div>
                   </div>
                 )}
@@ -310,12 +315,18 @@ export const RegisterPage: React.FC = () => {
                     placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={(e) => handleFieldChange('confirmPassword', e.target.value)}
-                    className={inputCls('confirmPassword') + ' pr-12'}
+                    className={inputCls('confirmPassword') + ' pr-10'}
                   />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-3 text-[#d1d5db] hover:text-[#6b7280] transition"
-                    data-testid="register-confirm-password-toggle">
-                    <span className="material-symbols-outlined text-lg">{showConfirmPassword ? 'visibility' : 'visibility_off'}</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((v) => !v)}
+                    className="absolute right-3 top-3 text-[#9ca3af] hover:text-[#6b7280] transition"
+                    data-testid="register-confirm-password-toggle"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showConfirmPassword ? 'visibility' : 'visibility_off'}
+                    </span>
                   </button>
                 </div>
                 {errors.confirmPassword && <p className="mt-1 text-xs text-red-500" data-testid="register-error-confirm-password">{errors.confirmPassword}</p>}
