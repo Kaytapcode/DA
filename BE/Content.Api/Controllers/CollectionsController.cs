@@ -92,9 +92,23 @@ namespace Content.Api.Controllers
                 .FirstOrDefaultAsync(m => m.Id == id && m.OrgId == null && m.CreatedBy == userId, ct);
             if (module == null) return NotFound(new ApiResponse(false, "Collection not found."));
 
-            // Also remove ModuleContents (cascade isn't configured for personal modules).
-            var items = _db.ModuleContents.Where(mc => mc.ModuleId == id);
+            // Child "sections" (modules with ParentId == id) must be removed first: the self-FK is
+            // OnDelete(Restrict), so deleting a collection that has sections would otherwise throw and
+            // the delete silently failed. Remove each child's ModuleContents + the child modules, then
+            // the parent's ModuleContents + the parent — all in one SaveChanges (transactional).
+            var childIds = await _db.Modules.IgnoreQueryFilters()
+                .Where(m => m.ParentId == id)
+                .Select(m => m.Id)
+                .ToListAsync(ct);
+            var allModuleIds = new List<Guid>(childIds) { id };
+
+            var items = _db.ModuleContents.Where(mc => allModuleIds.Contains(mc.ModuleId));
             _db.ModuleContents.RemoveRange(items);
+            if (childIds.Count > 0)
+            {
+                var children = _db.Modules.Where(m => childIds.Contains(m.Id));
+                _db.Modules.RemoveRange(children);
+            }
             _db.Modules.Remove(module);
             await _db.SaveChangesAsync(ct);
 

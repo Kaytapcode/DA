@@ -75,12 +75,14 @@ export const translations = {
   'admin.courseEditor': { en: 'Course Editor', vi: 'Chỉnh Sửa Khóa Học' },
   'admin.curriculum': { en: 'Curriculum', vi: 'Chương Trình Học' },
   'admin.roles': { en: 'Member Roles', vi: 'Vai Trò Thành Viên' },
+  'admin.content': { en: 'Content', vi: 'Nội Dung' },
 
   // System Admin
   'sysadmin.overview': { en: 'System Overview', vi: 'Tổng Quan Hệ Thống' },
   'sysadmin.users': { en: 'User Management', vi: 'Quản Lý Người Dùng' },
   'sysadmin.organizations': { en: 'Organizations', vi: 'Tổ Chức' },
   'sysadmin.courses': { en: 'Global Courses', vi: 'Khóa Học Toàn Cục' },
+  'sysadmin.content': { en: 'Global Content', vi: 'Nội Dung Toàn Cục' },
   'sysadmin.logs': { en: 'System Logs', vi: 'Nhật Ký Hệ Thống' },
   'sysadmin.aiKeys': { en: 'AI API Keys', vi: 'Khóa API AI' },
   'sysadmin.settings': { en: 'Platform Settings', vi: 'Cài Đặt Nền Tảng' },

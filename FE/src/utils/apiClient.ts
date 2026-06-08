@@ -32,9 +32,15 @@ interface LoginPayload {
 // Dedupe concurrent refreshes: many 401s in flight share one /auth/refresh call.
 let refreshPromise: Promise<string | null> | null = null;
 
+// Thrown when the refresh could not even be evaluated (network down, gateway momentarily
+// restarting, timeout, 5xx). The session is NOT invalid in this case — we must NOT log the user
+// out (that caused "Teacher finishes a test → appears logged out" when a transient 401+failed
+// refresh nuked the whole session). The caller keeps the session and just rejects the request.
+class TransientRefreshError extends Error {}
+
 async function performRefresh(): Promise<string | null> {
   const rt = tokenStore.getRefreshToken();
-  if (!rt) return null;
+  if (!rt) return null; // genuinely no session
 
   try {
     // Use a bare axios call (not our instrumented instance) so we don't recurse
@@ -50,15 +56,19 @@ async function performRefresh(): Promise<string | null> {
       { headers: refreshHeaders, timeout: 15000 }
     );
     const body = res.data;
-    if (!body?.success || !body.data?.accessToken) return null;
+    if (!body?.success || !body.data?.accessToken) return null; // server rejected the refresh token
     tokenStore.setAccessToken(body.data.accessToken, body.data.accessTokenExpiresInSeconds);
     tokenStore.setRefreshToken(body.data.refreshToken);
     if (body.data.user) {
       try { localStorage.setItem('auth_user', JSON.stringify(body.data.user)); } catch { /* ignore */ }
     }
     return body.data.accessToken;
-  } catch {
-    return null;
+  } catch (e) {
+    const err = e as AxiosError;
+    // A real auth rejection (server responded 400/401) → session is invalid → return null (log out).
+    if (err.response && (err.response.status === 400 || err.response.status === 401)) return null;
+    // No response / timeout / 5xx → transient. Keep the session; let the caller retry later.
+    throw new TransientRefreshError();
   }
 }
 
@@ -110,13 +120,20 @@ class ApiClient {
 
         if (status === 401 && original && !original._retry && !original._skipAuthRefresh && !isAuthEndpoint) {
           original._retry = true;
-          const newToken = await refreshAccessToken();
+          let newToken: string | null = null;
+          try {
+            newToken = await refreshAccessToken();
+          } catch {
+            // Transient refresh failure (network/gateway/5xx) — do NOT log the user out.
+            // Keep the session and just reject this request so the caller can retry.
+            return Promise.reject(error.response?.data || error);
+          }
           if (newToken) {
             original.headers = original.headers ?? {};
             (original.headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
             return this.axiosInstance.request(original);
           }
-          // Refresh failed — full session termination
+          // Refresh token genuinely invalid/expired — full session termination.
           tokenStore.clear();
           if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
             window.location.href = '/login';

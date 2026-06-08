@@ -1,6 +1,7 @@
 // SysAdmin Pages
 export { SysAdminDashboardPage } from './SysAdminDashboardPage'
 export { GlobalContentCoursesPage } from './GlobalContentCoursesPage'
+export { GlobalContentPage } from './SysAdminFeConvertedPages'
 export { GlobalUserManagementPage } from './GlobalUserManagementPage'
 export { OrganizationDirectoryPage } from './OrganizationDirectoryPage'
 export { OrgDetailsSystemadminPage } from './OrgDetailsSystemadminPage'

@@ -40,5 +40,11 @@ namespace Identity.Api.Models
         [Column("language")]
         [StringLength(8)]
         public string? Language { get; set; }
+
+        // Google SSO — the Google account subject id ("sub"), set on first Google sign-in and used
+        // to match returning SSO users. Null for password-only accounts.
+        [Column("google_sub")]
+        [StringLength(64)]
+        public string? GoogleSub { get; set; }
     }
 }

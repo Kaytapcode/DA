@@ -12,6 +12,7 @@ import { getCurrentLanguage } from '@/i18n/translations'
 import { useOrganization } from '@/hooks/useOrganization'
 import { useSysAdminAnalytics } from '@/hooks/useAnalytics'
 import { apiClient } from '@/utils/apiClient'
+import { GlobalContentList } from '@components/GlobalContentList'
 
 const useLang = () => getCurrentLanguage() === 'vi'
 
@@ -41,6 +42,21 @@ const SysShell: React.FC<SysShellProps> = ({ titleEn, titleVi, subtitleEn, subti
         </div>
       </div>
     </MainLayout>
+  )
+}
+
+// Global Content (CMS) — SysAdmin views/deletes ALL content platform-wide (in & out of course).
+export const GlobalContentPage: React.FC = () => {
+  const isVi = useLang()
+  return (
+    <SysShell
+      titleEn="Global Content"
+      titleVi="Noi dung toan cuc"
+      subtitleEn="View and remove any content across the platform (including in-course content)"
+      subtitleVi="Xem va xoa moi noi dung tren nen tang (ke ca noi dung trong khoa hoc)"
+    >
+      <GlobalContentList isVi={isVi} />
+    </SysShell>
   )
 }
 

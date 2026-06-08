@@ -37,13 +37,15 @@ namespace Content.Api.Data
             if (!isSysAdmin)
             {
                 if (!orgId.HasValue && !userId.HasValue) return [];
-                // Show decks belonging to the user's org OR any public deck.
+                // "My Decks" — decks in the user's org (via module) OR the user's OWN personal decks.
+                // It must NOT include every public deck (that was a data-isolation leak: a new user
+                // saw everyone's decks). Public discovery belongs to Browse/Search, not this list.
                 query = query.Where(d =>
                     d.Content != null &&
                     !d.Content.IsCourseScoped && // course-created content stays inside its course
                     (
                         (orgId.HasValue && d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
-                        || d.Content.IsPublic
+                        || (userId.HasValue && d.Content.CreatedByUserId == userId.Value)
                     ));
             }
 

@@ -355,14 +355,14 @@ namespace Identity.Api.Controllers
             // Fallback (Spec §1 — chosen behavior "SMTP + on-screen"): when no real SMTP transport
             // is configured (or in Development), surface the reset link so the user/test can proceed
             // without an inbox. When SMTP IS configured, the link travels by email only.
+            // Return the link inside the standard ApiResponse envelope so the FE (which reads
+            // res.data.resetLink) actually surfaces it. A raw anonymous object here was why the
+            // on-screen fallback link never appeared.
             if (!_emailService.IsConfigured || _env.IsDevelopment())
-                return Ok(new
-                {
-                    Success = true,
-                    Message = "Email delivery is not configured — use this reset link directly.",
-                    DevToken = rawToken,
-                    ResetLink = resetLink
-                });
+                return Ok(new ApiResponse<object>(
+                    Success: true,
+                    Data: new { resetLink, devToken = rawToken },
+                    Message: "Email delivery is not configured — use this reset link directly."));
 
             return Ok(new ApiResponse(Success: true, Message: "If that email is registered, a reset link has been sent."));
         }

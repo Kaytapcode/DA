@@ -55,11 +55,13 @@ import {
   CourseEditorCurriculumTabPage,
   CourseEditorMemberRolesTabPage,
   SystemadminOrganizationDirectoryPage,
+  OrgContentManagementPage,
 } from '@pages/orgadmin'
 import GuestHomePage from '@pages/public/GuestHomePage'
 import {
   SysAdminDashboardPage,
   GlobalContentCoursesPage,
+  GlobalContentPage,
   GlobalUserManagementPage,
   OrganizationDirectoryPage,
   OrgDetailsSystemadminPage,
@@ -220,6 +222,11 @@ export const AppRouter: React.FC = () => {
               <CourseEditorMemberRolesTabPage />
             </ProtectedRoute>
           } />
+          <Route path="/admin/content" element={
+            <ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}>
+              <OrgContentManagementPage />
+            </ProtectedRoute>
+          } />
           <Route path="/admin/system-organization-directory-light-1" element={
             <ProtectedRoute roles={['OrgAdmin', 'SysAdmin']}>
               <SystemadminOrganizationDirectoryPage />
@@ -245,6 +252,11 @@ export const AppRouter: React.FC = () => {
           <Route path="/sysadmin/orgs" element={
             <ProtectedRoute roles={['SysAdmin']}>
               <OrganizationDirectoryPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/sysadmin/content" element={
+            <ProtectedRoute roles={['SysAdmin']}>
+              <GlobalContentPage />
             </ProtectedRoute>
           } />
           <Route path="/sysadmin/courses" element={

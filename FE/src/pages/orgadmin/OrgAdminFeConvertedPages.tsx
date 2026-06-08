@@ -16,6 +16,7 @@ import { useOrganization } from '@/hooks/useOrganization'
 import { useCourseEnrollment, type CourseEnrollment } from '@/hooks/useCourseEnrollment'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { apiClient } from '@/utils/apiClient'
+import { GlobalContentList } from '@components/GlobalContentList'
 
 const useLang = () => getCurrentLanguage() === 'vi'
 
@@ -45,6 +46,21 @@ const OrgShell: React.FC<OrgShellProps> = ({ titleEn, titleVi, subtitleEn, subti
         </div>
       </div>
     </MainLayout>
+  )
+}
+
+// OrgAdmin content CMS — view/manage all content posted within the org (org-scoped by the BE).
+export const OrgContentManagementPage: React.FC = () => {
+  const isVi = useLang()
+  return (
+    <OrgShell
+      titleEn="Content Management"
+      titleVi="Quan ly noi dung"
+      subtitleEn="View and manage content posted across your organization's courses"
+      subtitleVi="Xem va quan ly noi dung trong cac khoa hoc cua to chuc"
+    >
+      <GlobalContentList isVi={isVi} />
+    </OrgShell>
   )
 }
 
@@ -739,7 +755,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
     <OrgShell
       titleEn="Course Editor - Member Roles"
       titleVi="Trinh sua khoa hoc - Vai tro thanh vien"
-      subtitleEn="Assign Teacher / Student roles per course (spec §4.2)"
+      subtitleEn="Assign Teacher / Student roles per course"
       subtitleVi="Gan vai tro Teacher / Student cho tung khoa hoc"
     >
       {!courseId && (

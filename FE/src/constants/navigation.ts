@@ -49,6 +49,7 @@ export const ORG_ADMIN_NAV_ITEMS: NavItem[] = [
   
   // Content Management
   { id: 'editor', labelKey: 'admin.courseEditor', icon: 'edit', path: '/admin/editor' },
+  { id: 'content', labelKey: 'admin.content', icon: 'inventory_2', path: '/admin/content' },
 ]
 
 // System Admin Navigation - organized by system oversight priority
@@ -62,6 +63,7 @@ export const SYSADMIN_NAV_ITEMS: NavItem[] = [
   { id: 'users', labelKey: 'sysadmin.users', icon: 'people', path: '/sysadmin/users' },
   
   // Content Oversight
+  { id: 'content', labelKey: 'sysadmin.content', icon: 'inventory_2', path: '/sysadmin/content' },
   { id: 'courses', labelKey: 'sysadmin.courses', icon: 'school', path: '/sysadmin/courses' },
 
   // // System Monitoring & Logs
