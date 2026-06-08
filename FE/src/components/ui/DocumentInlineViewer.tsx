@@ -104,11 +104,25 @@ export const DocumentInlineViewer: React.FC<DocumentInlineViewerProps> = ({
     )
   }
 
+  // Formats browsers can't render inline (e.g. .doc/.docx/.ppt/.xls) — show a clear
+  // "preview not available" state with a download action instead of a blank/broken frame.
   return (
-    <div className={`${wrapper} flex items-center justify-center text-center`}>
-      <a href={blobUrl} download={fileName} className="text-primary underline">
-        Download {fileName}
-      </a>
+    <div className={`${wrapper} flex items-center justify-center text-center`} data-testid="document-preview-unavailable">
+      <div className="max-w-sm rounded-xl border border-outline-variant bg-white p-8">
+        <MaterialIcon icon="description" className="mb-3 text-5xl text-on-surface-variant" />
+        <p className="mb-1 font-semibold text-on-surface">Preview not available for this file type</p>
+        <p className="mb-4 text-sm text-on-surface-variant">
+          {fileName} can’t be shown in the browser. Download it to view.
+        </p>
+        <a
+          href={blobUrl}
+          download={fileName}
+          data-testid="document-download-link"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary"
+        >
+          <MaterialIcon icon="download" size="xs" /> Download {fileName}
+        </a>
+      </div>
     </div>
   )
 }

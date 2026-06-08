@@ -6,6 +6,7 @@ import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { DocumentInlineViewer } from '@components/ui/DocumentInlineViewer'
 import { DocumentUploadModal } from '@components/DocumentUploadModal'
+import { TeacherProgressPanel } from '@components/TeacherProgressPanel'
 import { UserShell, useUserLanguage } from './UserShell'
 import { useQuiz } from '@/hooks/useQuiz'
 import { useFlashcard } from '@/hooks/useFlashcard'
@@ -534,25 +535,36 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 
   // Three-pass save: PATCH title (if changed) → PUT existing / POST new → DELETE removed.
   const saveDeck = async () => {
-    if (!deckId) return
+    if (!deckId || editBusy) return // guard double-submit (a second save POSTs new cards again = dups)
     const validationError = validateDeckEdit()
     if (validationError) { setEditError(validationError); return }
     setEditBusy(true); setEditError(null); setEditSuccess(null)
     try {
-      if (titleDraft.trim() !== deckInfo?.title) {
+      // Only PATCH the title when the deck meta actually loaded AND the title changed. Previously a
+      // null deckInfo made `titleDraft !== undefined` always true → the PATCH fired and could fail,
+      // falsely reporting "Save failed" even though the card edits had already persisted.
+      if (deckInfo && titleDraft.trim() && titleDraft.trim() !== deckInfo.title) {
         const tRes = await apiClient.patch<DeckSummaryInfo>(`/decks/${deckId}`, { title: titleDraft.trim() })
         if (!tRes.success) throw new Error(tRes.message || 'Save title failed')
         if (tRes.data) setDeckInfo(tRes.data)
       }
 
-      for (let i = 0; i < editCards.length; i++) {
-        const c = editCards[i]
+      // PUT existing / POST new. Write the POSTed card's id back into serverId so a re-save UPDATES
+      // it instead of inserting a second copy (this was the duplicate-cards-after-reload cause).
+      const updated = [...editCards]
+      for (let i = 0; i < updated.length; i++) {
+        const c = updated[i]
         const payload = { frontText: c.frontText.trim(), backText: c.backText.trim() }
-        const res = c.serverId
-          ? await apiClient.put(`/decks/${deckId}/flashcards/${c.serverId}`, payload)
-          : await apiClient.post(`/decks/${deckId}/flashcards`, { ...payload, orderIndex: i })
-        if (!res.success) throw new Error(res.message || `Failed at card ${i + 1}`)
+        if (c.serverId) {
+          const res = await apiClient.put(`/decks/${deckId}/flashcards/${c.serverId}`, payload)
+          if (!res.success) throw new Error(res.message || `Failed at card ${i + 1}`)
+        } else {
+          const res = await apiClient.post<{ id: string }>(`/decks/${deckId}/flashcards`, { ...payload, orderIndex: i })
+          if (!res.success) throw new Error(res.message || `Failed at card ${i + 1}`)
+          if (res.data?.id) updated[i] = { ...c, serverId: res.data.id }
+        }
       }
+      setEditCards(updated)
 
       for (const id of removedCardIds) {
         const res = await apiClient.delete(`/decks/${deckId}/flashcards/${id}`)
@@ -1550,6 +1562,11 @@ export const SpecificCoursePage: React.FC = () => {
             ))}
           </div>
         )}
+
+        {/* Teacher (or OrgAdmin/SysAdmin) student-progress dashboard for this course. */}
+        {!isLoading && course && isTeacher && courseId && (
+          <TeacherProgressPanel courseId={courseId} />
+        )}
       </div>
 
       {uploadModuleId && (
@@ -1641,6 +1658,16 @@ export const UserQuizInterfacePage: React.FC = () => {
   const idsMatchQ = (a?: string | null, b?: string | null) =>
     !!a && !!b && a.toLowerCase() === b.toLowerCase()
   const isOwner = idsMatchQ(quizInfo?.createdByUserId, currentUserId)
+
+  // The quiz OWNER (e.g. an OrgAdmin who created it) should land on the MANAGE/edit view, not the
+  // end-user take-quiz UI. Default into edit mode once ownership resolves (they can toggle to take).
+  const ownerDefaultedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (isOwner && !ownerDefaultedRef.current && !result) {
+      ownerDefaultedRef.current = true
+      setEditMode(true)
+    }
+  }, [isOwner, result])
 
   // Same fallback strategy as the deck page — try single-quiz endpoint, then scan the list.
   const fetchQuizMeta = React.useCallback(async () => {
@@ -1854,7 +1881,7 @@ export const UserQuizInterfacePage: React.FC = () => {
             </p>
           </div>
           {isOwner && (
-            <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((v) => !v)}>
+            <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((v) => !v)} data-testid="quiz-edit-toggle">
               <MaterialIcon icon={editMode ? 'visibility' : 'edit'} size="xs" className="mr-1" />
               {editMode ? (isVi ? 'Quay lai lam quiz' : 'Back to Take Quiz') : (isVi ? 'Chinh sua quiz' : 'Edit Quiz')}
             </Button>

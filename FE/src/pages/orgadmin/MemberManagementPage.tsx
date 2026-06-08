@@ -41,7 +41,7 @@ export const MemberManagementPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'ALL' | (typeof ROLES)[number]>('ALL')
+  const [roleFilter] = useState<'ALL' | (typeof ROLES)[number]>('ALL') // role-filter dropdown is currently disabled
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
 
   // Add member from system user search
@@ -50,7 +50,7 @@ export const MemberManagementPage: React.FC = () => {
   const [addResults, setAddResults] = useState<UserLookupItem[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserLookupItem | null>(null)
-  const [addRole, setAddRole] = useState<(typeof ADD_ROLES)[number]>('Member')
+  const [addRole] = useState<(typeof ADD_ROLES)[number]>('Member')
   const [addError, setAddError] = useState<string | null>(null)
   const [addSuccess, setAddSuccess] = useState<string | null>(null)
   const [isAdding, setIsAdding] = useState(false)
@@ -75,20 +75,6 @@ export const MemberManagementPage: React.FC = () => {
 
   useEffect(() => { void refresh() }, [refresh])
 
-  const handleRoleChange = async (m: MemberRow, newRole: string) => {
-    if (newRole === m.role) return
-    setBusyUserId(m.userId)
-    setError(null)
-    try {
-      const res = await apiClient.put(`/orgs/${orgId}/members/${m.userId}`, { role: newRole })
-      if (!res.success) throw new Error(res.message || 'Failed to update role')
-      await refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update role')
-    } finally {
-      setBusyUserId(null)
-    }
-  }
 
   const handleRemove = async (m: MemberRow) => {
     if (!confirm(`Remove ${m.username} from the organization?`)) return

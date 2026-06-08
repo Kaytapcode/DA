@@ -142,7 +142,7 @@ export const LoginPage: React.FC = () => {
 
           if (!res.success || !res.data) throw new Error(res.message || 'Google login failed');
 
-          const { accessToken, refreshToken, accessTokenExpiresInSeconds, user, orgId, isNewUser } = res.data;
+          const { refreshToken, user, isNewUser } = res.data;
 
           // Lưu token (dùng tokenStore từ useAuth nếu exposed, hoặc gọi login flow)
           // Cách đơn giản nhất: gọi endpoint rồi reload để bootstrap auth

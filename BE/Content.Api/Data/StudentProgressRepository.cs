@@ -11,6 +11,7 @@ namespace Content.Api.Data
         Task<List<StudentProgressModel>> GetByCourseAsync(Guid courseId, CancellationToken ct = default);
         Task<StudentProgressModel> UpsertAsync(StudentProgressModel progress, CancellationToken ct = default);
         Task<int> CountCourseModulesAsync(Guid courseId, CancellationToken ct = default);
+        Task<int> CountCourseContentsAsync(Guid courseId, CancellationToken ct = default);
     }
 
     public class StudentProgressRepository : IStudentProgressRepository
@@ -92,5 +93,13 @@ namespace Content.Api.Data
 
         public async Task<int> CountCourseModulesAsync(Guid courseId, CancellationToken ct = default)
             => await _db.CourseModules.CountAsync(cm => cm.CourseId == courseId, ct);
+
+        // Total content items across all modules of the course — the denominator for a per-student
+        // completion %. (Progress is tracked per content, so % = completed contents / total contents.)
+        public async Task<int> CountCourseContentsAsync(Guid courseId, CancellationToken ct = default)
+            => await _db.CourseModules
+                .Where(cm => cm.CourseId == courseId)
+                .SelectMany(cm => cm.Module!.ModuleContents)
+                .CountAsync(ct);
     }
 }

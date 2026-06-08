@@ -45,6 +45,8 @@ interface UseOrganizationReturn {
   updateOrganization: (data: UpdateOrganizationPayload) => Promise<Organization | null>;
   deleteOrganization: (id: string) => Promise<boolean>;
   joinSelf: (orgId: string) => Promise<boolean>;
+  approveMember: (orgId: string, userId: string) => Promise<boolean>;
+  rejectMember: (orgId: string, userId: string) => Promise<boolean>;
   setCurrentOrganization: (org: Organization | null) => void;
   clearError: () => void;
 }
