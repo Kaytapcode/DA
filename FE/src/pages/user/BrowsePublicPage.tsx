@@ -21,12 +21,12 @@ interface SearchResultRow {
 }
 
 const TYPES: Array<{ key: '' | SearchResultRow['contentType']; labelEn: string; labelVi: string; icon: string }> = [
-  { key: '', labelEn: 'All', labelVi: 'Tat ca', icon: 'apps' },
+  { key: '', labelEn: 'All', labelVi: 'Tất cả', icon: 'apps' },
   { key: 'QUIZ', labelEn: 'Quizzes', labelVi: 'Quiz', icon: 'quiz' },
-  { key: 'FLASHCARD', labelEn: 'Flashcards', labelVi: 'The ghi nho', icon: 'style' },
+  { key: 'FLASHCARD', labelEn: 'Flashcards', labelVi: 'Thẻ ghi nhớ', icon: 'style' },
   { key: 'VIDEO', labelEn: 'Videos', labelVi: 'Video', icon: 'play_circle' },
-  { key: 'PDF', labelEn: 'Documents', labelVi: 'Tai lieu', icon: 'description' },
-  { key: 'COLLECTION', labelEn: 'Collections', labelVi: 'Bo suu tap', icon: 'folder' },
+  { key: 'PDF', labelEn: 'Documents', labelVi: 'Tài liệu', icon: 'description' },
+  { key: 'COLLECTION', labelEn: 'Collections', labelVi: 'Bộ sưu tập', icon: 'folder' },
 ]
 
 export const BrowsePublicPage: React.FC = () => {
@@ -104,18 +104,18 @@ export const BrowsePublicPage: React.FC = () => {
 
   return (
     <MainLayout
-      navbar={<UserNavbar title={isVi ? 'Kham pha' : 'Browse Public'} />}
+      navbar={<UserNavbar title={isVi ? 'Khám phá' : 'Browse Public'} />}
       sidebar={<UserSidebar />}
     >
       <div className="p-8">
         <div className="mx-auto max-w-6xl space-y-6">
           <div>
             <h2 className="mb-2 text-3xl font-bold text-on-surface font-headline">
-              {isVi ? 'Tai nguyen cong cong' : 'Public resources'}
+              {isVi ? 'Tài nguyên công cộng' : 'Public resources'}
             </h2>
             <p className="text-on-surface-variant">
               {isVi
-                ? 'Xem tai nguyen cong cong tu nguoi dung khac. Sao chep ve thu vien ca nhan de tao phien ban cua rieng ban.'
+                ? 'Xem tài nguyên công cộng từ người dùng khác. Sao chép về thư viện cá nhân để tạo phiên bản của riêng bạn.'
                 : 'Browse public resources shared by other users. Copy any of them to your personal library.'}
             </p>
           </div>
@@ -131,11 +131,11 @@ export const BrowsePublicPage: React.FC = () => {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder={isVi ? 'Tim kiem...' : 'Search...'}
+                placeholder={isVi ? 'Tìm kiếm...' : 'Search...'}
                 onKeyDown={(e) => e.key === 'Enter' && void refresh()}
               />
               <Button variant="secondary" onClick={() => void refresh()}>
-                {isVi ? 'Tim' : 'Search'}
+                {isVi ? 'Tìm' : 'Search'}
               </Button>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -168,7 +168,7 @@ export const BrowsePublicPage: React.FC = () => {
             )}
             {!isLoading && rows.length === 0 && !error && (
               <p className="py-6 text-center text-sm text-on-surface-variant">
-                {isVi ? 'Khong tim thay tai nguyen nao.' : 'No resources found.'}
+                {isVi ? 'Không tìm thấy tài nguyên nào.' : 'No resources found.'}
               </p>
             )}
             {!isLoading && rows.length > 0 && (
@@ -195,15 +195,15 @@ export const BrowsePublicPage: React.FC = () => {
                     )}
                     {row.ownedByCaller ? (
                       <Badge variant="secondary" size="sm">
-                        {isVi ? 'Cua ban' : 'Yours'}
+                        {isVi ? 'Của bạn' : 'Yours'}
                       </Badge>
                     ) : row.contentType === 'COLLECTION' ? (
                       <Badge variant="secondary" size="sm">
-                        {isVi ? 'Bo suu tap' : 'Collection'}
+                        {isVi ? 'Bộ sưu tập' : 'Collection'}
                       </Badge>
                     ) : clonedIds.has(row.contentId) ? (
                       <Badge variant="success" size="sm">
-                        {isVi ? 'Da sao chep' : 'Copied'}
+                        {isVi ? 'Đã sao chép' : 'Copied'}
                       </Badge>
                     ) : (
                       <Button
@@ -213,8 +213,8 @@ export const BrowsePublicPage: React.FC = () => {
                       >
                         <MaterialIcon icon="content_copy" size="xs" className="mr-1" />
                         {cloningId === row.contentId
-                          ? (isVi ? 'Dang sao chep...' : 'Copying...')
-                          : (isVi ? 'Sao chep' : 'Copy to library')}
+                          ? (isVi ? 'Đang sao chép...' : 'Copying...')
+                          : (isVi ? 'Sao chép' : 'Copy to library')}
                       </Button>
                     )}
                   </div>

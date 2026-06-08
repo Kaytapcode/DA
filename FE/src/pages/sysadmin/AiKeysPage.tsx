@@ -59,7 +59,7 @@ export const AiKeysPage: React.FC = () => {
   const handleSaveKey = async () => {
     setSaveError(null)
     if (!newKey.apiKey.trim()) {
-      setSaveError(isVi ? 'API key la bat buoc.' : 'API key is required')
+      setSaveError(isVi ? 'API key là bắt buộc.' : 'API key is required')
       return
     }
     setIsSaving(true)
@@ -114,18 +114,18 @@ export const AiKeysPage: React.FC = () => {
 
   return (
     <MainLayout
-      navbar={<SysAdminNavbar title={isVi ? 'Khoa API AI' : 'AI API Keys'} />}
+      navbar={<SysAdminNavbar title={isVi ? 'Khóa API AI' : 'AI API Keys'} />}
       sidebar={<SysAdminSidebar />}
     >
       <div className="p-8">
         <div className="max-w-5xl mx-auto space-y-6">
           <div>
             <h2 className="text-3xl font-bold text-on-surface font-headline mb-2">
-              {isVi ? 'Khoa API AI' : 'AI API Keys'}
+              {isVi ? 'Khóa API AI' : 'AI API Keys'}
             </h2>
             <p className="text-on-surface-variant">
               {isVi
-                ? 'Quan ly khoa nha cung cap AI cho he thong. Mot khoa hoat dong duy nhat tren mot nha cung cap.'
+                ? 'Quản lý khóa nhà cung cấp AI cho hệ thống. Một khóa hoạt động duy nhất trên một nhà cung cấp.'
                 : 'Manage provider keys used for AI features. One active key per provider at a time.'}
             </p>
           </div>
@@ -134,11 +134,11 @@ export const AiKeysPage: React.FC = () => {
 
           {/* Add new key form */}
           <Card className="p-6">
-            <h3 className="font-bold text-on-surface mb-4">{isVi ? 'Them khoa moi' : 'Add new key'}</h3>
+            <h3 className="font-bold text-on-surface mb-4">{isVi ? 'Thêm khóa mới' : 'Add new key'}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isVi ? 'Nha cung cap' : 'Provider'}
+                  {isVi ? 'Nhà cung cấp' : 'Provider'}
                 </label>
                 <select
                   className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
@@ -152,19 +152,19 @@ export const AiKeysPage: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isVi ? 'Nhan (tuy chon)' : 'Label (optional)'}
+                  {isVi ? 'Nhãn (tùy chọn)' : 'Label (optional)'}
                 </label>
                 <input
                   type="text"
                   className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
-                  placeholder={isVi ? 'Nhan nhan dang...' : 'e.g. production-key'}
+                  placeholder={isVi ? 'Nhận nhãn đang...' : 'e.g. production-key'}
                   value={newKey.label}
                   onChange={(e) => setNewKey({ ...newKey, label: e.target.value })}
                 />
               </div>
               <div className="md:col-span-2">
                 <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                  {isVi ? 'Khoa API' : 'API Key'}
+                  {isVi ? 'Khóa API' : 'API Key'}
                 </label>
                 <input
                   type="password"
@@ -183,7 +183,7 @@ export const AiKeysPage: React.FC = () => {
                   className="h-4 w-4 rounded border-outline text-primary"
                 />
                 <label htmlFor="ai-key-active" className="text-sm text-on-surface cursor-pointer">
-                  {isVi ? 'Dat lam hoat dong' : 'Set as active'}
+                  {isVi ? 'Đặt làm hoạt động' : 'Set as active'}
                 </label>
               </div>
             </div>
@@ -197,7 +197,7 @@ export const AiKeysPage: React.FC = () => {
                 disabled={isSaving}
                 className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
               >
-                {isSaving ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu khoa' : 'Save key')}
+                {isSaving ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu khóa' : 'Save key')}
               </button>
             </div>
           </Card>
@@ -208,11 +208,11 @@ export const AiKeysPage: React.FC = () => {
               <MaterialIcon icon="info" className="text-primary mt-1 flex-shrink-0" />
               <div>
                 <h3 className="font-bold text-on-surface mb-1">
-                  {isVi ? 'Cau hinh AI hien tai' : 'Current AI Configuration'}
+                  {isVi ? 'Cấu hình AI hiện tại' : 'Current AI Configuration'}
                 </h3>
                 <p className="text-sm text-on-surface-variant mb-3">
                   {isVi
-                    ? 'He thong dang su dung model stepfun/step-3.5-flash qua OpenRouter. Khoa API duoc cau hinh trong bien moi truong he thong. Chinh sua khoa yeu cau truy cap server.'
+                    ? 'Hệ thống đang sử dụng model stepfun/step-3.5-flash qua OpenRouter. Khóa API được cấu hình trong biến môi trường hệ thống. Chỉnh sửa khóa yêu cầu truy cập server.'
                     : 'The system uses the stepfun/step-3.5-flash model via OpenRouter. The API key is configured via server environment variables. Editing the key requires server access.'}
                 </p>
                 <div className="flex flex-wrap gap-3 text-sm">
@@ -231,10 +231,10 @@ export const AiKeysPage: React.FC = () => {
 
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-on-surface">{isVi ? 'Khoa hien co' : 'Existing keys'}</h3>
+              <h3 className="font-bold text-on-surface">{isVi ? 'Khóa hiện có' : 'Existing keys'}</h3>
               <Button variant="ghost" size="sm" onClick={() => void refresh()} disabled={isLoading}>
                 <MaterialIcon icon="refresh" size="xs" className="mr-1" />
-                {isVi ? 'Lam moi' : 'Refresh'}
+                {isVi ? 'Làm mới' : 'Refresh'}
               </Button>
             </div>
 
@@ -245,7 +245,7 @@ export const AiKeysPage: React.FC = () => {
             )}
             {!isLoading && keys.length === 0 && (
               <p className="text-sm text-on-surface-variant text-center py-4">
-                {isVi ? 'Chua co khoa nao.' : 'No keys yet.'}
+                {isVi ? 'Chưa có khóa nào.' : 'No keys yet.'}
               </p>
             )}
             {!isLoading && keys.length > 0 && (
@@ -256,7 +256,7 @@ export const AiKeysPage: React.FC = () => {
                       {k.provider}
                     </Badge>
                     <span className="text-sm font-medium text-on-surface">
-                      {k.label || (isVi ? '(khong nhan)' : '(unlabeled)')}
+                      {k.label || (isVi ? '(không nhấn)' : '(unlabeled)')}
                     </span>
                     <span className="text-xs text-on-surface-variant">
                       ••••{k.keyLastFour ?? '????'}
@@ -270,7 +270,7 @@ export const AiKeysPage: React.FC = () => {
                       onClick={() => void handleToggle(k)}
                       disabled={busyKeyId === k.id}
                     >
-                      {k.isActive ? (isVi ? 'Tat' : 'Deactivate') : (isVi ? 'Bat' : 'Activate')}
+                      {k.isActive ? (isVi ? 'Tắt' : 'Deactivate') : (isVi ? 'Bật' : 'Activate')}
                     </Button>
                     <Button
                       size="sm"

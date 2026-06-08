@@ -214,7 +214,7 @@ export const CollectionsPage: React.FC = () => {
   // ── Collection detail view ─────────────────────────────────────────────────
   if (selectedCollection) {
     return (
-      <MainLayout navbar={<UserNavbar title={isVi ? 'Bo Suu Tap' : 'Collections'} />} sidebar={<UserSidebar />}>
+      <MainLayout navbar={<UserNavbar title={isVi ? 'Bộ Sưu Tập' : 'Collections'} />} sidebar={<UserSidebar />}>
         <div className="min-h-screen bg-[#f6f8fb] p-8">
           <div className="mx-auto max-w-[1100px] space-y-6">
             <div className="flex items-start gap-4 border-b border-[#dde3ec] pb-6">
@@ -224,7 +224,7 @@ export const CollectionsPage: React.FC = () => {
                 className="mt-1 inline-flex items-center gap-1 rounded-lg border border-[#d5dde9] bg-white px-3 py-2 text-sm font-medium text-[#5e6f88] transition hover:bg-[#f0f4f9]"
               >
                 <MaterialIcon icon="arrow_back" size="xs" />
-                {isVi ? 'Quay lai' : 'Back'}
+                {isVi ? 'Quay lại' : 'Back'}
               </button>
               <div>
                 <h2 className="text-4xl font-black tracking-[-0.02em] text-[#111b2d] font-headline">
@@ -234,10 +234,10 @@ export const CollectionsPage: React.FC = () => {
                   <p className="mt-1 text-sm text-[#60708a]">{selectedCollection.description}</p>
                 )}
                 <p className="mt-1 text-xs text-[#8a98b0]">
-                  {items.length} {isVi ? 'muc' : 'items'}
+                  {items.length} {isVi ? 'mục' : 'items'}
                 </p>
                 <p className="mt-1 text-xs font-semibold text-[#1463ff]">
-                  {selectedCollection.ownedByCaller ? (isVi ? 'Bo suu tap cua ban' : 'Your collection') : (isVi ? 'Bo suu tap cong khai' : 'Public collection')}
+                  {selectedCollection.ownedByCaller ? (isVi ? 'Bộ sưu tập của bạn' : 'Your collection') : (isVi ? 'Bộ sưu tập công khai' : 'Public collection')}
                 </p>
               </div>
             </div>
@@ -347,13 +347,13 @@ export const CollectionsPage: React.FC = () => {
                 <div className="flex flex-col items-center gap-3 py-14 text-center">
                   <MaterialIcon icon="inventory_2" size="md" className="text-[#9aa5b5]" />
                   <p className="text-sm text-[#60708a]">
-                    {isVi ? 'Chua co muc nao trong bo suu tap nay.' : 'No items in this collection yet.'}
+                    {isVi ? 'Chưa có mục nào trong bộ sưu tập này.' : 'No items in this collection yet.'}
                   </p>
                    {selectedCollection.ownedByCaller ? (
                      <>
                        <p className="text-xs text-[#8a98b0]">
                          {isVi
-                           ? 'Vao Thu Vien va bam nut them vao bo suu tap tren moi the tai lieu.'
+                           ? 'Vào Thư Viện và bấm nút thêm vào bộ sưu tập trên mỗi thẻ tài liệu.'
                            : 'Go to your Library and tap the bookmark icon on any content card.'}
                        </p>
                        <Link
@@ -361,13 +361,13 @@ export const CollectionsPage: React.FC = () => {
                          className="mt-2 inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
                        >
                          <MaterialIcon icon="library_books" size="xs" />
-                         {isVi ? 'Mo Thu Vien' : 'Go to Library'}
+                         {isVi ? 'Mở Thư Viện' : 'Go to Library'}
                        </Link>
                      </>
                    ) : (
                      <p className="text-xs text-[#8a98b0]">
                        {isVi
-                         ? 'Bo suu tap cong khai nay hien khong co muc nao ban co the truy cap.'
+                         ? 'Bộ sưu tập công khai này hiện không có mục nào bạn có thể truy cập.'
                          : 'This public collection currently has no accessible items for your account.'}
                      </p>
                    )}
@@ -393,7 +393,7 @@ export const CollectionsPage: React.FC = () => {
                         <h4 className="mb-2 line-clamp-2 text-sm font-bold text-[#111b2d]">{item.title}</h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold text-[#1463ff]">
-                            {href ? (isVi ? 'Mo' : 'Open') : '—'}
+                            {href ? (isVi ? 'Mở' : 'Open') : '—'}
                           </span>
                           {selectedCollection.ownedByCaller && (
                             <button
@@ -401,7 +401,7 @@ export const CollectionsPage: React.FC = () => {
                               onClick={(e) => { e.preventDefault(); void handleRemoveItem(item.contentId) }}
                               disabled={busyContentId === item.contentId}
                               className="rounded-full p-1 text-[#8a98b0] transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
-                              title={isVi ? 'Xoa khoi bo suu tap' : 'Remove from collection'}
+                              title={isVi ? 'Xóa khỏi bộ sưu tập' : 'Remove from collection'}
                             >
                               <MaterialIcon icon="remove_circle_outline" size="xs" />
                             </button>
@@ -469,18 +469,18 @@ export const CollectionsPage: React.FC = () => {
 
   // ── Collections grid view ──────────────────────────────────────────────────
   return (
-    <MainLayout navbar={<UserNavbar title={isVi ? 'Bo Suu Tap' : 'Collections'} />} sidebar={<UserSidebar />}>
+    <MainLayout navbar={<UserNavbar title={isVi ? 'Bộ Sưu Tập' : 'Collections'} />} sidebar={<UserSidebar />}>
       <div className="min-h-screen bg-[#f6f8fb] p-8">
         <div className="mx-auto max-w-[1100px] space-y-6">
 
           <section className="flex items-end justify-between border-b border-[#dde3ec] pb-6">
             <div>
               <h2 className="text-5xl font-black tracking-[-0.02em] text-[#111b2d] font-headline">
-                {isVi ? 'Bo Suu Tap' : 'Collections'}
+                {isVi ? 'Bộ Sưu Tập' : 'Collections'}
               </h2>
               <p className="mt-2 text-base text-[#60708a]">
                 {isVi
-                  ? 'Truy cap bo suu tap cua ban va cac bo suu tap cong khai tu nguoi dung khac.'
+                  ? 'Truy cập bộ sưu tập của bạn và các bộ sưu tập công khai từ người dùng khác.'
                   : 'Access your collections and public collections created by other users.'}
               </p>
             </div>
@@ -491,7 +491,7 @@ export const CollectionsPage: React.FC = () => {
               className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
             >
               <MaterialIcon icon="add" size="xs" />
-              {isVi ? 'Tao moi' : 'New Collection'}
+              {isVi ? 'Tạo mới' : 'New Collection'}
             </button>
           </section>
 
@@ -499,18 +499,18 @@ export const CollectionsPage: React.FC = () => {
             <Card className="p-6">
               <h3 className="mb-4 flex items-center gap-2 font-bold text-on-surface">
                 <MaterialIcon icon="create_new_folder" />
-                {isVi ? 'Tao bo suu tap moi' : 'Create a new collection'}
+                {isVi ? 'Tạo bộ sưu tập mới' : 'Create a new collection'}
               </h3>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <Input
-                  label={isVi ? 'Tieu de' : 'Title'}
+                  label={isVi ? 'Tiêu đề' : 'Title'}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={isVi ? 'Vi du: On thi giua ky' : 'e.g. Midterm review'}
+                  placeholder={isVi ? 'Ví dụ: Ôn thi giữa kỳ' : 'e.g. Midterm review'}
                   data-testid="collection-title-input"
                 />
                 <Input
-                  label={isVi ? 'Mo ta (tuy chon)' : 'Description (optional)'}
+                  label={isVi ? 'Mô tả (tùy chọn)' : 'Description (optional)'}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   data-testid="collection-description-input"
@@ -518,10 +518,10 @@ export const CollectionsPage: React.FC = () => {
               </div>
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => { setShowCreateForm(false); setTitle(''); setDescription('') }} data-testid="collection-cancel-btn">
-                  {isVi ? 'Huy' : 'Cancel'}
+                  {isVi ? 'Hủy' : 'Cancel'}
                 </Button>
                 <Button onClick={() => void handleCreate()} disabled={isCreating || !title.trim()} data-testid="collection-create-btn">
-                  {isCreating ? (isVi ? 'Dang tao...' : 'Creating...') : (isVi ? 'Tao' : 'Create')}
+                  {isCreating ? (isVi ? 'Đang tạo...' : 'Creating...') : (isVi ? 'Tạo' : 'Create')}
                 </Button>
               </div>
             </Card>
@@ -546,7 +546,7 @@ export const CollectionsPage: React.FC = () => {
               <div className="flex flex-col items-center gap-3 py-14 text-center">
                 <MaterialIcon icon="folder_open" size="md" className="text-[#9aa5b5]" />
                 <p className="text-sm text-[#60708a]">
-                  {isVi ? 'Chua co bo suu tap nao.' : 'No collections yet. Create one to get started.'}
+                  {isVi ? 'Chưa có bộ sưu tập nào.' : 'No collections yet. Create one to get started.'}
                 </p>
                 <button
                   type="button"
@@ -554,7 +554,7 @@ export const CollectionsPage: React.FC = () => {
                   className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
                 >
                   <MaterialIcon icon="add" size="xs" />
-                  {isVi ? 'Tao bo suu tap dau tien' : 'Create first collection'}
+                  {isVi ? 'Tạo bộ sưu tập đầu tiên' : 'Create first collection'}
                 </button>
               </div>
             </Card>
@@ -567,7 +567,7 @@ export const CollectionsPage: React.FC = () => {
                   {confirmDeleteId === c.id ? (
                     <div className="flex min-h-[190px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
                       <p className="mb-4 text-center text-sm font-semibold text-red-700">
-                        {isVi ? 'Xoa vinh vien bo suu tap nay?' : 'Permanently delete this collection?'}
+                        {isVi ? 'Xóa vĩnh viễn bộ sưu tập này?' : 'Permanently delete this collection?'}
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -576,14 +576,14 @@ export const CollectionsPage: React.FC = () => {
                           disabled={busyId === c.id}
                           className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
                         >
-                          {busyId === c.id ? (isVi ? 'Dang xoa...' : 'Deleting…') : (isVi ? 'Xac nhan' : 'Confirm')}
+                          {busyId === c.id ? (isVi ? 'Đang xóa...' : 'Deleting…') : (isVi ? 'Xác nhận' : 'Confirm')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
                           className="rounded-lg border border-[#d5dde9] bg-white px-4 py-2 text-sm font-semibold text-[#5e6f88] transition hover:bg-[#f0f4f9]"
                         >
-                          {isVi ? 'Huy' : 'Cancel'}
+                          {isVi ? 'Hủy' : 'Cancel'}
                         </button>
                       </div>
                     </div>
@@ -610,7 +610,7 @@ export const CollectionsPage: React.FC = () => {
                               {new Date(c.createdAt).toLocaleDateString()}
                             </p>
                             <p className="text-[11px] font-semibold text-[#1463ff]">
-                              {c.ownedByCaller ? (isVi ? 'Cua ban' : 'Yours') : (isVi ? 'Cong khai' : 'Public')}
+                              {c.ownedByCaller ? (isVi ? 'Của bạn' : 'Yours') : (isVi ? 'Công khai' : 'Public')}
                             </p>
                           </div>
                         </Card>
@@ -620,7 +620,7 @@ export const CollectionsPage: React.FC = () => {
                           type="button"
                           onClick={() => setConfirmDeleteId(c.id)}
                           className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
-                          title={isVi ? 'Xoa' : 'Delete'}
+                          title={isVi ? 'Xóa' : 'Delete'}
                         >
                           <MaterialIcon icon="delete" size="xs" />
                         </button>

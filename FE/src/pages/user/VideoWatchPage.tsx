@@ -59,7 +59,7 @@ export const VideoWatchPage: React.FC = () => {
 			if (res.data) setVideo(res.data)
 			setIsEditingTitle(false)
 		} catch (err: any) {
-			setRenameError(err?.message || err?.data?.message || (isVi ? 'Khong the doi ten' : 'Rename failed'))
+			setRenameError(err?.message || err?.data?.message || (isVi ? 'Không thể đổi tên' : 'Rename failed'))
 		} finally { setIsSavingTitle(false) }
 	}
 
@@ -109,10 +109,10 @@ export const VideoWatchPage: React.FC = () => {
 										className="flex-1 min-w-[260px] rounded-lg border border-[#d7dfeb] bg-white px-3 py-2 text-2xl font-black text-[#111b2d] focus:border-[#1463ff] focus:outline-none"
 									/>
 									<Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()} data-testid="video-rename-save">
-										{isSavingTitle ? t('Dang luu...', 'Saving...') : t('Luu', 'Save')}
+										{isSavingTitle ? t('Đang lưu...', 'Saving...') : t('Lưu', 'Save')}
 									</Button>
 									<Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(video?.title || ''); setRenameError(null) }} disabled={isSavingTitle} data-testid="video-rename-cancel">
-										{t('Huy', 'Cancel')}
+										{t('Hủy', 'Cancel')}
 									</Button>
 								</div>
 							) : (
@@ -124,10 +124,10 @@ export const VideoWatchPage: React.FC = () => {
 											onClick={() => { setTitleDraft(video.title || ''); setIsEditingTitle(true) }}
 											data-testid="video-edit-btn"
 											className="inline-flex items-center gap-1 rounded-full border border-[#d7dfeb] px-2.5 py-1 text-xs text-[#60708a] hover:bg-white"
-											title={t('Doi ten video', 'Rename video')}
+											title={t('Đổi tên video', 'Rename video')}
 										>
 											<MaterialIcon icon="edit" size="xs" />
-											<span>{t('Doi ten', 'Rename')}</span>
+											<span>{t('Đổi tên', 'Rename')}</span>
 										</button>
 									)}
 								</div>
@@ -137,11 +137,11 @@ export const VideoWatchPage: React.FC = () => {
 						</div>
 						<Button variant="ghost" onClick={() => navigate('/user/library')}>
 							<MaterialIcon icon="arrow_back" size="xs" />
-							<span className="ml-1">{t('Quay lai', 'Back')}</span>
+							<span className="ml-1">{t('Quay lại', 'Back')}</span>
 						</Button>
 					</div>
 
-					{loading && <Card><p className="text-sm text-[#60708a]">{t('Dang tai...', 'Loading...')}</p></Card>}
+					{loading && <Card><p className="text-sm text-[#60708a]">{t('Đang tải...', 'Loading...')}</p></Card>}
 					{error && <Card className="border border-red-200 bg-red-50"><p className="text-sm text-red-700">{error}</p></Card>}
 
 					{!loading && video && (

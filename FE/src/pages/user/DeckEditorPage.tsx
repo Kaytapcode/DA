@@ -75,7 +75,7 @@ export const DeckEditorPage: React.FC = () => {
 
 	const createDeck = async () => {
 		if (!title.trim()) {
-			setError(t('Vui long nhap tieu de bo the.', 'Deck title is required.'))
+			setError(t('Vui lòng nhập tiêu đề bộ thẻ.', 'Deck title is required.'))
 			return
 		}
 		setError(null)
@@ -96,7 +96,7 @@ export const DeckEditorPage: React.FC = () => {
 			} else {
 				navigate(`/user/decks/${newId}/edit`, { replace: true })
 			}
-			setSuccess(t('Tao bo the thanh cong! Bay gio them the.', 'Deck created! Now add cards.'))
+			setSuccess(t('Tạo bộ thẻ thành công! Bây giờ thêm thẻ.', 'Deck created! Now add cards.'))
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to create deck')
 		} finally {
@@ -107,7 +107,7 @@ export const DeckEditorPage: React.FC = () => {
 	const addCard = async () => {
 		if (!deckId) return
 		if (!draft.front.trim() || !draft.back.trim()) {
-			setError(t('Mat truoc va mat sau khong duoc trong.', 'Front and back text are required.'))
+			setError(t('Mặt trước và mặt sau không được trống.', 'Front and back text are required.'))
 			return
 		}
 		setError(null)
@@ -121,7 +121,7 @@ export const DeckEditorPage: React.FC = () => {
 			if (!res.success || !res.data) throw new Error(res.message || 'Failed to add card')
 			setCards((prev) => [...prev, res.data!])
 			setDraft({ front: '', back: '' })
-			setSuccess(t('Da them the.', 'Card added.'))
+			setSuccess(t('Đã thêm thẻ.', 'Card added.'))
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to add card')
 		} finally {
@@ -150,23 +150,23 @@ export const DeckEditorPage: React.FC = () => {
 					<div className="flex items-center justify-between">
 						<div>
 							<h1 className="text-4xl font-black text-[#111b2d]">
-								{isCreate ? t('Tao Bo The Moi', 'Create New Deck') : t('Chinh Sua Bo The', 'Edit Deck')}
+								{isCreate ? t('Tạo Bộ Thẻ Mới', 'Create New Deck') : t('Chỉnh Sửa Bộ Thẻ', 'Edit Deck')}
 							</h1>
 							<p className="mt-1 text-sm text-[#60708a]">
 								{isCreate
-									? t('Tao bo the ghi nho de hoc tu vung, khai niem.', 'Create a flashcard deck for vocabulary or concepts.')
-									: t('Them, sua hoac xoa the trong bo nay.', 'Add, edit, or remove cards in this deck.')}
+									? t('Tạo bộ thẻ ghi nhớ để học từ vựng, khái niệm.', 'Create a flashcard deck for vocabulary or concepts.')
+									: t('Thêm, sửa hoặc xóa thẻ trong bộ này.', 'Add, edit, or remove cards in this deck.')}
 							</p>
 						</div>
 						{courseLink.active ? (
 							<Button data-testid="deck-back-to-course" onClick={() => courseLink.goBack()}>
 								<MaterialIcon icon="check" size="xs" />
-								<span className="ml-1">{t('Xong - ve khoa hoc', 'Done — back to course')}</span>
+								<span className="ml-1">{t('Xong - về khóa học', 'Done — back to course')}</span>
 							</Button>
 						) : (
 							<Button variant="ghost" onClick={() => navigate('/user/library')}>
 								<MaterialIcon icon="arrow_back" size="xs" />
-								<span className="ml-1">{t('Quay lai', 'Back')}</span>
+								<span className="ml-1">{t('Quay lại', 'Back')}</span>
 							</Button>
 						)}
 					</div>
@@ -174,7 +174,7 @@ export const DeckEditorPage: React.FC = () => {
 					{courseLink.active && (
 						<Card className="border border-primary/30 bg-primary/5">
 							<p className="text-sm text-on-surface" data-testid="deck-course-context">
-								{t('Bo the nay se duoc them vao khoa hoc. Them the roi bam "Xong".',
+								{t('Bộ thẻ này sẽ được thêm vào khóa học. Thêm thẻ rồi bấm "Xong".',
 								   'This deck is being added to a course. Add cards, then click "Done".')}
 							</p>
 						</Card>
@@ -196,32 +196,32 @@ export const DeckEditorPage: React.FC = () => {
 							<div className="space-y-4">
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Tieu de bo the', 'Deck Title')} <span className="text-red-500">*</span>
+										{t('Tiêu đề bộ thẻ', 'Deck Title')} <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
-										placeholder={t('Vi du: Tu vung Tieng Anh - Du lich', 'e.g., English Vocab - Travel')}
+										placeholder={t('Ví dụ: Từ vựng Tiếng Anh - Du lịch', 'e.g., English Vocab - Travel')}
 										data-testid="deck-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Chu de (tuy chon)', 'Theme (optional)')}
+										{t('Chủ đề (tùy chọn)', 'Theme (optional)')}
 									</label>
 									<input
 										type="text"
 										value={theme}
 										onChange={(e) => setTheme(e.target.value)}
-										placeholder={t('Vi du: Tieng Anh, Hoa hoc...', 'e.g., English, Chemistry...')}
+										placeholder={t('Ví dụ: Tiếng Anh, Hóa học...', 'e.g., English, Chemistry...')}
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
 								<div className="flex justify-end">
 									<Button onClick={() => void createDeck()} disabled={busy} data-testid="deck-create-btn">
-										{busy ? t('Dang tao...', 'Creating...') : t('Tao bo the', 'Create Deck')}
+										{busy ? t('Đang tạo...', 'Creating...') : t('Tạo bộ thẻ', 'Create Deck')}
 									</Button>
 								</div>
 							</div>
@@ -230,30 +230,30 @@ export const DeckEditorPage: React.FC = () => {
 						<>
 							<Card>
 								<div className="space-y-3">
-									<h3 className="text-lg font-bold text-[#111b2d]">{t('Them The Moi', 'Add New Card')}</h3>
+									<h3 className="text-lg font-bold text-[#111b2d]">{t('Thêm Thẻ Mới', 'Add New Card')}</h3>
 									<div className="grid gap-3 md:grid-cols-2">
 										<div>
 											<label className="mb-1 block text-xs font-semibold text-[#60708a]">
-												{t('Mat truoc (tu khoa)', 'Front (keyword)')}
+												{t('Mặt trước (từ khóa)', 'Front (keyword)')}
 											</label>
 											<textarea
 												value={draft.front}
 												onChange={(e) => setDraft({ ...draft, front: e.target.value })}
 												rows={3}
-												placeholder={t('Tu hoac khai niem', 'Word or concept')}
+												placeholder={t('Từ hoặc khái niệm', 'Word or concept')}
 												data-testid="flashcard-front-input"
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
 										<div>
 											<label className="mb-1 block text-xs font-semibold text-[#60708a]">
-												{t('Mat sau (dinh nghia)', 'Back (definition)')}
+												{t('Mặt sau (định nghĩa)', 'Back (definition)')}
 											</label>
 											<textarea
 												value={draft.back}
 												onChange={(e) => setDraft({ ...draft, back: e.target.value })}
 												rows={3}
-												placeholder={t('Dinh nghia hoac mo ta', 'Definition or description')}
+												placeholder={t('Định nghĩa hoặc mô tả', 'Definition or description')}
 												data-testid="flashcard-back-input"
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
@@ -262,7 +262,7 @@ export const DeckEditorPage: React.FC = () => {
 									<div className="flex justify-end">
 										<Button onClick={() => void addCard()} disabled={busy} data-testid="flashcard-add-btn">
 											<MaterialIcon icon="add" size="xs" />
-											<span className="ml-1">{busy ? t('Dang them...', 'Adding...') : t('Them the', 'Add Card')}</span>
+											<span className="ml-1">{busy ? t('Đang thêm...', 'Adding...') : t('Thêm thẻ', 'Add Card')}</span>
 										</Button>
 									</div>
 								</div>
@@ -272,15 +272,15 @@ export const DeckEditorPage: React.FC = () => {
 								<div className="space-y-3">
 									<div className="flex items-center justify-between">
 										<h3 className="text-lg font-bold text-[#111b2d]">
-											{t('The trong bo', 'Cards in Deck')} ({cards.length})
+											{t('Thẻ trong bộ', 'Cards in Deck')} ({cards.length})
 										</h3>
 									</div>
 
-									{loading && <p className="text-sm text-[#60708a]">{t('Dang tai...', 'Loading...')}</p>}
+									{loading && <p className="text-sm text-[#60708a]">{t('Đang tải...', 'Loading...')}</p>}
 
 									{!loading && cards.length === 0 && (
 										<p className="rounded-lg border border-dashed border-[#dce3ed] p-6 text-center text-sm text-[#60708a]">
-											{t('Chua co the nao. Them the dau tien o tren.', 'No cards yet. Add the first one above.')}
+											{t('Chưa có thẻ nào. Thêm thẻ đầu tiên ở trên.', 'No cards yet. Add the first one above.')}
 										</p>
 									)}
 
@@ -290,7 +290,7 @@ export const DeckEditorPage: React.FC = () => {
 												<div key={c.id} className="grid grid-cols-[40px_1fr_1fr_auto] items-center gap-3 rounded-lg border border-[#dce3ed] p-3">
 													<span className="text-xs font-bold text-[#9aa5b5]">#{idx + 1}</span>
 													<div>
-														<p className="text-xs text-[#9aa5b5]">{t('Truoc', 'Front')}</p>
+														<p className="text-xs text-[#9aa5b5]">{t('Trước', 'Front')}</p>
 														<p className="text-sm text-[#111b2d]">{c.frontText}</p>
 													</div>
 													<div>
@@ -302,7 +302,7 @@ export const DeckEditorPage: React.FC = () => {
 														onClick={() => void deleteCard(c.id)}
 														disabled={busy}
 														className="text-[#9aa5b5] hover:text-red-600"
-														title={t('Xoa the', 'Delete card')}
+														title={t('Xóa thẻ', 'Delete card')}
 													>
 														<MaterialIcon icon="delete" size="xs" />
 													</button>
@@ -315,7 +315,7 @@ export const DeckEditorPage: React.FC = () => {
 
 							<div className="flex justify-end">
 								<Button onClick={() => navigate('/user/library')}>
-									{t('Hoan tat', 'Done')}
+									{t('Hoàn tất', 'Done')}
 								</Button>
 							</div>
 						</>

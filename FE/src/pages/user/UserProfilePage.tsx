@@ -116,7 +116,13 @@ export const UserProfilePage: React.FC = () => {
       if (resp.success) {
         setLanguage(newLang)
         localStorage.setItem('language', newLang)
-        setLangMsg({ type: 'success', text: 'Language preference updated.' })
+        setLangMsg({
+          type: 'success',
+          text: newLang === 'vi' ? 'Đã cập nhật ngôn ngữ. Đang tải lại...' : 'Language preference updated. Reloading...',
+        })
+        // Components read getCurrentLanguage() directly (no reactive context), so a reload is the
+        // reliable way to re-render the whole app in the newly-selected language.
+        setTimeout(() => window.location.reload(), 700)
       } else {
         setLangMsg({ type: 'error', text: resp.message ?? 'Update failed.' })
       }

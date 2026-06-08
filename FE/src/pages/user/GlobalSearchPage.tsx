@@ -41,19 +41,19 @@ const TYPE_META: Record<Exclude<TypeFilter, 'ALL'>, {
 	FLASHCARD: {
 		icon: 'style',
 		labelEn: 'Flashcard',
-		labelVi: 'The ghi nho',
+		labelVi: 'Thẻ ghi nhớ',
 		gradient: 'linear-gradient(140deg,#d4dbe3,#e5eaef,#f59e0b)',
 	},
 	PDF: {
 		icon: 'description',
 		labelEn: 'Document',
-		labelVi: 'Tai lieu',
+		labelVi: 'Tài liệu',
 		gradient: 'linear-gradient(140deg,#f1ede7,#ded1c8,#d7d2de)',
 	},
 	COLLECTION: {
 		icon: 'folder',
 		labelEn: 'Collection',
-		labelVi: 'Bo suu tap',
+		labelVi: 'Bộ sưu tập',
 		gradient: 'linear-gradient(140deg,#1463ff,#0f43b8,#7c3aed)',
 	},
 }
@@ -143,7 +143,7 @@ export const GlobalSearchPage: React.FC = () => {
 					{/* Header */}
 					<section className="border-b border-[#dde3ec] pb-6">
 						<h2 className="text-5xl font-black tracking-[-0.02em] text-[#111b2d] font-headline">
-							{t('Tim Kiem Noi Dung', 'Global Search')}
+							{t('Tìm Kiếm Nội Dung', 'Global Search')}
 						</h2>
 						<p className="mt-2 text-base text-[#60708a]">
 							{t(
@@ -197,7 +197,7 @@ export const GlobalSearchPage: React.FC = () => {
 									>
 										{meta && <MaterialIcon icon={meta.icon} size="xs" />}
 										{tp === 'ALL'
-											? t('Tat ca loai', 'All Types')
+											? t('Tất cả loại', 'All Types')
 											: isVi
 											? meta?.labelVi
 											: meta?.labelEn}
@@ -213,7 +213,7 @@ export const GlobalSearchPage: React.FC = () => {
 							<MaterialIcon icon="error_outline" size="sm" className="mt-0.5 shrink-0 text-red-500" />
 							<div>
 								<p className="text-sm font-semibold text-red-700">
-									{t('Loi tim kiem', 'Search error')}
+									{t('Lỗi tìm kiếm', 'Search error')}
 								</p>
 								<p className="text-xs text-red-600">{searchError}</p>
 							</div>
@@ -223,7 +223,7 @@ export const GlobalSearchPage: React.FC = () => {
 					{/* Results count */}
 					{hasSearched && !isLoading && results.length > 0 && (
 						<p className="text-sm text-[#60708a]">
-							{results.length} {t('ket qua', 'results')}
+							{results.length} {t('kết quả', 'results')}
 							{query.trim() ? ` ${t('cho', 'for')} "${query.trim()}"` : ''}
 						</p>
 					)}
@@ -247,7 +247,7 @@ export const GlobalSearchPage: React.FC = () => {
 							<div className="flex flex-col items-center gap-3 py-12 text-center">
 								<MaterialIcon icon="search_off" size="md" className="text-[#9aa5b5]" />
 								<p className="text-sm font-semibold text-[#111b2d]">
-									{t('Khong tim thay ket qua', 'No results found')}
+									{t('Không tìm thấy kết quả', 'No results found')}
 								</p>
 								<p className="text-xs text-[#60708a]">
 									{t(
@@ -281,19 +281,19 @@ export const GlobalSearchPage: React.FC = () => {
 										>
 											<span className="absolute left-2 top-2 rounded-full bg-[#111b2d]/70 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white">
 												{r.contentType === 'FLASHCARD'
-													? (isVi ? 'THE' : 'CARDS')
+													? (isVi ? 'THẺ' : 'CARDS')
 													: r.contentType === 'COLLECTION'
 													? (isVi ? 'BST' : 'FOLDER')
 													: r.contentType}
 											</span>
 											{!r.ownedByCaller && (
 												<span className="absolute right-2 top-2 rounded-full bg-[#f59e0b]/90 px-2 py-1 text-[10px] font-bold text-white">
-													{t('Cong khai', 'Public')}
+													{t('Công khai', 'Public')}
 												</span>
 											)}
 											{r.ownedByCaller && (
 												<span className="absolute right-2 top-2 rounded-full bg-[#1463ff]/80 px-2 py-1 text-[10px] font-bold text-white">
-													{t('Cua ban', 'Yours')}
+													{t('Của bạn', 'Yours')}
 												</span>
 											)}
 										</div>
@@ -304,7 +304,7 @@ export const GlobalSearchPage: React.FC = () => {
 											{r.authorName && (
 												<p className="flex items-center gap-1 text-xs text-[#6d7f98]" data-testid="search-result-author">
 													<MaterialIcon icon="person" size="xs" />
-													{isVi ? 'Tac gia: ' : 'By '}{r.authorName}
+													{isVi ? 'Tác giả: ' : 'By '}{r.authorName}
 												</p>
 											)}
 											<div className="flex items-center justify-between">
@@ -320,7 +320,7 @@ export const GlobalSearchPage: React.FC = () => {
 													{!r.ownedByCaller && r.contentType !== 'COLLECTION' && (
 														clonedIds.has(r.contentId) ? (
 															<span className="text-[10px] font-bold text-green-600">
-																{t('Da them', 'Added ✓')}
+																{t('Đã thêm', 'Added ✓')}
 															</span>
 														) : (
 															<button
@@ -337,7 +337,7 @@ export const GlobalSearchPage: React.FC = () => {
 																<MaterialIcon icon="bookmark_add" size="xs" />
 																{cloningId === r.contentId
 																	? '…'
-																	: (isVi ? 'Them vao' : 'Add')}
+																	: (isVi ? 'Thêm vào' : 'Add')}
 															</button>
 														)
 													)}

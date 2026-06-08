@@ -57,16 +57,16 @@ interface LearningAnalyticsDto {
 }
 
 const periodOptions: Array<{ key: AnalyticsPeriod; labelEn: string; labelVi: string }> = [
-  { key: 'day', labelEn: 'By day', labelVi: 'Theo ngay' },
-  { key: 'month', labelEn: 'By month', labelVi: 'Theo thang' },
-  { key: 'year', labelEn: 'By year', labelVi: 'Theo nam' },
+  { key: 'day', labelEn: 'By day', labelVi: 'Theo ngày' },
+  { key: 'month', labelEn: 'By month', labelVi: 'Theo tháng' },
+  { key: 'year', labelEn: 'By year', labelVi: 'Theo năm' },
 ]
 
 const activitySeries = [
-  { key: 'quizAttempts', color: '#4f46e5', labelEn: 'Quiz attempts', labelVi: 'Luot lam quiz' },
-  { key: 'videoViews', color: '#16a34a', labelEn: 'Video views', labelVi: 'Luot xem video' },
-  { key: 'documentViews', color: '#0284c7', labelEn: 'Document views', labelVi: 'Luot xem tai lieu' },
-  { key: 'flashcardDeckViews', color: '#f59e0b', labelEn: 'Deck views', labelVi: 'Luot xem bo the' },
+  { key: 'quizAttempts', color: '#4f46e5', labelEn: 'Quiz attempts', labelVi: 'Lượt làm quiz' },
+  { key: 'videoViews', color: '#16a34a', labelEn: 'Video views', labelVi: 'Lượt xem video' },
+  { key: 'documentViews', color: '#0284c7', labelEn: 'Document views', labelVi: 'Lượt xem tài liệu' },
+  { key: 'flashcardDeckViews', color: '#f59e0b', labelEn: 'Deck views', labelVi: 'Lượt xem bộ thẻ' },
 ] as const
 
 const formatBucketLabel = (bucketStart: string, period: AnalyticsPeriod) => {
@@ -225,7 +225,7 @@ const ScoreTrendChart: React.FC<{ buckets: LearningAnalyticsBucket[]; period: An
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          {isVi ? 'Chua co du lieu diem quiz trong khoang thoi gian nay.' : 'No quiz score data in this range yet.'}
+          {isVi ? 'Chưa có dữ liệu điểm quiz trong khoảng thời gian này.' : 'No quiz score data in this range yet.'}
         </Typography>
       </Box>
     )
@@ -332,7 +332,7 @@ const ScoreTrendChart: React.FC<{ buckets: LearningAnalyticsBucket[]; period: An
               <Stack direction="row" spacing={1} alignItems="center">
                 <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#4f46e5' }} />
                 <Typography variant="caption" color="text.secondary">
-                  {isVi ? 'Tong hoat dong' : 'Total activity'}
+                  {isVi ? 'Tổng hoạt động' : 'Total activity'}
                 </Typography>
               </Stack>
               <Typography variant="caption" color="text.primary" sx={{ fontWeight: 600 }}>
@@ -359,10 +359,10 @@ const ScoreTrendChart: React.FC<{ buckets: LearningAnalyticsBucket[]; period: An
 
 const DistributionDonut: React.FC<{ summary: LearningAnalyticsSummary; isVi: boolean }> = ({ summary, isVi }) => {
   const segments = [
-    { key: 'quiz', value: summary.totalQuizAttempts, color: '#4f46e5', labelEn: 'Quiz attempts', labelVi: 'Luot lam quiz' },
-    { key: 'video', value: summary.totalVideoViews, color: '#16a34a', labelEn: 'Video views', labelVi: 'Luot xem video' },
-    { key: 'document', value: summary.totalDocumentViews, color: '#0284c7', labelEn: 'Document views', labelVi: 'Luot xem tai lieu' },
-    { key: 'deck', value: summary.totalFlashcardDeckViews, color: '#f59e0b', labelEn: 'Deck views', labelVi: 'Luot xem bo the' },
+    { key: 'quiz', value: summary.totalQuizAttempts, color: '#4f46e5', labelEn: 'Quiz attempts', labelVi: 'Lượt làm quiz' },
+    { key: 'video', value: summary.totalVideoViews, color: '#16a34a', labelEn: 'Video views', labelVi: 'Lượt xem video' },
+    { key: 'document', value: summary.totalDocumentViews, color: '#0284c7', labelEn: 'Document views', labelVi: 'Lượt xem tài liệu' },
+    { key: 'deck', value: summary.totalFlashcardDeckViews, color: '#f59e0b', labelEn: 'Deck views', labelVi: 'Lượt xem bộ thẻ' },
   ]
 
   const total = segments.reduce((sum, segment) => sum + segment.value, 0)
@@ -379,7 +379,7 @@ const DistributionDonut: React.FC<{ summary: LearningAnalyticsSummary; isVi: boo
         }}
       >
         <Typography variant="body2" color="text.secondary">
-          {isVi ? 'Chua co du lieu hoat dong de ve bieu do.' : 'No activity data to render distribution yet.'}
+          {isVi ? 'Chưa có dữ liệu hoạt động để vẽ biểu đồ.' : 'No activity data to render distribution yet.'}
         </Typography>
       </Box>
     )
@@ -477,18 +477,18 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Learning Analytics Dashboard"
-      titleVi="Bang thong ke hoc tap"
+      titleVi="Bảng thống kê học tập"
       subtitleEn="Visualize quiz, content views, and score trends"
-      subtitleVi="Bieu do hoa quiz, luot xem noi dung va xu huong diem so"
+      subtitleVi="Biểu đồ hóa quiz, lượt xem nội dung và xu hướng điểm số"
     >
       <Stack spacing={3}>
         <Card variant="outlined" sx={{ borderRadius: 3 }}>
           <CardContent>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ md: 'center' }} justifyContent="space-between">
               <Stack>
-                <Typography variant="h6">{isVi ? 'Thong ke hoc tap' : 'Learning statistics'}</Typography>
+                <Typography variant="h6">{isVi ? 'Thống kê học tập' : 'Learning statistics'}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  {isVi ? 'Tong hop hoat dong hoc tap theo thoi gian' : 'Overview of learning activity by time range'}
+                  {isVi ? 'Tổng hợp hoạt động học tập theo thời gian' : 'Overview of learning activity by time range'}
                 </Typography>
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
@@ -510,7 +510,7 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                 </Tabs>
                 <Button variant="contained" size="small" onClick={() => void fetchAnalytics(period)} disabled={isLoading}>
                   <MaterialIcon icon="refresh" size="xs" className="mr-1.5" />
-                  {isVi ? 'Tai lai' : 'Refresh'}
+                  {isVi ? 'Tải lại' : 'Refresh'}
                 </Button>
               </Stack>
             </Stack>
@@ -560,7 +560,7 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                             )}
                           </Stack>
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
-                            {isVi ? 'Quiz da lam' : 'Quiz attempts'}
+                            {isVi ? 'Quiz đã làm' : 'Quiz attempts'}
                           </Typography>
                           <Typography variant="h4" sx={{ mt: 1, fontWeight: 700 }}>
                             {summary.totalQuizAttempts}
@@ -595,7 +595,7 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                             )}
                           </Stack>
                           <Typography variant="body2" color="text.secondary" sx={{ mt: 3 }}>
-                            {isVi ? 'Tong hoat dong' : 'Total activity'}
+                            {isVi ? 'Tổng hoạt động' : 'Total activity'}
                           </Typography>
                           <Typography variant="h4" sx={{ mt: 1, fontWeight: 700 }}>
                             {summary.totalQuizAttempts + summary.totalVideoViews + summary.totalDocumentViews + summary.totalFlashcardDeckViews}
@@ -609,10 +609,10 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                     <CardContent>
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
                         <Typography variant="h6">
-                          {isVi ? 'Tong quan hoat dong hang thang' : 'Monthly activity overview'}
+                          {isVi ? 'Tổng quan hoạt động hàng tháng' : 'Monthly activity overview'}
                         </Typography>
                         <Button variant="text" size="small">
-                          {isVi ? 'Xem them' : 'View more'}
+                          {isVi ? 'Xem thêm' : 'View more'}
                         </Button>
                       </Stack>
                       <Box sx={{ mt: 2 }}>
@@ -630,10 +630,10 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Box>
                           <Typography variant="h6">
-                            {isVi ? 'Muc tieu thang' : 'Monthly target'}
+                            {isVi ? 'Mục tiêu tháng' : 'Monthly target'}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {isVi ? 'Ty le diem trung binh so voi muc tieu' : 'Average score compared with target'}
+                            {isVi ? 'Tỷ lệ điểm trung bình so với mục tiêu' : 'Average score compared with target'}
                           </Typography>
                         </Box>
                       </Stack>
@@ -666,14 +666,14 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                       </Box>
 
                       <Typography variant="body2" color="text.secondary" align="center">
-                        {isVi ? 'Diem trung binh dang o muc kha. Hay tiep tuc duy tri!' : 'Your average score is trending well. Keep it up!'}
+                        {isVi ? 'Điểm trung bình đang ở mức khá. Hãy tiếp tục duy trì!' : 'Your average score is trending well. Keep it up!'}
                       </Typography>
 
                       <Grid container spacing={2} sx={{ mt: 1 }}>
                         {[
                           { label: isVi ? 'Video' : 'Video', value: summary.totalVideoViews },
-                          { label: isVi ? 'Tai lieu' : 'Documents', value: summary.totalDocumentViews },
-                          { label: isVi ? 'Bo the' : 'Decks', value: summary.totalFlashcardDeckViews },
+                          { label: isVi ? 'Tài liệu' : 'Documents', value: summary.totalDocumentViews },
+                          { label: isVi ? 'Bộ thẻ' : 'Decks', value: summary.totalFlashcardDeckViews },
                         ].map((item) => (
                           <Grid item xs={4} key={item.label}>
                             <Stack spacing={0.5} alignItems="center">
@@ -699,10 +699,10 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
                   <Stack direction="row" alignItems="center" justifyContent="space-between">
                     <Box>
                       <Typography variant="h6">
-                        {isVi ? 'Thong ke hoat dong' : 'Statistics'}
+                        {isVi ? 'Thống kê hoạt động' : 'Statistics'}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {isVi ? 'So luot quiz va tong hoat dong theo thang' : 'Quiz attempts and total activity trend'}
+                        {isVi ? 'Số lượt quiz và tổng hoạt động theo tháng' : 'Quiz attempts and total activity trend'}
                       </Typography>
                     </Box>
                   </Stack>
@@ -714,7 +714,7 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
             <Card variant="outlined" sx={{ borderRadius: 3 }}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>
-                  {isVi ? 'Phan bo hoat dong' : 'Activity distribution'}
+                  {isVi ? 'Phân bổ hoạt động' : 'Activity distribution'}
                 </Typography>
                 <DistributionDonut summary={summary} isVi={isVi} />
               </CardContent>
