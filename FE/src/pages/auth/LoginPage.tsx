@@ -324,7 +324,7 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* SSO Section */}
-            <div className="mt-6">
+            {/* <div className="mt-6">
               <div className="relative flex items-center">
                 <div className="flex-grow border-t border-[#e5e7eb]" />
                 <span className="mx-4 text-xs font-semibold uppercase tracking-widest text-[#9ca3af]">Or Sign In With</span>
@@ -345,7 +345,7 @@ export const LoginPage: React.FC = () => {
                   </svg>
                   Google
                 </button>
-                {/* <button
+                <button
                   type="button"
                   data-testid="login-sso-microsoft"
                   onClick={() => alert('Microsoft SSO — OAuth credentials not yet configured.')}
@@ -359,9 +359,9 @@ export const LoginPage: React.FC = () => {
                     <path fill="#ffba08" d="M12 12h10v10H12z"/>
                   </svg>
                   Microsoft
-                </button> */}
+                </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Create Account Link */}
             <div className="mt-8 text-center">

@@ -261,9 +261,15 @@ namespace Content.Api.Controllers
             if (doc.CreatedByUserId != userId && !_orgCtx.IsSysAdmin())
                 return Forbid();
 
-            // Soft delete DB record; also remove physical file
+            // Soft delete DB record. Only remove the physical file if no OTHER active document
+            // still references it — legacy clones created before clone-time file copying may share
+            // a FilePath, and deleting the shared file would break the surviving copy's preview.
             await _repo.SoftDeleteAsync(docId, ct);
-            _storage.Delete(doc.FilePath);
+            var stillReferenced = await _db.Documents
+                .AsNoTracking()
+                .AnyAsync(d => d.Id != docId && d.DeletedAt == null && d.FilePath == doc.FilePath, ct);
+            if (!stillReferenced)
+                _storage.Delete(doc.FilePath);
 
             // Cascade: remove the ContentModel so learning-history tracking is cleaned up.
             // DocumentModel.ContentId uses OnDelete(SetNull), so the document row remains

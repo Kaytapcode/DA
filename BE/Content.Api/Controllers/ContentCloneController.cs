@@ -17,11 +17,13 @@ namespace Content.Api.Controllers
     {
         private readonly ContentDbContext _db;
         private readonly IOrgContextService _orgCtx;
+        private readonly IStorageService _storage;
 
-        public ContentCloneController(ContentDbContext db, IOrgContextService orgCtx)
+        public ContentCloneController(ContentDbContext db, IOrgContextService orgCtx, IStorageService storage)
         {
             _db = db;
             _orgCtx = orgCtx;
+            _storage = storage;
         }
 
         [HttpPost]
@@ -143,16 +145,28 @@ namespace Content.Api.Controllers
                     break;
 
                 case "PDF" when source.Document != null:
-                    // For documents we keep the same FilePath reference (storage is shared);
-                    // the personal copy is just a new ContentModel row pointing to the same file.
+                    // Copy the physical file into the copier's OWN storage so the clone is fully
+                    // independent — sharing the original's FilePath meant deleting either copy
+                    // (which physically removes the file) broke the other copy's preview. If the
+                    // source file is missing the original is already broken; fall back to the
+                    // shared path so the clone still gets a DB row.
+                    var clonedFilePath = source.Document.FilePath;
+                    var clonedFileSize = source.Document.FileSize;
+                    try
+                    {
+                        (clonedFilePath, clonedFileSize) = await _storage.CopyAsync(
+                            source.Document.FilePath, userId.Value, source.Document.FileName, ct);
+                    }
+                    catch (FileNotFoundException) { /* keep shared path fallback */ }
+
                     _db.Documents.Add(new DocumentModel
                     {
                         Id = Guid.NewGuid(),
                         ContentId = clonedContent.Id,
                         CreatedByUserId = userId.Value,
                         FileName = source.Document.FileName,
-                        FilePath = source.Document.FilePath,
-                        FileSize = source.Document.FileSize,
+                        FilePath = clonedFilePath,
+                        FileSize = clonedFileSize,
                         FileType = source.Document.FileType,
                         IsPublic = true,
                         CreatedAt = now

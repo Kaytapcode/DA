@@ -1659,15 +1659,17 @@ export const UserQuizInterfacePage: React.FC = () => {
     !!a && !!b && a.toLowerCase() === b.toLowerCase()
   const isOwner = idsMatchQ(quizInfo?.createdByUserId, currentUserId)
 
-  // The quiz OWNER (e.g. an OrgAdmin who created it) should land on the MANAGE/edit view, not the
-  // end-user take-quiz UI. Default into edit mode once ownership resolves (they can toggle to take).
+  // Default landing is the TAKE-QUIZ view for everyone — including the owner. Clicking a quiz to
+  // play it must show the play UI, never the editor (the owner toggles into edit via the explicit
+  // "Edit Quiz" button). An `?edit=1` query param lets the manage flow deep-link straight to edit.
+  const wantsEdit = searchParams.get('edit') === '1'
   const ownerDefaultedRef = React.useRef(false)
   React.useEffect(() => {
-    if (isOwner && !ownerDefaultedRef.current && !result) {
+    if (isOwner && wantsEdit && !ownerDefaultedRef.current && !result) {
       ownerDefaultedRef.current = true
       setEditMode(true)
     }
-  }, [isOwner, result])
+  }, [isOwner, wantsEdit, result])
 
   // Same fallback strategy as the deck page — try single-quiz endpoint, then scan the list.
   const fetchQuizMeta = React.useCallback(async () => {
@@ -1870,6 +1872,7 @@ export const UserQuizInterfacePage: React.FC = () => {
       titleVi="Giao dien bai quiz"
       subtitleEn="Answer timed questions and submit results"
       subtitleVi="Tra loi cau hoi tinh gio va nop ket qua"
+      roleAwareChrome
     >
       {quizInfo && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
