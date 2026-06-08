@@ -85,9 +85,9 @@ export const UserLearningDashboardPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Learning Dashboard"
-      titleVi="Bang dieu khien hoc tap"
+      titleVi="Bảng điều khiển học tập"
       subtitleEn="Track progress and resume your courses"
-      subtitleVi="Theo doi tien do va tiep tuc khoa hoc"
+      subtitleVi="Theo dõi tiến độ và tiếp tục khóa học"
     >
       {error && !isLoading && <p className="mb-4 text-sm text-error">{error}</p>}
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -95,12 +95,12 @@ export const UserLearningDashboardPage: React.FC = () => {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">
-                {isVi ? 'Hoat dong gan day' : 'Most recent activity'}
+                {isVi ? 'Hoạt động gần đây' : 'Most recent activity'}
               </p>
               <h3 className="mt-1 text-2xl font-bold text-on-surface">
                 {isLoading
                   ? '…'
-                  : featuredCourse?.courseTitle ?? (isVi ? 'Chua co khoa hoc nao' : 'No course activity yet')}
+                  : featuredCourse?.courseTitle ?? (isVi ? 'Chưa có khóa học nào' : 'No course activity yet')}
               </h3>
             </div>
             {featuredCourse && (
@@ -109,7 +109,7 @@ export const UserLearningDashboardPage: React.FC = () => {
           </div>
           {(featuredCourse ?? featured) && (
             <p className="text-on-surface-variant">
-              {(featuredCourse ?? featured)?.contentTitle ?? (featuredCourse ?? featured)?.moduleTitle ?? (isVi ? 'Tiep tuc bai hoc tiep theo.' : 'Continue with the next item.')}
+              {(featuredCourse ?? featured)?.contentTitle ?? (featuredCourse ?? featured)?.moduleTitle ?? (isVi ? 'Tiếp tục bài học tiếp theo.' : 'Continue with the next item.')}
             </p>
           )}
           <div className="mt-5 h-2 rounded-full bg-surface-container-low">
@@ -123,24 +123,24 @@ export const UserLearningDashboardPage: React.FC = () => {
               to={featuredCourse?.courseId ? `/user/course/${featuredCourse.courseId}` : '/user/courses'}
               className="inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary"
             >
-              {isVi ? 'Mo khoa hoc' : 'Open Course'}
+              {isVi ? 'Mở khóa học' : 'Open Course'}
             </Link>
             <Link
               to="/user/learning"
               className="inline-flex items-center justify-center rounded-lg border border-outline-variant px-5 py-2.5 text-sm font-medium text-on-surface"
             >
-              {isVi ? 'Xem lich su' : 'View History'}
+              {isVi ? 'Xem lịch sử' : 'View History'}
             </Link>
           </div>
         </Card>
 
         <Card className="p-6">
-          <h3 className="mb-4 text-lg font-bold text-on-surface">{isVi ? 'Chi so nhanh' : 'Quick stats'}</h3>
+          <h3 className="mb-4 text-lg font-bold text-on-surface">{isVi ? 'Chỉ số nhanh' : 'Quick stats'}</h3>
           <div className="space-y-4">
             {[
-              { label: isVi ? 'Hoan thanh' : 'Completed items', value: isLoading ? '…' : `${completedItems}` },
-              { label: isVi ? 'Khoa hoc' : 'Courses touched', value: isLoading ? '…' : `${distinctCourses}` },
-              { label: isVi ? 'Tien do trung binh' : 'Avg. progress', value: isLoading ? '…' : `${avgProgress}%` },
+              { label: isVi ? 'Hoàn thành' : 'Completed items', value: isLoading ? '…' : `${completedItems}` },
+              { label: isVi ? 'Khóa học' : 'Courses touched', value: isLoading ? '…' : `${distinctCourses}` },
+              { label: isVi ? 'Tiến độ trung bình' : 'Avg. progress', value: isLoading ? '…' : `${avgProgress}%` },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between rounded-xl bg-surface-container-low px-4 py-3">
                 <span className="text-sm text-on-surface-variant">{item.label}</span>
@@ -228,7 +228,7 @@ export const DocumentViewerPage: React.FC = () => {
     ? new Date(currentEntry.createdAt).getFullYear()
     : null
   // Prefer the real filename from the document list over the placeholder in `loaded.fileName`
-  const baseTitle = ((currentEntry?.fileName || loaded?.fileName) || '').replace(/\.[^/.]+$/, '') || (isVi ? 'Tai lieu' : 'Document')
+  const baseTitle = ((currentEntry?.fileName || loaded?.fileName) || '').replace(/\.[^/.]+$/, '') || (isVi ? 'Tài liệu' : 'Document')
 
   // Owner-only rename UI: matches the document's createdByUserId against the cached user id.
   // Case-insensitive to be defensive about GUID casing differences.
@@ -256,7 +256,7 @@ export const DocumentViewerPage: React.FC = () => {
       setIsEditingTitle(false)
       await fetchList()
     } catch (err: any) {
-      setRenameError(err?.message || err?.data?.message || (isVi ? 'Khong the doi ten' : 'Rename failed'))
+      setRenameError(err?.message || err?.data?.message || (isVi ? 'Không thể đổi tên' : 'Rename failed'))
     } finally {
       setIsSavingTitle(false)
     }
@@ -265,9 +265,9 @@ export const DocumentViewerPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Document Viewer"
-      titleVi="Trinh xem tai lieu"
+      titleVi="Trình xem tài liệu"
       subtitleEn="Open and review course documents"
-      subtitleVi="Mo va xem lai tai lieu khoa hoc"
+      subtitleVi="Mở và xem lại tài liệu khóa học"
     >
       <div className="space-y-6">
 
@@ -288,10 +288,10 @@ export const DocumentViewerPage: React.FC = () => {
                   className="flex-1 min-w-[280px] rounded-lg border border-outline-variant bg-surface px-3 py-2 text-2xl font-bold text-on-surface focus:border-primary focus:outline-none"
                 />
                 <Button size="sm" onClick={() => void saveRename()} disabled={isSavingTitle || !titleDraft.trim()} data-testid="document-rename-save">
-                  {isSavingTitle ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu' : 'Save')}
+                  {isSavingTitle ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu' : 'Save')}
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(baseTitle); setRenameError(null) }} disabled={isSavingTitle} data-testid="document-rename-cancel">
-                  {isVi ? 'Huy' : 'Cancel'}
+                  {isVi ? 'Hủy' : 'Cancel'}
                 </Button>
               </>
             ) : (
@@ -303,10 +303,10 @@ export const DocumentViewerPage: React.FC = () => {
                     onClick={() => { setTitleDraft(baseTitle); setIsEditingTitle(true) }}
                     data-testid="document-edit-btn"
                     className="inline-flex items-center gap-1 rounded-full border border-outline-variant px-2.5 py-1 text-xs text-on-surface-variant hover:bg-surface-container-low"
-                    title={isVi ? 'Doi ten tai lieu' : 'Rename document'}
+                    title={isVi ? 'Đổi tên tài liệu' : 'Rename document'}
                   >
                     <MaterialIcon icon="edit" size="xs" />
-                    <span>{isVi ? 'Doi ten' : 'Rename'}</span>
+                    <span>{isVi ? 'Đổi tên' : 'Rename'}</span>
                   </button>
                 )}
               </>
@@ -316,8 +316,8 @@ export const DocumentViewerPage: React.FC = () => {
           <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-on-surface-variant">
             <span className="inline-flex items-center gap-2">
               <MaterialIcon icon="folder" size="xs" />
-              <span>{resolvedCollectionTitle ?? (isVi ? 'Tai lieu ca nhan' : 'Personal documents')}</span>
-              <span className="text-on-surface-variant/80">| {documents.length} {isVi ? 'tai lieu' : 'documents'}</span>
+              <span>{resolvedCollectionTitle ?? (isVi ? 'Tài liệu cá nhân' : 'Personal documents')}</span>
+              <span className="text-on-surface-variant/80">| {documents.length} {isVi ? 'tài liệu' : 'documents'}</span>
             </span>
             {docYear && (
               <span className="inline-flex items-center gap-2">
@@ -347,7 +347,7 @@ export const DocumentViewerPage: React.FC = () => {
                   blobUrl={loaded?.blobUrl ?? null}
                   mimeType={loaded?.mimeType ?? null}
                   fileName={loaded?.fileName ?? ''}
-                  emptyLabel={isVi ? 'Chon mot tai lieu de xem' : 'Select a document to preview'}
+                  emptyLabel={isVi ? 'Chọn một tài liệu để xem' : 'Select a document to preview'}
                 />
               </div>
             )}
@@ -360,30 +360,30 @@ export const DocumentViewerPage: React.FC = () => {
           <div className="mb-2 flex flex-wrap items-center justify-center gap-2">
             <Link to="/user/quiz" className={chipBase}>
               <MaterialIcon icon="quiz" size="xs" />
-              {isVi ? 'Thi thu' : 'Mock exam'}
+              {isVi ? 'Thi thử' : 'Mock exam'}
             </Link>
             <Link to="/user/decks/new" className={chipBase}>
               <MaterialIcon icon="edit_note" size="xs" />
-              {isVi ? 'Tom tat' : 'Summary'}
+              {isVi ? 'Tóm tắt' : 'Summary'}
             </Link>
             <Link to="/user/quizzes/new" className={chipBase}>
               <MaterialIcon icon="psychology" size="xs" />
-              {isVi ? 'Tao Quiz' : 'Quiz'}
+              {isVi ? 'Tạo Quiz' : 'Quiz'}
             </Link>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-outline-variant bg-surface-container-low px-4 py-2">
             <input
               type="text"
               disabled
-              placeholder={isVi ? 'Hoi mot cau ve tai lieu nay... (sap ra mat)' : 'Ask a question about this document... (coming soon)'}
+              placeholder={isVi ? 'Hỏi một câu về tài liệu này... (sắp ra mắt)' : 'Ask a question about this document... (coming soon)'}
               className="flex-1 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/70 focus:outline-none disabled:cursor-not-allowed"
-              title={isVi ? 'Sap ra mat' : 'Coming soon'}
+              title={isVi ? 'Sắp ra mắt' : 'Coming soon'}
             />
             <button
               type="button"
               disabled
               className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/30 text-on-primary disabled:cursor-not-allowed"
-              title={isVi ? 'Sap ra mat' : 'Coming soon'}
+              title={isVi ? 'Sắp ra mắt' : 'Coming soon'}
             >
               <MaterialIcon icon="arrow_forward" size="xs" />
             </button>
@@ -524,11 +524,11 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   const addCardItem = () => setEditCards((prev) => [...prev, blankCard()])
 
   const validateDeckEdit = (): string | null => {
-    if (!titleDraft.trim()) return isVi ? 'Tieu de bo the khong duoc trong.' : 'Deck title is required.'
+    if (!titleDraft.trim()) return isVi ? 'Tiêu đề bộ thẻ không được trống.' : 'Deck title is required.'
     for (let i = 0; i < editCards.length; i++) {
       const c = editCards[i]
       if (!c.frontText.trim() || !c.backText.trim())
-        return isVi ? `The #${i + 1}: thieu noi dung mat truoc/sau.` : `Card #${i + 1}: front and back are required.`
+        return isVi ? `Thẻ #${i + 1}: thiếu nội dung mặt trước/sau.` : `Card #${i + 1}: front and back are required.`
     }
     return null
   }
@@ -571,12 +571,12 @@ export const InteractiveFlashcardsPage: React.FC = () => {
         if (!res.success) throw new Error(res.message || 'Delete failed')
       }
 
-      setEditSuccess(isVi ? 'Da luu bo the.' : 'Deck saved.')
+      setEditSuccess(isVi ? 'Đã lưu bộ thẻ.' : 'Deck saved.')
       setRemovedCardIds([])
       await fetchAllCards()
       await refreshDeck()
     } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the luu bo the' : 'Save failed'))
+      setEditError(err?.message || err?.data?.message || (isVi ? 'Không thể lưu bộ thẻ' : 'Save failed'))
     } finally { setEditBusy(false) }
   }
 
@@ -594,9 +594,9 @@ export const InteractiveFlashcardsPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Interactive Flashcards"
-      titleVi="The ghi nho tuong tac"
+      titleVi="Thẻ ghi nhớ tương tác"
       subtitleEn="Practice concepts with quick cards"
-      subtitleVi="Luyen tap khai niem voi bo the nhanh"
+      subtitleVi="Luyện tập khái niệm với bộ thẻ nhanh"
     >
       {deckInfo && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -607,7 +607,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           {isOwner && (
             <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((v) => !v)}>
               <MaterialIcon icon={editMode ? 'visibility' : 'edit'} size="xs" className="mr-1" />
-              {editMode ? (isVi ? 'Quay lai hoc' : 'Back to Study') : (isVi ? 'Chinh sua' : 'Edit Deck')}
+              {editMode ? (isVi ? 'Quay lại học' : 'Back to Study') : (isVi ? 'Chỉnh sửa' : 'Edit Deck')}
             </Button>
           )}
         </div>
@@ -618,13 +618,13 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           <Card className="p-6">
             <div>
               <label className="mb-1 block text-sm font-semibold text-on-surface">
-                {isVi ? 'Tieu de bo the' : 'Deck Title'} <span className="text-red-500">*</span>
+                {isVi ? 'Tiêu đề bộ thẻ' : 'Deck Title'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
-                placeholder={isVi ? 'Vi du: Tu vung Tieng Anh - Du lich' : 'e.g., English Vocab - Travel'}
+                placeholder={isVi ? 'Ví dụ: Từ vựng Tiếng Anh - Du lịch' : 'e.g., English Vocab - Travel'}
                 className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
             </div>
@@ -647,7 +647,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-on-surface">
-                    {isVi ? 'The' : 'Card'} #{idx + 1}
+                    {isVi ? 'Thẻ' : 'Card'} #{idx + 1}
                   </h3>
                   <button
                     type="button"
@@ -655,25 +655,25 @@ export const InteractiveFlashcardsPage: React.FC = () => {
                     className="text-xs text-red-600 hover:underline"
                   >
                     <MaterialIcon icon="delete" size="xs" />
-                    <span className="ml-1">{isVi ? 'Xoa' : 'Remove'}</span>
+                    <span className="ml-1">{isVi ? 'Xóa' : 'Remove'}</span>
                   </button>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
-                      {isVi ? 'Mat truoc (tu khoa)' : 'Front (keyword)'}
+                      {isVi ? 'Mặt trước (từ khóa)' : 'Front (keyword)'}
                     </label>
                     <textarea
                       value={c.frontText}
                       onChange={(e) => updateCard(idx, { frontText: e.target.value })}
                       rows={3}
-                      placeholder={isVi ? 'Tu hoac khai niem' : 'Word or concept'}
+                      placeholder={isVi ? 'Từ hoặc khái niệm' : 'Word or concept'}
                       className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                     />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
-                      {isVi ? 'Mat sau (dinh nghia)' : 'Back (definition)'}
+                      {isVi ? 'Mặt sau (định nghĩa)' : 'Back (definition)'}
                     </label>
                     <textarea
                       value={c.backText}
@@ -691,7 +691,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           {editCards.length === 0 && (
             <Card className="border border-dashed border-outline-variant">
               <p className="py-3 text-center text-sm text-on-surface-variant">
-                {isVi ? 'Chua co the nao. Bam "Them the" de bat dau.' : 'No cards yet. Click "Add Card" to start.'}
+                {isVi ? 'Chưa có thẻ nào. Bấm "Thêm thẻ" để bắt đầu.' : 'No cards yet. Click "Add Card" to start.'}
               </p>
             </Card>
           )}
@@ -699,10 +699,10 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           <div className="flex justify-between">
             <Button variant="secondary" onClick={addCardItem} disabled={editBusy}>
               <MaterialIcon icon="add" size="xs" />
-              <span className="ml-1">{isVi ? 'Them the' : 'Add Card'}</span>
+              <span className="ml-1">{isVi ? 'Thêm thẻ' : 'Add Card'}</span>
             </Button>
             <Button onClick={() => void saveDeck()} disabled={editBusy}>
-              {editBusy ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu bo the' : 'Save Deck')}
+              {editBusy ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu bộ thẻ' : 'Save Deck')}
             </Button>
           </div>
         </div>
@@ -710,14 +710,14 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 
       {editMode && isOwner ? null : (
       <Card className="p-10 text-center">
-        {!deckId && <p className="text-sm text-on-surface-variant">{isVi ? 'Them ?deckId=... vao URL de hoc bo the.' : 'Add ?deckId=... to URL to study a deck.'}</p>}
+        {!deckId && <p className="text-sm text-on-surface-variant">{isVi ? 'Thêm ?deckId=... vào URL để học bộ thẻ.' : 'Add ?deckId=... to URL to study a deck.'}</p>}
 
         {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
 
         {!ownedByMe && !isLoading && (
           <p className="mb-4 text-xs text-on-surface-variant">
             {isVi
-              ? 'Dang xem bo the cua nguoi khac. Tien trinh hoc duoc luu rieng cho ban.'
+              ? 'Đang xem bộ thẻ của người khác. Tiến trình học được lưu riêng cho bạn.'
               : "Viewing someone else's deck. Your mastery progress is saved independently."}
           </p>
         )}
@@ -733,11 +733,11 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           <>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-xs uppercase tracking-widest text-on-surface-variant" data-testid="flashcard-counter">
-                {isVi ? `The ${currentIndex + 1}/${totalCards}` : `Card ${currentIndex + 1}/${totalCards}`}
+                {isVi ? `Thẻ ${currentIndex + 1}/${totalCards}` : `Card ${currentIndex + 1}/${totalCards}`}
               </p>
               <Button variant="ghost" size="sm" onClick={toggleShuffle} data-testid="flashcard-shuffle-btn">
                 <MaterialIcon icon="shuffle" size="xs" className="mr-1" />
-                {shuffleMode ? (isVi ? 'Bo tron' : 'Shuffled') : (isVi ? 'Tron the' : 'Shuffle')}
+                {shuffleMode ? (isVi ? 'Bỏ trộn' : 'Shuffled') : (isVi ? 'Trộn thẻ' : 'Shuffle')}
               </Button>
             </div>
 
@@ -756,19 +756,19 @@ export const InteractiveFlashcardsPage: React.FC = () => {
                 <h3 className="mb-2 text-2xl font-bold font-headline text-on-surface" data-testid={isFlipped ? 'flashcard-back-text' : 'flashcard-front-text'}>
                   {isFlipped ? currentCard.backText : currentCard.frontText}
                 </h3>
-                <p className="text-sm text-on-surface-variant">{isVi ? 'Cham de lat the' : 'Tap to flip'}</p>
+                <p className="text-sm text-on-surface-variant">{isVi ? 'Chạm để lật thẻ' : 'Tap to flip'}</p>
               </div>
             </button>
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button variant="secondary" onClick={previousCard} disabled={totalCards <= 1} data-testid="flashcard-prev-btn">
-                {isVi ? 'The truoc' : 'Previous'}
+                {isVi ? 'Thẻ trước' : 'Previous'}
               </Button>
               <Button variant="secondary" onClick={nextCard} disabled={totalCards <= 1} data-testid="flashcard-next-btn">
-                {isVi ? 'The tiep theo' : 'Next Card'}
+                {isVi ? 'Thẻ tiếp theo' : 'Next Card'}
               </Button>
               <Button onClick={() => void markCurrentAsMastered()} disabled={isUpdating} data-testid="flashcard-mastered-btn">
-                {isVi ? 'Danh dau da nho' : 'Mark as Mastered'}
+                {isVi ? 'Đánh dấu đã nhớ' : 'Mark as Mastered'}
               </Button>
             </div>
           </>
@@ -776,9 +776,9 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 
         {!isLoading && !error && !currentCard && deckId && (
           <div className="space-y-3" data-testid="flashcard-all-mastered">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Khong con the nao de hoc.' : 'No cards left to study.'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Không còn thẻ nào để học.' : 'No cards left to study.'}</p>
             <Button variant="secondary" onClick={() => void resetMastered()} disabled={isUpdating} data-testid="flashcard-reset-btn">
-              {isVi ? 'Dat lai cac the da nho' : 'Reset mastered cards'}
+              {isVi ? 'Đặt lại các thẻ đã nhớ' : 'Reset mastered cards'}
             </Button>
           </div>
         )}
@@ -891,12 +891,12 @@ export const LearningHistoryPage: React.FC = () => {
 
   const getResult = (row: LearningHistoryEntry) => {
     if (row.contentType === 'QUIZ')
-      return isVi ? `Diem: ${row.progressPercentage}%` : `Score: ${row.progressPercentage}%`
+      return isVi ? `Điểm: ${row.progressPercentage}%` : `Score: ${row.progressPercentage}%`
     if (row.isCompleted)
-      return isVi ? 'Hoan thanh' : 'Completed'
+      return isVi ? 'Hoàn thành' : 'Completed'
     if (row.progressPercentage > 0)
       return `${row.progressPercentage}%`
-    return isVi ? 'Da xem' : 'Viewed'
+    return isVi ? 'Đã xem' : 'Viewed'
   }
 
   const buildContentUrl = (row: LearningHistoryEntry): string | null => {
@@ -916,14 +916,14 @@ export const LearningHistoryPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Learning History"
-      titleVi="Lich su hoc tap"
+      titleVi="Lịch sử học tập"
       subtitleEn="Your timeline of completed activities"
-      subtitleVi="Dong thoi gian cac hoat dong da hoan thanh"
+      subtitleVi="Dòng thời gian các hoạt động đã hoàn thành"
     >
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm text-on-surface-variant">
-            {isVi ? 'Cac hoat dong hoc tap gan day cua ban.' : 'Your recent learning activities.'}
+            {isVi ? 'Các hoạt động học tập gần đây của bạn.' : 'Your recent learning activities.'}
           </p>
           <Button
             variant="ghost"
@@ -932,7 +932,7 @@ export const LearningHistoryPage: React.FC = () => {
             className="text-error hover:bg-error/10"
           >
             <MaterialIcon icon="delete_sweep" size="xs" className="mr-1" />
-            {isVi ? 'Xoa lich su' : 'Purge History'}
+            {isVi ? 'Xóa lịch sử' : 'Purge History'}
           </Button>
         </div>
 
@@ -940,7 +940,7 @@ export const LearningHistoryPage: React.FC = () => {
           <Card className="border border-error/30 bg-error/5 p-4">
             <p className="mb-3 text-sm font-medium text-error">
               {isVi
-                ? 'Hanh dong nay se xoa vinh vien toan bo lich su hoc tap va ket qua quiz. Khong the hoan tac!'
+                ? 'Hành động này sẽ xóa vĩnh viễn toàn bộ lịch sử học tập và kết quả quiz. Không thể hoàn tác!'
                 : 'This will permanently delete all learning history and quiz results. This action cannot be undone!'}
             </p>
             <div className="flex gap-2">
@@ -950,10 +950,10 @@ export const LearningHistoryPage: React.FC = () => {
                 disabled={isPurging}
                 className="bg-error text-white hover:bg-error/90"
               >
-                {isPurging ? (isVi ? 'Dang xoa...' : 'Purging…') : (isVi ? 'Xac nhan xoa' : 'Confirm Purge')}
+                {isPurging ? (isVi ? 'Đang xóa...' : 'Purging…') : (isVi ? 'Xác nhận xóa' : 'Confirm Purge')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowPurgeConfirm(false)} disabled={isPurging}>
-                {isVi ? 'Huy' : 'Cancel'}
+                {isVi ? 'Hủy' : 'Cancel'}
               </Button>
             </div>
           </Card>
@@ -964,7 +964,7 @@ export const LearningHistoryPage: React.FC = () => {
 
           {!isLoading && rows.length === 0 && (
             <p className="py-4 text-center text-sm text-on-surface-variant">
-              {isVi ? 'Chua co hoat dong nao.' : 'No activity yet.'}
+              {isVi ? 'Chưa có hoạt động nào.' : 'No activity yet.'}
             </p>
           )}
 
@@ -973,9 +973,9 @@ export const LearningHistoryPage: React.FC = () => {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-outline-variant">
-                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Hoat dong' : 'Activity'}</th>
-                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Thoi gian' : 'Time'}</th>
-                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Ket qua' : 'Result'}</th>
+                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Hoạt động' : 'Activity'}</th>
+                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Thời gian' : 'Time'}</th>
+                    <th className="py-3 text-left text-sm font-semibold">{isVi ? 'Kết quả' : 'Result'}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1011,7 +1011,7 @@ export const LearningHistoryPage: React.FC = () => {
                                 className="ml-auto inline-flex items-center gap-1 rounded-full border border-outline-variant px-2.5 py-0.5 text-xs text-on-surface-variant hover:bg-surface-container-low"
                               >
                                 <MaterialIcon icon="open_in_new" size="xs" />
-                                {isVi ? 'Xem lai' : 'View again'}
+                                {isVi ? 'Xem lại' : 'View again'}
                               </Link>
                             )}
                           </div>
@@ -1030,14 +1030,14 @@ export const LearningHistoryPage: React.FC = () => {
                             )}
                             {review === null && (
                               <p className="py-2 text-center text-sm text-error">
-                                {isVi ? 'Khong tai duoc ket qua.' : 'Unable to load review.'}
+                                {isVi ? 'Không tải được kết quả.' : 'Unable to load review.'}
                               </p>
                             )}
                             {review && (
                               <div className="space-y-3 rounded-xl bg-surface-container-low p-4">
                                 <div className="flex items-center justify-between">
                                   <p className="text-sm font-semibold text-on-surface">
-                                    {isVi ? `Diem: ${review.scorePercentage}%` : `Score: ${review.scorePercentage}%`}
+                                    {isVi ? `Điểm: ${review.scorePercentage}%` : `Score: ${review.scorePercentage}%`}
                                   </p>
                                   <Link
                                     to={`/user/quiz?quizId=${review.quizId}`}
@@ -1045,7 +1045,7 @@ export const LearningHistoryPage: React.FC = () => {
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary hover:bg-primary/90"
                                   >
                                     <MaterialIcon icon="replay" size="xs" />
-                                    {isVi ? 'Lam lai' : 'Retake'}
+                                    {isVi ? 'Làm lại' : 'Retake'}
                                   </Link>
                                 </div>
                                 {review.answers.map((answer, aIdx) => (
@@ -1055,13 +1055,13 @@ export const LearningHistoryPage: React.FC = () => {
                                     </p>
                                     <p className={`text-sm ${answer.isCorrect ? 'text-[#22c55e]' : 'text-error'}`}>
                                       {answer.isCorrect
-                                        ? (isVi ? '✓ Dung: ' : '✓ Correct: ')
-                                        : (isVi ? '✗ Ban chon: ' : '✗ Your answer: ')}
+                                        ? (isVi ? '✓ Đúng: ' : '✓ Correct: ')
+                                        : (isVi ? '✗ Bạn chọn: ' : '✗ Your answer: ')}
                                       {answer.selectedOptionText}
                                     </p>
                                     {!answer.isCorrect && (
                                       <p className="text-sm text-[#22c55e]">
-                                        {isVi ? '✓ Dap an dung: ' : '✓ Correct answer: '}
+                                        {isVi ? '✓ Đáp án đúng: ' : '✓ Correct answer: '}
                                         {answer.correctOptionText}
                                       </p>
                                     )}
@@ -1072,7 +1072,7 @@ export const LearningHistoryPage: React.FC = () => {
                                 ))}
                                 {review.answers.length === 0 && (
                                   <p className="text-center text-sm text-on-surface-variant">
-                                    {isVi ? 'Khong co cau tra loi nao duoc luu.' : 'No answers recorded for this attempt.'}
+                                    {isVi ? 'Không có câu trả lời nào được lưu.' : 'No answers recorded for this attempt.'}
                                   </p>
                                 )}
                               </div>
@@ -1129,9 +1129,9 @@ export const OrganizationListPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Organizations"
-      titleVi="To chuc"
+      titleVi="Tổ chức"
       subtitleEn="Join an organization, then browse its courses to request enrollment"
-      subtitleVi="Tham gia to chuc, sau do xem khoa hoc de yeu cau ghi danh"
+      subtitleVi="Tham gia tổ chức, sau đó xem khóa học để yêu cầu ghi danh"
     >
       {/* Flow guidance — clarifies join-org vs enroll-course (spec §4.2). */}
       <div
@@ -1142,13 +1142,13 @@ export const OrganizationListPage: React.FC = () => {
           <MaterialIcon icon="info" className="mt-0.5 text-primary" />
           <p className="text-sm text-on-surface-variant">
             {isVi
-              ? 'Buoc 1: Tham gia mot to chuc. Buoc 2: Vao "Kham pha khoa hoc" de yeu cau ghi danh; quan tri to chuc se duyet.'
+              ? 'Bước 1: Tham gia một tổ chức. Bước 2: Vào "Khám phá khóa học" để yêu cầu ghi danh; quản trị tổ chức sẽ duyệt.'
               : 'Step 1: Join an organization. Step 2: go to "Browse Courses" to request enrollment; an OrgAdmin approves it.'}
           </p>
         </div>
         <Link to="/user/courses/browse">
           <Button size="sm" variant="secondary" data-testid="org-browse-courses-cta">
-            {isVi ? 'Kham pha khoa hoc' : 'Browse Courses'}
+            {isVi ? 'Khám phá khóa học' : 'Browse Courses'}
           </Button>
         </Link>
       </div>
@@ -1163,7 +1163,7 @@ export const OrganizationListPage: React.FC = () => {
       )}
       {!isLoading && !error && organizations.length === 0 && (
         <p className="text-sm text-on-surface-variant text-center py-4" data-testid="org-list-empty">
-          {isVi ? 'Chua co to chuc nao.' : 'No organizations yet.'}
+          {isVi ? 'Chưa có tổ chức nào.' : 'No organizations yet.'}
         </p>
       )}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3" data-testid="org-list">
@@ -1176,22 +1176,22 @@ export const OrganizationListPage: React.FC = () => {
               </div>
               <h3 className="mb-2 font-bold text-on-surface" data-testid="org-card-name">{org.name}</h3>
               <p className="mb-4 text-sm text-on-surface-variant">
-                {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+                {isVi ? `${org.memberCount} thành viên` : `${org.memberCount} members`}
               </p>
               {joined ? (
                 <div className="space-y-2">
                   <Badge variant="secondary" size="sm" data-testid="org-joined-badge">
-                    {isVi ? 'Da tham gia' : 'Joined'}
+                    {isVi ? 'Đã tham gia' : 'Joined'}
                   </Badge>
                   <Link to="/user/courses/browse" className="block">
                     <Button size="sm" variant="secondary" className="w-full" data-testid="org-card-browse-courses">
-                      {isVi ? 'Xem khoa hoc' : 'Browse courses'}
+                      {isVi ? 'Xem khóa học' : 'Browse courses'}
                     </Button>
                   </Link>
                 </div>
               ) : requestedIds.has(org.id) ? (
                 <Badge variant="warning" size="sm" data-testid="org-pending-badge">
-                  {isVi ? 'Cho duyet' : 'Pending approval'}
+                  {isVi ? 'Chờ duyệt' : 'Pending approval'}
                 </Badge>
               ) : (
                 <Button
@@ -1202,8 +1202,8 @@ export const OrganizationListPage: React.FC = () => {
                   data-testid="org-join-btn"
                 >
                   {pendingJoin === org.id
-                    ? (isVi ? 'Dang xu ly...' : 'Requesting...')
-                    : (isVi ? 'Yeu cau tham gia' : 'Request to Join')}
+                    ? (isVi ? 'Đang xử lý...' : 'Requesting...')
+                    : (isVi ? 'Yêu cầu tham gia' : 'Request to Join')}
                 </Button>
               )}
             </Card>
@@ -1381,9 +1381,9 @@ export const SpecificCoursePage: React.FC = () => {
   return (
     <UserShell
       titleEn="Specific Course"
-      titleVi="Chi tiet khoa hoc"
+      titleVi="Chi tiết khóa học"
       subtitleEn="Detailed view of a selected course"
-      subtitleVi="Thong tin chi tiet cua khoa hoc duoc chon"
+      subtitleVi="Thông tin chi tiết của khóa học được chọn"
     >
       <div className="space-y-8">
         {isLoading && (
@@ -1767,14 +1767,14 @@ export const UserQuizInterfacePage: React.FC = () => {
     })
 
   const validateEdit = (): string | null => {
-    if (!titleDraft.trim()) return isVi ? 'Vui long nhap tieu de quiz.' : 'Quiz title is required.'
-    if (editQuestions.length === 0) return isVi ? 'Can it nhat 1 cau hoi.' : 'At least one question is required.'
+    if (!titleDraft.trim()) return isVi ? 'Vui lòng nhập tiêu đề quiz.' : 'Quiz title is required.'
+    if (editQuestions.length === 0) return isVi ? 'Cần ít nhất 1 câu hỏi.' : 'At least one question is required.'
     for (let i = 0; i < editQuestions.length; i++) {
       const q = editQuestions[i]
-      if (!q.questionText.trim()) return isVi ? `Cau ${i + 1}: thieu noi dung.` : `Question ${i + 1}: text required.`
-      if (q.options.length < 2) return isVi ? `Cau ${i + 1}: can it nhat 2 lua chon.` : `Question ${i + 1}: at least 2 options.`
-      if (q.options.some((o) => !o.text.trim())) return isVi ? `Cau ${i + 1}: co lua chon bo trong.` : `Question ${i + 1}: empty option text.`
-      if (!q.options.some((o) => o.isCorrect)) return isVi ? `Cau ${i + 1}: chua chon dap an dung.` : `Question ${i + 1}: pick a correct answer.`
+      if (!q.questionText.trim()) return isVi ? `Câu ${i + 1}: thiếu nội dung.` : `Question ${i + 1}: text required.`
+      if (q.options.length < 2) return isVi ? `Câu ${i + 1}: cần ít nhất 2 lựa chọn.` : `Question ${i + 1}: at least 2 options.`
+      if (q.options.some((o) => !o.text.trim())) return isVi ? `Câu ${i + 1}: có lựa chọn bỏ trống.` : `Question ${i + 1}: empty option text.`
+      if (!q.options.some((o) => o.isCorrect)) return isVi ? `Câu ${i + 1}: chưa chọn đáp án đúng.` : `Question ${i + 1}: pick a correct answer.`
     }
     return null
   }
@@ -1817,12 +1817,12 @@ export const UserQuizInterfacePage: React.FC = () => {
         if (!res.success) throw new Error(res.message || 'Delete failed')
       }
 
-      setEditSuccess(isVi ? 'Da luu quiz.' : 'Quiz saved.')
+      setEditSuccess(isVi ? 'Đã lưu quiz.' : 'Quiz saved.')
       setRemovedIds([])
       await fetchAllQuestions()
       await reloadQuestions()
     } catch (err: any) {
-      setEditError(err?.message || err?.data?.message || (isVi ? 'Khong the luu quiz' : 'Save failed'))
+      setEditError(err?.message || err?.data?.message || (isVi ? 'Không thể lưu quiz' : 'Save failed'))
     } finally { setEditBusy(false) }
   }
 
@@ -1869,9 +1869,9 @@ export const UserQuizInterfacePage: React.FC = () => {
   return (
     <UserShell
       titleEn="Quiz Interface"
-      titleVi="Giao dien bai quiz"
+      titleVi="Giao diện bài quiz"
       subtitleEn="Answer timed questions and submit results"
-      subtitleVi="Tra loi cau hoi tinh gio va nop ket qua"
+      subtitleVi="Trả lời câu hỏi tính giờ và nộp kết quả"
       roleAwareChrome
     >
       {quizInfo && (
@@ -1879,14 +1879,14 @@ export const UserQuizInterfacePage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-on-surface">{quizInfo.title}</h2>
             <p className="text-xs text-on-surface-variant">
-              {allQuestions.length} {isVi ? 'cau hoi' : 'questions'}
-              {quizInfo.timeLimit ? ` • ${quizInfo.timeLimit} ${isVi ? 'phut' : 'min'}` : ''}
+              {allQuestions.length} {isVi ? 'câu hỏi' : 'questions'}
+              {quizInfo.timeLimit ? ` • ${quizInfo.timeLimit} ${isVi ? 'phút' : 'min'}` : ''}
             </p>
           </div>
           {isOwner && (
             <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((v) => !v)} data-testid="quiz-edit-toggle">
               <MaterialIcon icon={editMode ? 'visibility' : 'edit'} size="xs" className="mr-1" />
-              {editMode ? (isVi ? 'Quay lai lam quiz' : 'Back to Take Quiz') : (isVi ? 'Chinh sua quiz' : 'Edit Quiz')}
+              {editMode ? (isVi ? 'Quay lại làm quiz' : 'Back to Take Quiz') : (isVi ? 'Chỉnh sửa quiz' : 'Edit Quiz')}
             </Button>
           )}
         </div>
@@ -1899,19 +1899,19 @@ export const UserQuizInterfacePage: React.FC = () => {
             <div className="grid gap-4 md:grid-cols-[1fr_180px]">
               <div>
                 <label className="mb-1 block text-sm font-semibold text-on-surface">
-                  {isVi ? 'Tieu de quiz' : 'Quiz Title'} <span className="text-red-500">*</span>
+                  {isVi ? 'Tiêu đề quiz' : 'Quiz Title'} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
-                  placeholder={isVi ? 'Vi du: He Mat Troi' : 'e.g., Solar System Basics'}
+                  placeholder={isVi ? 'Ví dụ: Hệ Mặt Trời' : 'e.g., Solar System Basics'}
                   className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-semibold text-on-surface">
-                  {isVi ? 'Gioi han thoi gian (phut)' : 'Time Limit (min)'}
+                  {isVi ? 'Giới hạn thời gian (phút)' : 'Time Limit (min)'}
                 </label>
                 <input
                   type="number"
@@ -1919,7 +1919,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                   value={quizInfo?.timeLimit ?? ''}
                   disabled
                   className="w-full rounded-lg border border-outline-variant bg-surface-container-low px-3 py-2 text-sm text-on-surface-variant"
-                  placeholder={isVi ? 'Khong gioi han' : 'Unlimited'}
+                  placeholder={isVi ? 'Không giới hạn' : 'Unlimited'}
                 />
               </div>
             </div>
@@ -1942,7 +1942,7 @@ export const UserQuizInterfacePage: React.FC = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-on-surface">
-                    {isVi ? 'Cau hoi' : 'Question'} {qIdx + 1}
+                    {isVi ? 'Câu hỏi' : 'Question'} {qIdx + 1}
                   </h3>
                   {editQuestions.length > 1 && (
                     <button
@@ -1951,7 +1951,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                       className="text-xs text-red-600 hover:underline"
                     >
                       <MaterialIcon icon="delete" size="xs" />
-                      <span className="ml-1">{isVi ? 'Xoa' : 'Remove'}</span>
+                      <span className="ml-1">{isVi ? 'Xóa' : 'Remove'}</span>
                     </button>
                   )}
                 </div>
@@ -1959,7 +1959,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                 <textarea
                   value={q.questionText}
                   onChange={(e) => updateQ(qIdx, { questionText: e.target.value })}
-                  placeholder={isVi ? 'Noi dung cau hoi...' : 'Question text...'}
+                  placeholder={isVi ? 'Nội dung câu hỏi...' : 'Question text...'}
                   rows={2}
                   className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
@@ -1973,13 +1973,13 @@ export const UserQuizInterfacePage: React.FC = () => {
                         checked={opt.isCorrect}
                         onChange={() => setCorrect(qIdx, oIdx)}
                         className="h-4 w-4 cursor-pointer"
-                        title={isVi ? 'Danh dau dap an dung' : 'Mark as correct answer'}
+                        title={isVi ? 'Đánh dấu đáp án đúng' : 'Mark as correct answer'}
                       />
                       <input
                         type="text"
                         value={opt.text}
                         onChange={(e) => updateOption(qIdx, oIdx, { text: e.target.value })}
-                        placeholder={isVi ? `Lua chon ${oIdx + 1}` : `Option ${oIdx + 1}`}
+                        placeholder={isVi ? `Lựa chọn ${oIdx + 1}` : `Option ${oIdx + 1}`}
                         className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                       />
                       {q.options.length > 2 && (
@@ -1999,20 +1999,20 @@ export const UserQuizInterfacePage: React.FC = () => {
                       onClick={() => addOption(qIdx)}
                       className="text-xs font-semibold text-primary hover:underline"
                     >
-                      + {isVi ? 'Them lua chon' : 'Add option'}
+                      + {isVi ? 'Thêm lựa chọn' : 'Add option'}
                     </button>
                   )}
                 </div>
 
                 <div>
                   <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
-                    {isVi ? 'Giai thich (tuy chon)' : 'Explanation (optional)'}
+                    {isVi ? 'Giải thích (tùy chọn)' : 'Explanation (optional)'}
                   </label>
                   <input
                     type="text"
                     value={q.explanation}
                     onChange={(e) => updateQ(qIdx, { explanation: e.target.value })}
-                    placeholder={isVi ? 'Giai thich vi sao dap an dung...' : 'Why this answer is correct...'}
+                    placeholder={isVi ? 'Giải thích vì sao đáp án đúng...' : 'Why this answer is correct...'}
                     className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   />
                 </div>
@@ -2023,10 +2023,10 @@ export const UserQuizInterfacePage: React.FC = () => {
           <div className="flex justify-between">
             <Button variant="secondary" onClick={addQuestionItem} disabled={editBusy}>
               <MaterialIcon icon="add" size="xs" />
-              <span className="ml-1">{isVi ? 'Them cau hoi' : 'Add Question'}</span>
+              <span className="ml-1">{isVi ? 'Thêm câu hỏi' : 'Add Question'}</span>
             </Button>
             <Button onClick={() => void saveQuiz()} disabled={editBusy}>
-              {editBusy ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu quiz' : 'Save Quiz')}
+              {editBusy ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu quiz' : 'Save Quiz')}
             </Button>
           </div>
         </div>
@@ -2035,7 +2035,7 @@ export const UserQuizInterfacePage: React.FC = () => {
       {editMode && isOwner ? null : (
       <Card className="p-8">
         {!activeQuizId && !isLoading && !error && (
-          <p className="text-sm text-on-surface-variant">{isVi ? 'Khong tim thay bai quiz nao de lam.' : 'No quiz available for this account yet.'}</p>
+          <p className="text-sm text-on-surface-variant">{isVi ? 'Không tìm thấy bài quiz nào để làm.' : 'No quiz available for this account yet.'}</p>
         )}
 
         {isLoading && <div className="mx-auto h-10 w-10 animate-spin rounded-full border-b-2 border-primary" />}
@@ -2045,9 +2045,9 @@ export const UserQuizInterfacePage: React.FC = () => {
         {!isLoading && !error && result && (
           <div className="space-y-4">
             <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
-              <h3 className="text-xl font-bold text-on-surface">{isVi ? 'Ket qua bai quiz' : 'Quiz Results'}</h3>
+              <h3 className="text-xl font-bold text-on-surface">{isVi ? 'Kết quả bài quiz' : 'Quiz Results'}</h3>
               <p className="mt-1 text-on-surface-variant" data-testid="quiz-play-score">
-                {isVi ? 'Diem so' : 'Score'}: <span className="font-semibold text-on-surface">{result.scorePercentage}%</span> ({result.correctCount}/{result.totalCount})
+                {isVi ? 'Điểm số' : 'Score'}: <span className="font-semibold text-on-surface">{result.scorePercentage}%</span> ({result.correctCount}/{result.totalCount})
               </p>
             </div>
 
@@ -2059,11 +2059,11 @@ export const UserQuizInterfacePage: React.FC = () => {
                       {questionsById.get(item.questionId)?.questionText ?? `#${item.questionId.slice(0, 8)}`}
                     </p>
                     <Badge variant={item.isCorrect ? 'success' : 'warning'} size="sm">
-                      {item.isCorrect ? (isVi ? 'Dung' : 'Correct') : (isVi ? 'Sai' : 'Incorrect')}
+                      {item.isCorrect ? (isVi ? 'Đúng' : 'Correct') : (isVi ? 'Sai' : 'Incorrect')}
                     </Badge>
                   </div>
                   <p className="text-sm text-on-surface-variant">
-                    {isVi ? 'Ban chon' : 'Selected'}: {getOptionText(item.questionId, item.selectedOptionId)} • {isVi ? 'Dap an dung' : 'Correct'}:{' '}
+                    {isVi ? 'Bạn chọn' : 'Selected'}: {getOptionText(item.questionId, item.selectedOptionId)} • {isVi ? 'Đáp án đúng' : 'Correct'}:{' '}
                     {getOptionText(item.questionId, item.correctOptionId)}
                   </p>
                   {item.explanation && <p className="mt-2 text-sm text-on-surface" data-testid="quiz-play-explanation">{item.explanation}</p>}
@@ -2077,11 +2077,11 @@ export const UserQuizInterfacePage: React.FC = () => {
           <>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-on-surface-variant">
-                {isVi ? `Cau ${currentQuestionIndex + 1}/${questions.length}` : `Question ${currentQuestionIndex + 1}/${questions.length}`}
+                {isVi ? `Câu ${currentQuestionIndex + 1}/${questions.length}` : `Question ${currentQuestionIndex + 1}/${questions.length}`}
               </p>
               {remainingSeconds !== null && (
                 <p className="text-sm font-semibold text-on-surface" data-testid="quiz-play-timer">
-                  {isVi ? 'Con lai' : 'Time left'}: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
+                  {isVi ? 'Còn lại' : 'Time left'}: {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, '0')}
                 </p>
               )}
             </div>
@@ -2111,24 +2111,24 @@ export const UserQuizInterfacePage: React.FC = () => {
                 onClick={() => setCurrentQuestionIndex((index) => Math.max(0, index - 1))}
                 disabled={currentQuestionIndex === 0}
               >
-                {isVi ? 'Cau truoc' : 'Previous Question'}
+                {isVi ? 'Câu trước' : 'Previous Question'}
               </Button>
 
               <div className="flex gap-3">
                 {canGoNext ? (
                   <Button onClick={() => setCurrentQuestionIndex((index) => Math.min(questions.length - 1, index + 1))}>
-                    {isVi ? 'Cau tiep theo' : 'Next Question'}
+                    {isVi ? 'Câu tiếp theo' : 'Next Question'}
                   </Button>
                 ) : (
                   <Button onClick={() => void submitQuiz()} disabled={isSubmitting} data-testid="quiz-play-submit">
-                    {isSubmitting ? (isVi ? 'Dang nop...' : 'Submitting...') : (isVi ? 'Nop bai' : 'Submit Quiz')}
+                    {isSubmitting ? (isVi ? 'Đang nộp...' : 'Submitting...') : (isVi ? 'Nộp bài' : 'Submit Quiz')}
                   </Button>
                 )}
               </div>
             </div>
 
             <p className="mt-4 text-xs text-on-surface-variant">
-              {isVi ? 'Da tra loi' : 'Answered'}: {answeredCount}/{questions.length}
+              {isVi ? 'Đã trả lời' : 'Answered'}: {answeredCount}/{questions.length}
             </p>
           </>
         )}
@@ -2271,9 +2271,9 @@ export const VideoLessonPage: React.FC = () => {
   return (
     <UserShell
       titleEn="Video Lesson"
-      titleVi="Bai hoc video"
+      titleVi="Bài học video"
       subtitleEn="Watch lessons and track playback progress"
-      subtitleVi="Xem bai giang video va theo doi tien do"
+      subtitleVi="Xem bài giảng video và theo dõi tiến độ"
     >
       <div className="grid gap-6 lg:grid-cols-12">
         <Card className="p-6 lg:col-span-8">
@@ -2289,7 +2289,7 @@ export const VideoLessonPage: React.FC = () => {
                 referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
               />
-              <h3 className="font-bold text-on-surface">{selectedVideo.title || (isVi ? 'Bai hoc video' : 'Video lesson')}</h3>
+              <h3 className="font-bold text-on-surface">{selectedVideo.title || (isVi ? 'Bài học video' : 'Video lesson')}</h3>
               {selectedVideo.description && <p className="mt-2 text-sm text-on-surface-variant">{selectedVideo.description}</p>}
             </>
           )}
@@ -2300,7 +2300,7 @@ export const VideoLessonPage: React.FC = () => {
                 <MaterialIcon icon="play_circle" className="text-6xl" />
                 <p className="mt-2 text-slate-300">
                   {isVi
-                    ? 'Chon video bang ?videoId=... hoac ?moduleId=...'
+                    ? 'Chọn video bằng ?videoId=... hoặc ?moduleId=...'
                     : 'Load a video with ?videoId=... or list videos with ?moduleId=...'}
                 </p>
               </div>
@@ -2309,7 +2309,7 @@ export const VideoLessonPage: React.FC = () => {
         </Card>
 
         <Card className="p-6 lg:col-span-4">
-          <h4 className="mb-4 font-bold text-on-surface">{isVi ? 'Danh sach video' : 'Video list'}</h4>
+          <h4 className="mb-4 font-bold text-on-surface">{isVi ? 'Danh sách video' : 'Video list'}</h4>
           {error && <p className="mb-3 text-sm text-error">{error}</p>}
 
           <div className="space-y-3">
@@ -2334,7 +2334,7 @@ export const VideoLessonPage: React.FC = () => {
             ))}
 
             {!isLoading && videos.length === 0 && (
-              <p className="text-sm text-on-surface-variant">{isVi ? 'Chua co video nao.' : 'No videos available yet.'}</p>
+              <p className="text-sm text-on-surface-variant">{isVi ? 'Chưa có video nào.' : 'No videos available yet.'}</p>
             )}
           </div>
 

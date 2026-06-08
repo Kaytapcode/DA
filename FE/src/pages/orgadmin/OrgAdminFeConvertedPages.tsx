@@ -55,9 +55,9 @@ export const OrgContentManagementPage: React.FC = () => {
   return (
     <OrgShell
       titleEn="Content Management"
-      titleVi="Quan ly noi dung"
+      titleVi="Quản lý nội dung"
       subtitleEn="View and manage content posted across your organization's courses"
-      subtitleVi="Xem va quan ly noi dung trong cac khoa hoc cua to chuc"
+      subtitleVi="Xem và quản lý nội dung trong các khóa học của tổ chức"
     >
       <GlobalContentList isVi={isVi} />
     </OrgShell>
@@ -99,7 +99,7 @@ export const CourseManagementPage: React.FC = () => {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm(isVi ? 'Xoa khoa hoc nay?' : 'Delete this course?')) return
+    if (!confirm(isVi ? 'Xóa khóa học này?' : 'Delete this course?')) return
     setBusyCourseId(id)
     await deleteCourse(id)
     setBusyCourseId(null)
@@ -108,13 +108,13 @@ export const CourseManagementPage: React.FC = () => {
   return (
     <OrgShell
       titleEn="Course Management"
-      titleVi="Quan ly khoa hoc"
+      titleVi="Quản lý khóa học"
       subtitleEn="Manage publishing, enrollment, and quality"
-      subtitleVi="Quan ly xuat ban, ghi danh va chat luong"
+      subtitleVi="Quản lý xuất bản, ghi danh và chất lượng"
     >
       <div className="flex gap-3">
         <Button data-testid="course-create-toggle-btn" onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? (isVi ? 'Dong' : 'Cancel') : (isVi ? 'Tao khoa hoc' : 'Create Course')}
+          {showCreate ? (isVi ? 'Đóng' : 'Cancel') : (isVi ? 'Tạo khóa học' : 'Create Course')}
         </Button>
       </div>
 
@@ -123,21 +123,21 @@ export const CourseManagementPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               data-testid="course-title-input"
-              label={isVi ? 'Tieu de' : 'Title'}
+              label={isVi ? 'Tiêu đề' : 'Title'}
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={isVi ? 'Vi du: Lap trinh React' : 'e.g. React Programming'}
+              placeholder={isVi ? 'Ví dụ: Lập trình React' : 'e.g. React Programming'}
             />
             <Input
               data-testid="course-code-input"
-              label={isVi ? 'Ma khoa hoc' : 'Course Code'}
+              label={isVi ? 'Mã khóa học' : 'Course Code'}
               value={newCode}
               onChange={(e) => setNewCode(e.target.value)}
               placeholder="CS101"
             />
             <Input
               data-testid="course-description-input"
-              label={isVi ? 'Mo ta' : 'Description'}
+              label={isVi ? 'Mô tả' : 'Description'}
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               className="md:col-span-2"
@@ -145,12 +145,12 @@ export const CourseManagementPage: React.FC = () => {
           </div>
           {!orgId && (
             <p className="mt-3 text-sm text-error">
-              {isVi ? 'Vui long chon mot to chuc truoc.' : 'Select an organization first.'}
+              {isVi ? 'Vui lòng chọn một tổ chức trước.' : 'Select an organization first.'}
             </p>
           )}
           <div className="mt-4 flex justify-end">
             <Button data-testid="course-create-submit-btn" onClick={() => void handleCreate()} disabled={submitting || !orgId || !newTitle.trim()}>
-              {submitting ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Tao' : 'Create')}
+              {submitting ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Tạo' : 'Create')}
             </Button>
           </div>
         </Card>
@@ -168,10 +168,10 @@ export const CourseManagementPage: React.FC = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-outline-variant">
-                  <th className="text-left py-3">{isVi ? 'Khoa hoc' : 'Course'}</th>
-                  <th className="text-left py-3">{isVi ? 'Ma' : 'Code'}</th>
-                  <th className="text-left py-3">{isVi ? 'Mo-dun' : 'Modules'}</th>
-                  <th className="text-left py-3">{isVi ? 'Ngay tao' : 'Created'}</th>
+                  <th className="text-left py-3">{isVi ? 'Khóa học' : 'Course'}</th>
+                  <th className="text-left py-3">{isVi ? 'Mã' : 'Code'}</th>
+                  <th className="text-left py-3">{isVi ? 'Mô-đun' : 'Modules'}</th>
+                  <th className="text-left py-3">{isVi ? 'Ngày tạo' : 'Created'}</th>
                   <th className="py-3" />
                 </tr>
               </thead>
@@ -179,7 +179,7 @@ export const CourseManagementPage: React.FC = () => {
                 {courses.length === 0 && (
                   <tr>
                     <td colSpan={5} className="py-4 text-center text-sm text-on-surface-variant">
-                      {isVi ? 'Chua co khoa hoc nao.' : 'No courses yet.'}
+                      {isVi ? 'Chưa có khóa học nào.' : 'No courses yet.'}
                     </td>
                   </tr>
                 )}
@@ -270,9 +270,9 @@ const ContentRow: React.FC<ContentRowProps> = ({
           <Link
             to={openPath}
             className="inline-flex items-center rounded px-2 text-xs text-primary hover:bg-surface-container-high"
-            title={isVi ? 'Mo noi dung' : 'Open content'}
+            title={isVi ? 'Mở nội dung' : 'Open content'}
           >
-            {isVi ? 'Mo' : 'Open'}
+            {isVi ? 'Mở' : 'Open'}
           </Link>
         )}
         <button
@@ -374,10 +374,10 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
       {open && (
         <div className="p-4 space-y-2 bg-surface">
           {module.contents === undefined && (
-            <p className="text-sm text-on-surface-variant ml-6">{isVi ? 'Dang tai...' : 'Loading...'}</p>
+            <p className="text-sm text-on-surface-variant ml-6">{isVi ? 'Đang tải...' : 'Loading...'}</p>
           )}
           {module.contents?.length === 0 && (
-            <p className="text-sm text-on-surface-variant ml-6">{isVi ? 'Chua co bai hoc' : 'No content yet.'}</p>
+            <p className="text-sm text-on-surface-variant ml-6">{isVi ? 'Chưa có bài học' : 'No content yet.'}</p>
           )}
             {module.contents?.map((content, ci) => (
               <ContentRow
@@ -397,7 +397,7 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
             className="ml-6 mt-2 text-sm text-primary flex items-center gap-1 hover:underline"
           >
             <MaterialIcon icon="add" className="text-sm" />
-            {isVi ? 'Them bai hoc' : 'Add Content'}
+            {isVi ? 'Thêm bài học' : 'Add Content'}
           </button>
         </div>
       )}
@@ -417,7 +417,7 @@ const CourseEditorPicker: React.FC<{ isVi: boolean; basePath: string; label: str
     setLoading(true)
     apiClient.get<Array<{ id: string; title: string; courseCode?: string | null }>>('/courses?pageIndex=0&pageSize=100')
       .then((res: any) => { setCourses(res.data ?? []) })
-      .catch(() => setError(isVi ? 'Khong the tai danh sach khoa hoc.' : 'Failed to load courses.'))
+      .catch(() => setError(isVi ? 'Không thể tải danh sách khóa học.' : 'Failed to load courses.'))
       .finally(() => setLoading(false))
   }, [isVi])
 
@@ -425,13 +425,13 @@ const CourseEditorPicker: React.FC<{ isVi: boolean; basePath: string; label: str
     <Card className="p-6" data-testid="curriculum-course-picker">
       <h3 className="mb-1 font-bold text-on-surface">{label}</h3>
       <p className="mb-4 text-sm text-on-surface-variant">
-        {isVi ? 'Chon mot khoa hoc ben duoi.' : 'Select one of your organization’s courses below.'}
+        {isVi ? 'Chọn một khóa học bên dưới.' : 'Select one of your organization’s courses below.'}
       </p>
       {loading && <div className="flex justify-center py-6"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>}
       {error && <p className="text-sm text-error">{error}</p>}
       {!loading && !error && courses.length === 0 && (
         <p className="text-sm text-on-surface-variant" data-testid="curriculum-no-courses">
-          {isVi ? 'Chua co khoa hoc nao. Tao khoa hoc o muc Quan ly khoa hoc.' : 'No courses yet. Create one in Course Management first.'}
+          {isVi ? 'Chưa có khóa học nào. Tạo khóa học ở mục Quản lý khóa học.' : 'No courses yet. Create one in Course Management first.'}
         </p>
       )}
       {!loading && courses.length > 0 && (
@@ -531,15 +531,15 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
   return (
     <OrgShell
       titleEn="Course Editor - Curriculum"
-      titleVi="Trinh sua khoa hoc - Chuong trinh"
+      titleVi="Trình sửa khóa học - Chương trình"
       subtitleEn="Organize modules, lessons, and ordering"
-      subtitleVi="Sap xep module, bai hoc va thu tu"
+      subtitleVi="Sắp xếp module, bài học và thứ tự"
     >
       {!courseId && (
         <CourseEditorPicker
           isVi={isVi}
           basePath="/admin/editor/curriculum"
-          label={isVi ? 'Chon khoa hoc de chinh sua chuong trinh' : 'Pick a course to edit its curriculum'}
+          label={isVi ? 'Chọn khóa học để chỉnh sửa chương trình' : 'Pick a course to edit its curriculum'}
         />
       )}
 
@@ -582,18 +582,18 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                   auto-link back into this module on save. */}
               {addingContentForModule && (
                 <Card className="p-4 border-primary space-y-3" data-testid="content-add-panel">
-                  <p className="font-semibold text-sm">{isVi ? 'Tao noi dung moi cho module' : 'Create new content for this module'}</p>
+                  <p className="font-semibold text-sm">{isVi ? 'Tạo nội dung mới cho module' : 'Create new content for this module'}</p>
                   <p className="text-xs text-on-surface-variant">
                     {isVi
-                      ? 'Chon loai noi dung — ban se tao moi giong het luong nguoi dung tu tao, roi tu dong them vao module.'
+                      ? 'Chọn loại nội dung — bạn sẽ tạo mới giống hệt luồng người dùng tự tạo, rồi tự động thêm vào module.'
                       : 'Pick a type — you create it through the same flow a user uses, then it is added to this module automatically.'}
                   </p>
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {([
-                      { key: 'PDF', icon: 'picture_as_pdf', en: 'Document', vi: 'Tai lieu' },
+                      { key: 'PDF', icon: 'picture_as_pdf', en: 'Document', vi: 'Tài liệu' },
                       { key: 'VIDEO', icon: 'play_circle', en: 'Video', vi: 'Video' },
                       { key: 'QUIZ', icon: 'quiz', en: 'Quiz', vi: 'Quiz' },
-                      { key: 'FLASHCARD', icon: 'style', en: 'Flashcards', vi: 'Bo the' },
+                      { key: 'FLASHCARD', icon: 'style', en: 'Flashcards', vi: 'Bộ thẻ' },
                     ] as const).map((t) => (
                       <button
                         key={t.key}
@@ -607,7 +607,7 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                     ))}
                   </div>
                   <Button size="sm" variant="secondary" onClick={() => setAddingContentForModule(null)}>
-                    {isVi ? 'Huy' : 'Cancel'}
+                    {isVi ? 'Hủy' : 'Cancel'}
                   </Button>
                 </Card>
               )}
@@ -623,12 +623,12 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
               {/* Add Module */}
               {addingModule ? (
                 <Card className="p-4 border-primary space-y-3">
-                  <p className="font-semibold text-sm">{isVi ? 'Them module moi' : 'Add New Module'}</p>
+                  <p className="font-semibold text-sm">{isVi ? 'Thêm module mới' : 'Add New Module'}</p>
                   <Input
                     data-testid="module-title-input"
                     value={newModuleTitle}
                     onChange={(e) => setNewModuleTitle(e.target.value)}
-                    placeholder={isVi ? 'Ten module (de trong se la "Topic N")' : 'Module title (blank → "Topic N")'}
+                    placeholder={isVi ? 'Tên module (để trống sẽ là "Topic N")' : 'Module title (blank → "Topic N")'}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddModule()}
                   />
                   {/* Server/validation errors are surfaced (no more silent failure). */}
@@ -639,10 +639,10 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                       data-testid="module-add-btn"
                       onClick={handleAddModule}
                     >
-                      {isVi ? 'Them' : 'Add'}
+                      {isVi ? 'Thêm' : 'Add'}
                     </Button>
                     <Button size="sm" variant="secondary" onClick={() => setAddingModule(false)}>
-                      {isVi ? 'Huy' : 'Cancel'}
+                      {isVi ? 'Hủy' : 'Cancel'}
                     </Button>
                   </div>
                 </Card>
@@ -653,7 +653,7 @@ export const CourseEditorCurriculumTabPage: React.FC = () => {
                   className="w-full py-3 rounded-lg border-2 border-dashed border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
                 >
                   <MaterialIcon icon="add" />
-                  {isVi ? 'Them module moi' : 'Add Module'}
+                  {isVi ? 'Thêm module mới' : 'Add Module'}
                 </button>
               )}
             </div>
@@ -727,7 +727,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   }
 
   const handleRemove = async (e: CourseEnrollment) => {
-    if (!confirm(isVi ? 'Go bo nguoi nay khoi khoa hoc?' : 'Remove this user from the course?')) return
+    if (!confirm(isVi ? 'Gỡ bỏ người này khỏi khóa học?' : 'Remove this user from the course?')) return
     setBusyUserId(e.userId)
     await remove(e.userId)
     setBusyUserId(null)
@@ -754,15 +754,15 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   return (
     <OrgShell
       titleEn="Course Editor - Member Roles"
-      titleVi="Trinh sua khoa hoc - Vai tro thanh vien"
+      titleVi="Trình sửa khóa học - Vai trò thành viên"
       subtitleEn="Assign Teacher / Student roles per course"
-      subtitleVi="Gan vai tro Teacher / Student cho tung khoa hoc"
+      subtitleVi="Gán vai trò Teacher / Student cho từng khóa học"
     >
       {!courseId && (
         <CourseEditorPicker
           isVi={isVi}
           basePath="/admin/editor/member-roles"
-          label={isVi ? 'Chon khoa hoc de quan ly thanh vien' : 'Pick a course to manage its members'}
+          label={isVi ? 'Chọn khóa học để quản lý thành viên' : 'Pick a course to manage its members'}
         />
       )}
 
@@ -777,18 +777,18 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
       {courseId && (
         <Card className="p-6">
           <h3 className="mb-4 font-bold text-on-surface">
-            {isVi ? 'Them nguoi vao khoa hoc' : 'Enroll a member'}
+            {isVi ? 'Thêm người vào khóa học' : 'Enroll a member'}
           </h3>
           {isLoadingMembers && (
             <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-3">
               <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
-              {isVi ? 'Dang tai danh sach thanh vien...' : 'Loading org members...'}
+              {isVi ? 'Đang tải danh sách thành viên...' : 'Loading org members...'}
             </div>
           )}
           {!isLoadingMembers && orgMembers.length > 0 && (
             <div className="mb-3 space-y-2">
               <Input
-                placeholder={isVi ? 'Tim thanh vien...' : 'Search org members...'}
+                placeholder={isVi ? 'Tìm thành viên...' : 'Search org members...'}
                 value={memberSearch}
                 onChange={(e) => { setMemberSearch(e.target.value); setSelectedMember(null) }}
               />
@@ -796,7 +796,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                 <div className="max-h-40 overflow-y-auto rounded-lg border border-outline-variant">
                   {filteredMembers.length === 0 ? (
                     <p className="px-4 py-3 text-sm text-on-surface-variant">
-                      {isVi ? 'Khong tim thay.' : 'No match.'}
+                      {isVi ? 'Không tìm thấy.' : 'No match.'}
                     </p>
                   ) : (
                     filteredMembers.map((m) => (
@@ -818,7 +818,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
           )}
           {!isLoadingMembers && orgMembers.length === 0 && (
             <p className="mb-3 text-sm text-on-surface-variant">
-              {isVi ? 'Chua co thanh vien nao trong to chuc.' : 'No org members yet. Add members on the Members page first.'}
+              {isVi ? 'Chưa có thành viên nào trong tổ chức.' : 'No org members yet. Add members on the Members page first.'}
             </p>
           )}
           <div className="flex flex-wrap gap-3 items-center">
@@ -834,7 +834,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                 data-testid="enrollment-userid-input"
                 value={newUserId}
                 onChange={(e) => setNewUserId(e.target.value)}
-                placeholder={isVi ? 'User ID (UUID) — tu nhap neu can' : 'User ID (UUID) — manual entry'}
+                placeholder={isVi ? 'User ID (UUID) — tự nhập nếu cần' : 'User ID (UUID) — manual entry'}
                 className="flex-1 min-w-[200px]"
               />
             )} */}
@@ -852,7 +852,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
               onClick={() => void handleAdd()}
               disabled={submitting || (!selectedMember && !newUserId.trim())}
             >
-              {submitting ? (isVi ? 'Dang them...' : 'Adding...') : (isVi ? 'Them' : 'Enroll')}
+              {submitting ? (isVi ? 'Đang thêm...' : 'Adding...') : (isVi ? 'Thêm' : 'Enroll')}
             </Button>
           </div>
         </Card>
@@ -861,20 +861,20 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
       {courseId && (
         <Card className="p-6" data-testid="enrollment-requests-card">
           <h3 className="mb-4 font-bold text-on-surface">
-            {isVi ? 'Yeu cau ghi danh dang cho' : 'Pending enrollment requests'}
+            {isVi ? 'Yêu cầu ghi danh đang chờ' : 'Pending enrollment requests'}
             {pendingRequests.length > 0 && (
               <Badge variant="warning" size="sm" className="ml-2">{pendingRequests.length}</Badge>
             )}
           </h3>
           {!isLoading && pendingRequests.length === 0 && (
             <p className="py-2 text-sm text-on-surface-variant">
-              {isVi ? 'Khong co yeu cau nao dang cho duyet.' : 'No pending requests.'}
+              {isVi ? 'Không có yêu cầu nào đang chờ duyệt.' : 'No pending requests.'}
             </p>
           )}
           <div className="space-y-2">
             {pendingRequests.map((e) => (
               <div key={e.id} data-testid={`enrollment-request-${e.userId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-warning/5 border border-warning/30 p-3">
-                <Badge variant="warning" size="sm">{isVi ? 'Dang cho' : 'Pending'}</Badge>
+                <Badge variant="warning" size="sm">{isVi ? 'Đang chờ' : 'Pending'}</Badge>
                 <span className="text-sm font-medium text-on-surface" title={e.userId}>{e.username ?? e.userId}</span>
                 <div className="ml-auto flex gap-2">
                   <Button
@@ -883,7 +883,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                     onClick={() => void handleApprove(e)}
                     disabled={busyUserId === e.userId}
                   >
-                    {isVi ? 'Duyet' : 'Approve'}
+                    {isVi ? 'Duyệt' : 'Approve'}
                   </Button>
                   <Button
                     size="sm"
@@ -892,7 +892,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                     onClick={() => void handleReject(e)}
                     disabled={busyUserId === e.userId}
                   >
-                    {isVi ? 'Tu choi' : 'Reject'}
+                    {isVi ? 'Từ chối' : 'Reject'}
                   </Button>
                 </div>
               </div>
@@ -904,7 +904,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
       {courseId && (
         <Card className="p-6">
           <h3 className="mb-4 font-bold text-on-surface">
-            {isVi ? 'Danh sach ghi danh' : 'Course enrollments'}
+            {isVi ? 'Danh sách ghi danh' : 'Course enrollments'}
           </h3>
           {isLoading && (
             <div className="flex justify-center py-6">
@@ -913,7 +913,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
           )}
           {!isLoading && activeEnrollments.length === 0 && (
             <p className="py-4 text-center text-sm text-on-surface-variant">
-              {isVi ? 'Chua co ai duoc ghi danh.' : 'No one is enrolled yet.'}
+              {isVi ? 'Chưa có ai được ghi danh.' : 'No one is enrolled yet.'}
             </p>
           )}
           {!isLoading && activeEnrollments.length > 0 && (
@@ -968,15 +968,15 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
   return (
     <OrgShell
       titleEn="Organization Directory"
-      titleVi="Danh ba to chuc"
+      titleVi="Danh bạ tổ chức"
       subtitleEn="Browse organizations linked with admin scope"
-      subtitleVi="Duyet danh sach to chuc lien ket pham vi admin"
+      subtitleVi="Duyệt danh sách tổ chức liên kết phạm vi admin"
     >
       <Card className="p-6">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={isVi ? 'Tim to chuc...' : 'Search organizations...'}
+          placeholder={isVi ? 'Tìm tổ chức...' : 'Search organizations...'}
         />
       </Card>
       {isLoading && (
@@ -987,7 +987,7 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
       {/* {error && !isLoading && <p className="text-sm text-error">{error}</p>} */}
       {!isLoading && filtered.length === 0 && !error && (
         <p className="text-sm text-on-surface-variant text-center py-4">
-          {isVi ? 'Khong tim thay to chuc nao.' : 'No organizations found.'}
+          {isVi ? 'Không tìm thấy tổ chức nào.' : 'No organizations found.'}
         </p>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -999,11 +999,11 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-on-surface">{org.name}</h3>
                   <p className="text-xs text-on-surface-variant">
-                    {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+                    {isVi ? `${org.memberCount} thành viên` : `${org.memberCount} members`}
                   </p>
                 </div>
               </div>
-              <Button size="sm">{isVi ? 'Chi tiet' : 'Details'}</Button>
+              <Button size="sm">{isVi ? 'Chi tiết' : 'Details'}</Button>
             </div>
           </Card>
         ))}

@@ -64,11 +64,11 @@ interface VideoSummary {
 }
 
 const filters: Array<{ key: FilterKey; icon: string; labelEn: string; labelVi: string }> = [
-	{ key: 'ALL', icon: 'apps', labelEn: 'All Content', labelVi: 'Tat ca' },
+	{ key: 'ALL', icon: 'apps', labelEn: 'All Content', labelVi: 'Tất cả' },
 	{ key: 'VIDEO', icon: 'movie', labelEn: 'Videos', labelVi: 'Video' },
 	{ key: 'QUIZ', icon: 'quiz', labelEn: 'Quizzes', labelVi: 'Quiz' },
-	{ key: 'DOC', icon: 'description', labelEn: 'Documents', labelVi: 'Tai lieu' },
-	{ key: 'CARDS', icon: 'style', labelEn: 'Flashcards', labelVi: 'The ghi nho' },
+	{ key: 'DOC', icon: 'description', labelEn: 'Documents', labelVi: 'Tài liệu' },
+	{ key: 'CARDS', icon: 'style', labelEn: 'Flashcards', labelVi: 'Thẻ ghi nhớ' },
 ]
 
 function formatBytes(bytes?: number) {
@@ -109,28 +109,28 @@ export const UserContentLibraryPage: React.FC = () => {
 		if (docRes.status === 'fulfilled' && docRes.value.success && docRes.value.data) {
 			setDocuments(docRes.value.data)
 		} else if (docRes.status === 'rejected') {
-			errs.push(isVi ? 'Khong tai duoc danh sach tai lieu.' : 'Unable to load documents.')
+			errs.push(isVi ? 'Không tải được danh sách tài liệu.' : 'Unable to load documents.')
 			setDocuments([])
 		}
 
 		if (quizRes.status === 'fulfilled' && quizRes.value.success && quizRes.value.data) {
 			setQuizzes(quizRes.value.data)
 		} else if (quizRes.status === 'rejected') {
-			errs.push(isVi ? 'Khong tai duoc danh sach quiz.' : 'Unable to load quizzes.')
+			errs.push(isVi ? 'Không tải được danh sách quiz.' : 'Unable to load quizzes.')
 			setQuizzes([])
 		}
 
 		if (deckRes.status === 'fulfilled' && deckRes.value.success && deckRes.value.data) {
 			setDecks(deckRes.value.data)
 		} else if (deckRes.status === 'rejected') {
-			errs.push(isVi ? 'Khong tai duoc danh sach the ghi nho.' : 'Unable to load decks.')
+			errs.push(isVi ? 'Không tải được danh sách thẻ ghi nhớ.' : 'Unable to load decks.')
 			setDecks([])
 		}
 
 		if (videoRes.status === 'fulfilled' && videoRes.value.success && videoRes.value.data) {
 			setVideos(videoRes.value.data)
 		} else if (videoRes.status === 'rejected') {
-			errs.push(isVi ? 'Khong tai duoc danh sach video.' : 'Unable to load videos.')
+			errs.push(isVi ? 'Không tải được danh sách video.' : 'Unable to load videos.')
 			setVideos([])
 		}
 
@@ -227,10 +227,10 @@ export const UserContentLibraryPage: React.FC = () => {
 			contentId: d.contentId,
 			type: 'CARDS',
 			title: d.title,
-			subtitle: `${d.cardCount} ${isVi ? 'the' : 'cards'}`,
+			subtitle: `${d.cardCount} ${isVi ? 'thẻ' : 'cards'}`,
 			statusLabel: d.cardCount > 0
-				? `${d.masteredCount}/${d.cardCount} ${isVi ? 'da nam' : 'mastered'}`
-				: (isVi ? 'Chua co the' : 'No cards yet'),
+				? `${d.masteredCount}/${d.cardCount} ${isVi ? 'đã nắm' : 'mastered'}`
+				: (isVi ? 'Chưa có thẻ' : 'No cards yet'),
 			// Card opens the study/review page; empty decks land in the editor so the user can add cards.
 			href: d.cardCount > 0
 				? `/user/flashcards?deckId=${d.deckId}&contentId=${d.contentId}`
@@ -246,7 +246,7 @@ export const UserContentLibraryPage: React.FC = () => {
 			type: 'VIDEO',
 			title: v.title || (isVi ? 'Video YouTube' : 'YouTube Video'),
 			subtitle: v.youTubeVideoId,
-			statusLabel: isVi ? 'San sang' : 'Ready',
+			statusLabel: isVi ? 'Sẵn sàng' : 'Ready',
 			href: `/user/videos/watch/${v.id}`,
 			createdAt: v.createdAt,
 		}))
@@ -283,10 +283,10 @@ export const UserContentLibraryPage: React.FC = () => {
 				<div className="mx-auto max-w-[1320px] space-y-6">
 					<section className="grid gap-6 border-b border-[#dde3ec] pb-6 lg:grid-cols-[1fr_auto] lg:items-end">
 						<div>
-							<h2 className="text-5xl font-black tracking-[-0.02em] text-[#111b2d] font-headline">{isVi ? 'Thu Vien Hoc Tap' : 'My Learning Library'}</h2>
+							<h2 className="text-5xl font-black tracking-[-0.02em] text-[#111b2d] font-headline">{isVi ? 'Thư Viện Học Tập' : 'My Learning Library'}</h2>
 							<p className="mt-2 text-base text-[#60708a]">
 								{isVi
-									? 'Quan ly noi dung hoc tap, theo doi tien do va tiep tuc dung luc.'
+									? 'Quản lý nội dung học tập, theo dõi tiến độ và tiếp tục đúng lúc.'
 									: 'Manage your educational content, track progress, and resume where you left off.'}
 							</p>
 						</div>
@@ -294,8 +294,8 @@ export const UserContentLibraryPage: React.FC = () => {
 						<div className="grid grid-cols-4 overflow-hidden rounded-3xl border border-[#dfe5ef] bg-white">
 							{[
 								{ value: stats.quizzes.toString(), labelEn: 'Quizzes', labelVi: 'Quiz' },
-								{ value: stats.decks.toString(), labelEn: 'Decks', labelVi: 'Bo the' },
-								{ value: stats.documents.toString(), labelEn: 'Documents', labelVi: 'Tai lieu' },
+								{ value: stats.decks.toString(), labelEn: 'Decks', labelVi: 'Bộ thẻ' },
+								{ value: stats.documents.toString(), labelEn: 'Documents', labelVi: 'Tài liệu' },
 								{ value: stats.videos.toString(), labelEn: 'Videos', labelVi: 'Video' },
 							].map((stat, index) => (
 								<div key={stat.labelEn} className={`px-6 py-4 text-center ${index < 3 ? 'border-r border-[#e6ecf4]' : ''}`}>
@@ -334,14 +334,14 @@ export const UserContentLibraryPage: React.FC = () => {
 								className="inline-flex items-center gap-2 rounded-lg border border-[#1463ff] bg-white px-4 py-2 text-sm font-semibold text-[#1463ff] transition hover:bg-[#eef4ff]"
 							>
 								<MaterialIcon icon="quiz" size="xs" />
-								<span>{isVi ? 'Tao Quiz' : 'New Quiz'}</span>
+								<span>{isVi ? 'Tạo Quiz' : 'New Quiz'}</span>
 							</Link>
 							<Link
 								to="/user/decks/new"
 								className="inline-flex items-center gap-2 rounded-lg border border-[#1463ff] bg-white px-4 py-2 text-sm font-semibold text-[#1463ff] transition hover:bg-[#eef4ff]"
 							>
 								<MaterialIcon icon="style" size="xs" />
-								<span>{isVi ? 'Tao Bo The' : 'New Deck'}</span>
+								<span>{isVi ? 'Tạo Bộ Thẻ' : 'New Deck'}</span>
 							</Link>
 							<Link
 								to="/user/videos/new"
@@ -357,7 +357,7 @@ export const UserContentLibraryPage: React.FC = () => {
 								className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0f56df]"
 							>
 								<MaterialIcon icon="upload_file" size="xs" />
-								<span>{isVi ? 'Tai len' : 'Upload'}</span>
+								<span>{isVi ? 'Tải lên' : 'Upload'}</span>
 							</button>
 						</div>
 					</section>
@@ -371,11 +371,11 @@ export const UserContentLibraryPage: React.FC = () => {
 					)}
 
 					<section className="space-y-4">
-						<h3 className="text-2xl font-bold text-[#111b2d]">{isVi ? 'Tai lieu cua ban' : 'All Materials'}</h3>
+						<h3 className="text-2xl font-bold text-[#111b2d]">{isVi ? 'Tài liệu của bạn' : 'All Materials'}</h3>
 
 						{loading && (
 							<Card>
-								<p className="text-sm text-on-surface-variant">{isVi ? 'Dang tai...' : 'Loading...'}</p>
+								<p className="text-sm text-on-surface-variant">{isVi ? 'Đang tải...' : 'Loading...'}</p>
 							</Card>
 						)}
 
@@ -385,18 +385,18 @@ export const UserContentLibraryPage: React.FC = () => {
 									<MaterialIcon icon="inbox" size="md" className="text-[#9aa5b5]" />
 									<p className="text-sm text-[#60708a]">
 										{activeFilter === 'ALL'
-											? (isVi ? 'Chua co tai lieu nao. Bat dau bang cach tao Quiz, Bo The hoac tai len tai lieu.' : 'No materials yet. Start by creating a Quiz, Deck, or uploading a Document.')
-											: (isVi ? 'Khong co muc nao trong bo loc nay.' : 'No items in this filter.')}
+											? (isVi ? 'Chưa có tài liệu nào. Bắt đầu bằng cách tạo Quiz, Bộ Thẻ hoặc tải lên tài liệu.' : 'No materials yet. Start by creating a Quiz, Deck, or uploading a Document.')
+											: (isVi ? 'Không có mục nào trong bộ lọc này.' : 'No items in this filter.')}
 									</p>
 									{activeFilter === 'ALL' && (
 										<div className="flex flex-wrap justify-center gap-2 pt-2">
 											<Link to="/user/quizzes/new" className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white">
 												<MaterialIcon icon="add" size="xs" />
-												{isVi ? 'Tao Quiz' : 'Create Quiz'}
+												{isVi ? 'Tạo Quiz' : 'Create Quiz'}
 											</Link>
 											<Link to="/user/decks/new" className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white">
 												<MaterialIcon icon="add" size="xs" />
-												{isVi ? 'Tao Bo The' : 'Create Deck'}
+												{isVi ? 'Tạo Bộ Thẻ' : 'Create Deck'}
 											</Link>
 											<Link to="/user/videos/new" className="inline-flex items-center gap-2 rounded-lg bg-[#1463ff] px-4 py-2 text-sm font-semibold text-white">
 												<MaterialIcon icon="play_circle" size="xs" />
@@ -404,7 +404,7 @@ export const UserContentLibraryPage: React.FC = () => {
 											</Link>
 											<button onClick={() => setIsUploadModalOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-[#1463ff] bg-white px-4 py-2 text-sm font-semibold text-[#1463ff]">
 												<MaterialIcon icon="upload_file" size="xs" />
-												{isVi ? 'Tai len' : 'Upload'}
+												{isVi ? 'Tải lên' : 'Upload'}
 											</button>
 										</div>
 									)}
@@ -447,7 +447,7 @@ export const UserContentLibraryPage: React.FC = () => {
 											{confirmDeleteId === item.id ? (
 												<div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
 													<p className="mb-4 text-center text-sm font-semibold text-red-700">
-														{isVi ? 'Xoa vinh vien muc nay?' : 'Permanently delete this item?'}
+														{isVi ? 'Xoá vĩnh viễn mục này?' : 'Permanently delete this item?'}
 													</p>
 													<div className="flex gap-2">
 														<button
@@ -456,7 +456,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															disabled={isDeleting}
 															className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
 														>
-															{isDeleting ? (isVi ? 'Dang xoa...' : 'Deleting…') : (isVi ? 'Xac nhan xoa' : 'Confirm Delete')}
+															{isDeleting ? (isVi ? 'Đang xoá...' : 'Deleting…') : (isVi ? 'Xác nhận xoá' : 'Confirm Delete')}
 														</button>
 														<button
 															type="button"
@@ -464,7 +464,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															disabled={isDeleting}
 															className="rounded-lg border border-[#d5dde9] bg-white px-4 py-2 text-sm font-semibold text-[#5e6f88] transition hover:bg-[#f0f4f9]"
 														>
-															{isVi ? 'Huy' : 'Cancel'}
+															{isVi ? 'Huỷ' : 'Cancel'}
 														</button>
 													</div>
 												</div>
@@ -472,7 +472,7 @@ export const UserContentLibraryPage: React.FC = () => {
 												<div className="flex min-h-[220px] flex-col rounded-2xl border border-[#dde3ec] bg-white p-4 shadow-sm">
 													<div className="mb-3 flex items-center justify-between">
 														<p className="text-sm font-semibold text-[#111b2d]">
-															{isVi ? 'Them vao bo suu tap' : 'Add to collection'}
+															{isVi ? 'Thêm vào bộ sưu tập' : 'Add to collection'}
 														</p>
 														<button
 															type="button"
@@ -490,14 +490,14 @@ export const UserContentLibraryPage: React.FC = () => {
 														<div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
 															<MaterialIcon icon="folder_off" size="sm" className="text-[#9aa5b5]" />
 															<p className="text-xs text-[#60708a]">
-																{isVi ? 'Chua co bo suu tap nao.' : 'No collections yet.'}
+																{isVi ? 'Chưa có bộ sưu tập nào.' : 'No collections yet.'}
 															</p>
 															<Link
 																to="/user/collections"
 																className="text-xs font-semibold text-[#1463ff] hover:underline"
 																onClick={() => setAddPickerItemId(null)}
 															>
-																{isVi ? 'Tao bo suu tap' : 'Create one'}
+																{isVi ? 'Tạo bộ sưu tập' : 'Create one'}
 															</Link>
 														</div>
 													) : (
@@ -533,7 +533,7 @@ export const UserContentLibraryPage: React.FC = () => {
 																type="button"
 																onClick={(e) => void handleOpenPicker(item, e)}
 																className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-[#1463ff] hover:text-white"
-																title={isVi ? 'Them vao bo suu tap' : 'Add to collection'}
+																title={isVi ? 'Thêm vào bộ sưu tập' : 'Add to collection'}
 															>
 																<MaterialIcon icon="bookmark_add" size="xs" />
 															</button>
@@ -542,7 +542,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															type="button"
 															onClick={(e) => { e.preventDefault(); setAddPickerItemId(null); setConfirmDeleteId(item.id) }}
 															className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
-															title={isVi ? 'Xoa' : 'Delete'}
+															title={isVi ? 'Xoá' : 'Delete'}
 														>
 															<MaterialIcon icon="delete" size="xs" />
 														</button>

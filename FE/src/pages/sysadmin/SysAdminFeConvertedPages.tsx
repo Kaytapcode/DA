@@ -51,9 +51,9 @@ export const GlobalContentPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Global Content"
-      titleVi="Noi dung toan cuc"
+      titleVi="Nội dung toàn cục"
       subtitleEn="View and remove any content across the platform (including in-course content)"
-      subtitleVi="Xem va xoa moi noi dung tren nen tang (ke ca noi dung trong khoa hoc)"
+      subtitleVi="Xem và xóa mọi nội dung trên nền tảng (kể cả nội dung trong khóa học)"
     >
       <GlobalContentList isVi={isVi} />
     </SysShell>
@@ -120,9 +120,9 @@ export const GlobalContentCoursesPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Global Content Courses"
-      titleVi="Noi dung khoa hoc toan cuc"
+      titleVi="Nội dung khóa học toàn cục"
       subtitleEn="Govern content quality across all organizations"
-      subtitleVi="Quan tri chat luong noi dung tren toan he thong"
+      subtitleVi="Quản trị chất lượng nội dung trên toàn hệ thống"
     >
       <Card className="p-6">
         {isLoading && (
@@ -133,11 +133,11 @@ export const GlobalContentCoursesPage: React.FC = () => {
         {/* {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>} */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Tong khoa hoc' : 'Total Courses'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Tổng khóa học' : 'Total Courses'}</p>
             <p className="text-2xl font-bold">{stat(data.content?.totalCourses)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Mo-dun' : 'Modules'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Mô-đun' : 'Modules'}</p>
             <p className="text-2xl font-bold">{stat(data.content?.totalModules)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
@@ -145,7 +145,7 @@ export const GlobalContentCoursesPage: React.FC = () => {
             <p className="text-2xl font-bold">{stat(data.content?.totalQuizzes)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Bo the' : 'Decks'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Bộ thẻ' : 'Decks'}</p>
             <p className="text-2xl font-bold">{stat(data.content?.totalFlashcardDecks)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
@@ -153,15 +153,15 @@ export const GlobalContentCoursesPage: React.FC = () => {
             <p className="text-2xl font-bold">{stat(data.content?.totalVideos)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Tai lieu' : 'Documents'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Tài liệu' : 'Documents'}</p>
             <p className="text-2xl font-bold">{stat(data.content?.totalDocuments)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Luot thi' : 'Quiz Attempts'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Lượt thi' : 'Quiz Attempts'}</p>
             <p className="text-2xl font-bold">{stat(data.content?.totalQuizAttempts)}</p>
           </div>
           <div className="p-4 rounded-lg bg-surface-container-low">
-            <p className="text-sm text-on-surface-variant">{isVi ? 'Tong to chuc' : 'Organizations'}</p>
+            <p className="text-sm text-on-surface-variant">{isVi ? 'Tổng tổ chức' : 'Organizations'}</p>
             <p className="text-2xl font-bold">{stat(data.orgs?.totalOrgs)}</p>
           </div>
         </div>
@@ -169,9 +169,9 @@ export const GlobalContentCoursesPage: React.FC = () => {
 
       {/* Absolute Deletion — SysAdmin can permanently remove any content platform-wide (spec §6.5). */}
       <Card className="p-6 mt-6" data-testid="sysadmin-moderation-card">
-        <h3 className="mb-1 font-bold text-on-surface">{isVi ? 'Kiem duyet & Xoa vinh vien noi dung' : 'Content Moderation & Absolute Deletion'}</h3>
+        <h3 className="mb-1 font-bold text-on-surface">{isVi ? 'Kiểm duyệt & Xóa vĩnh viễn nội dung' : 'Content Moderation & Absolute Deletion'}</h3>
         <p className="mb-3 text-sm text-on-surface-variant">
-          {isVi ? 'Tim noi dung vi pham va xoa vinh vien khoi nen tang.' : 'Find violating content and permanently remove it from the platform.'}
+          {isVi ? 'Tìm nội dung vi phạm và xóa vĩnh viễn khỏi nền tảng.' : 'Find violating content and permanently remove it from the platform.'}
         </p>
         <div className="flex gap-2">
           <input
@@ -180,18 +180,18 @@ export const GlobalContentCoursesPage: React.FC = () => {
             data-testid="sysadmin-content-search"
             onChange={(e) => setModQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') void runModSearch() }}
-            placeholder={isVi ? 'Tim theo tieu de...' : 'Search by title...'}
+            placeholder={isVi ? 'Tìm theo tiêu đề...' : 'Search by title...'}
             className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
           <Button data-testid="sysadmin-content-search-btn" onClick={() => void runModSearch()} disabled={modSearching}>
-            {modSearching ? (isVi ? 'Dang tim...' : 'Searching...') : (isVi ? 'Tim' : 'Search')}
+            {modSearching ? (isVi ? 'Đang tìm...' : 'Searching...') : (isVi ? 'Tìm' : 'Search')}
           </Button>
         </div>
         {modError && <p className="mt-2 text-sm text-error" data-testid="sysadmin-mod-error">{modError}</p>}
         <div className="mt-4 space-y-2" data-testid="sysadmin-mod-results">
           {modResults.length === 0 && !modSearching && (
             <p className="text-sm text-on-surface-variant" data-testid="sysadmin-mod-empty">
-              {isVi ? 'Khong co ket qua.' : 'No results.'}
+              {isVi ? 'Không có kết quả.' : 'No results.'}
             </p>
           )}
           {modResults.map((r) => (
@@ -200,7 +200,7 @@ export const GlobalContentCoursesPage: React.FC = () => {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-on-surface">{r.title}</p>
                 <p className="text-xs text-on-surface-variant">
-                  {r.contentType}{r.authorName ? ` • ${isVi ? 'Tac gia' : 'by'} ${r.authorName}` : ''}
+                  {r.contentType}{r.authorName ? ` • ${isVi ? 'Tác giả' : 'by'} ${r.authorName}` : ''}
                 </p>
               </div>
               <Button
@@ -212,7 +212,7 @@ export const GlobalContentCoursesPage: React.FC = () => {
                 className="!bg-error hover:!bg-error/90"
               >
                 <MaterialIcon icon="delete_forever" size="xs" className="mr-1" />
-                {deletingId === r.contentId ? '…' : (isVi ? 'Xoa vinh vien' : 'Absolute Delete')}
+                {deletingId === r.contentId ? '…' : (isVi ? 'Xóa vĩnh viễn' : 'Absolute Delete')}
               </Button>
             </div>
           ))}
@@ -262,7 +262,7 @@ const CreateUserModal: React.FC<{
   const submit = async () => {
     setError(null)
     if (!form.username.trim() || !form.email.trim() || !form.password) {
-      setError(isVi ? 'Vui long nhap day du thong tin.' : 'All fields are required.')
+      setError(isVi ? 'Vui lòng nhập đầy đủ thông tin.' : 'All fields are required.')
       return
     }
     setSubmitting(true)
@@ -280,7 +280,7 @@ const CreateUserModal: React.FC<{
         setError(res.message || 'Failed to create user.')
       }
     } catch (e: any) {
-      setError(e?.message || (isVi ? 'Khong the tao nguoi dung.' : 'Failed to create user.'))
+      setError(e?.message || (isVi ? 'Không thể tạo người dùng.' : 'Failed to create user.'))
     } finally {
       setSubmitting(false)
     }
@@ -291,7 +291,7 @@ const CreateUserModal: React.FC<{
       <div className="w-full max-w-md rounded-lg bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-on-surface">
-            {isVi ? 'Tao nguoi dung moi' : 'Create New User'}
+            {isVi ? 'Tạo người dùng mới' : 'Create New User'}
           </h3>
           <button onClick={close} className="text-on-surface-variant hover:text-on-surface">
             <MaterialIcon icon="close" />
@@ -305,7 +305,7 @@ const CreateUserModal: React.FC<{
         <div className="space-y-3">
           <div>
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
-              {isVi ? 'Ten dang nhap' : 'Username'}
+              {isVi ? 'Tên đăng nhập' : 'Username'}
             </label>
             <Input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="username" data-testid="create-user-username" />
           </div>
@@ -315,7 +315,7 @@ const CreateUserModal: React.FC<{
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
-              {isVi ? 'Mat khau' : 'Password'}
+              {isVi ? 'Mật khẩu' : 'Password'}
             </label>
             <Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Min 8 chars with upper/lower/digit/special" data-testid="create-user-password" />
             <p className="mt-1 text-xs text-on-surface-variant" data-testid="password-requirements">
@@ -326,7 +326,7 @@ const CreateUserModal: React.FC<{
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold text-on-surface-variant">
-              {isVi ? 'Vai tro' : 'Role'}
+              {isVi ? 'Vai trò' : 'Role'}
             </label>
             <select
               value={form.role}
@@ -342,7 +342,7 @@ const CreateUserModal: React.FC<{
             {form.role === 'SysAdmin' && (
               <p className="mt-1 text-xs text-amber-600">
                 {isVi
-                  ? 'Canh bao: Tai khoan SysAdmin co quyen cao nhat tren toan he thong.'
+                  ? 'Cảnh báo: Tài khoản SysAdmin có quyền cao nhất trên toàn hệ thống.'
                   : 'Warning: SysAdmin accounts have the highest privileges system-wide.'}
               </p>
             )}
@@ -351,10 +351,10 @@ const CreateUserModal: React.FC<{
 
         <div className="mt-6 flex justify-end gap-2">
           <Button variant="secondary" onClick={close} disabled={submitting}>
-            {isVi ? 'Huy' : 'Cancel'}
+            {isVi ? 'Hủy' : 'Cancel'}
           </Button>
           <Button onClick={submit} disabled={submitting} data-testid="create-user-submit">
-            {submitting ? (isVi ? 'Dang tao...' : 'Creating...') : (isVi ? 'Tao' : 'Create')}
+            {submitting ? (isVi ? 'Đang tạo...' : 'Creating...') : (isVi ? 'Tạo' : 'Create')}
           </Button>
         </div>
       </div>
@@ -409,7 +409,7 @@ export const GlobalUserManagementPage: React.FC = () => {
 
   const handleDelete = async (user: UserItem) => {
     const confirmMsg = isVi
-      ? `Xoa nguoi dung "${user.username}"? Hanh dong nay khong the hoan tac.`
+      ? `Xóa người dùng "${user.username}"? Hành động này không thể hoàn tác.`
       : `Delete user "${user.username}"? This cannot be undone.`
     if (!window.confirm(confirmMsg)) return
     setActionError(null)
@@ -428,23 +428,23 @@ export const GlobalUserManagementPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Global User Management"
-      titleVi="Quan ly nguoi dung toan cuc"
+      titleVi="Quản lý người dùng toàn cục"
       subtitleEn="Monitor and manage user accounts platform-wide"
-      subtitleVi="Giam sat va quan ly tai khoan tren toan nen tang"
+      subtitleVi="Giám sát và quản lý tài khoản trên toàn nền tảng"
     >
       <Card className="p-6 flex flex-wrap gap-3">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={isVi ? 'Tim nguoi dung...' : 'Search users...'}
+          placeholder={isVi ? 'Tìm người dùng...' : 'Search users...'}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           className="flex-1 min-w-[200px]"
           data-testid="user-search-input"
         />
-        <Button variant="secondary" onClick={handleSearch} data-testid="user-search-btn">{isVi ? 'Tim' : 'Search'}</Button>
+        <Button variant="secondary" onClick={handleSearch} data-testid="user-search-btn">{isVi ? 'Tìm' : 'Search'}</Button>
         <Button onClick={() => setCreateOpen(true)} data-testid="user-create-btn">
           <MaterialIcon icon="person_add" className="mr-1" />
-          {isVi ? 'Tao nguoi dung' : 'New User'}
+          {isVi ? 'Tạo người dùng' : 'New User'}
         </Button>
       </Card>
 
@@ -461,7 +461,7 @@ export const GlobalUserManagementPage: React.FC = () => {
           </div>
         ) : users.length === 0 ? (
           <p className="text-on-surface-variant text-sm text-center py-4">
-            {isVi ? 'Khong tim thay nguoi dung' : 'No users found'}
+            {isVi ? 'Không tìm thấy người dùng' : 'No users found'}
           </p>
         ) : (
           <div className="space-y-3" data-testid="user-list">
@@ -477,10 +477,10 @@ export const GlobalUserManagementPage: React.FC = () => {
                 <div className="flex gap-2">
                   {user.id !== currentUserId ? (
                     <Button size="sm" variant="secondary" onClick={() => handleDelete(user)} data-testid="user-delete-btn">
-                      {isVi ? 'Xoa' : 'Delete'}
+                      {isVi ? 'Xóa' : 'Delete'}
                     </Button>
                   ) : (
-                    <Badge variant="secondary" size="sm" data-testid="user-item-self">{isVi ? 'Ban' : 'You'}</Badge>
+                    <Badge variant="secondary" size="sm" data-testid="user-item-self">{isVi ? 'Bạn' : 'You'}</Badge>
                   )}
                 </div>
               </div>
@@ -494,7 +494,7 @@ export const GlobalUserManagementPage: React.FC = () => {
               disabled={pageIndex === 0}
               onClick={() => { const p = pageIndex - 1; setPageIndex(p); loadUsers(p, query) }}
             >
-              {isVi ? 'Trang truoc' : 'Prev'}
+              {isVi ? 'Trang trước' : 'Prev'}
             </Button>
             <span className="text-sm text-on-surface-variant">
               {pageIndex + 1} / {Math.ceil(totalCount / PAGE_SIZE)}
@@ -571,20 +571,20 @@ export const OrganizationDirectoryPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Organization Directory"
-      titleVi="Danh ba to chuc"
+      titleVi="Danh bạ tổ chức"
       subtitleEn="Directory of all organizations in the platform"
-      subtitleVi="Danh sach toan bo to chuc tren nen tang"
+      subtitleVi="Danh sách toàn bộ tổ chức trên nền tảng"
     >
       <Card className="p-6 flex gap-3">
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={isVi ? 'Tim to chuc...' : 'Search organizations...'}
+          placeholder={isVi ? 'Tìm tổ chức...' : 'Search organizations...'}
           className="flex-1"
           data-testid="org-search-input"
         />
         <Button onClick={() => void fetchOrganizations()} data-testid="org-refresh-btn">
-          {isVi ? 'Tai lai' : 'Refresh'}
+          {isVi ? 'Tải lại' : 'Refresh'}
         </Button>
       </Card>
 
@@ -602,23 +602,23 @@ export const OrganizationDirectoryPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="org-list">
           {displayed.length === 0 ? (
             <p className="text-on-surface-variant text-sm col-span-3 text-center py-4">
-              {isVi ? 'Khong tim thay to chuc nao' : 'No organizations found'}
+              {isVi ? 'Không tìm thấy tổ chức nào' : 'No organizations found'}
             </p>
           ) : displayed.map((org) => (
             <Card key={org.id} className="p-6" data-testid="org-item">
               <div className="flex items-center justify-between mb-3">
                 <MaterialIcon icon="apartment" className="text-primary" />
                 {org.status === 'Suspended' ? (
-                  <Badge variant="error" size="sm" data-testid={`org-status-${org.id}`}>{isVi ? 'Da khoa' : 'Suspended'}</Badge>
+                  <Badge variant="error" size="sm" data-testid={`org-status-${org.id}`}>{isVi ? 'Đã khóa' : 'Suspended'}</Badge>
                 ) : (
-                  <Badge variant="primary" size="sm" data-testid={`org-status-${org.id}`}>{isVi ? 'Hoat dong' : 'Active'}</Badge>
+                  <Badge variant="primary" size="sm" data-testid={`org-status-${org.id}`}>{isVi ? 'Hoạt động' : 'Active'}</Badge>
                 )}
               </div>
               <h3 className="font-bold text-on-surface" data-testid="org-item-name">{org.name}</h3>
               <p className="text-xs text-on-surface-variant mt-1" data-testid="org-item-slug">/{org.slug}</p>
               {org.memberCount !== undefined && (
                 <p className="text-sm text-on-surface-variant mt-2">
-                  {org.memberCount} {isVi ? 'thanh vien' : 'members'}
+                  {org.memberCount} {isVi ? 'thành viên' : 'members'}
                 </p>
               )}
               <div className="mt-4">
@@ -627,14 +627,14 @@ export const OrganizationDirectoryPage: React.FC = () => {
                     data-testid={`org-reactivate-${org.id}`} disabled={busyOrg === org.id}
                     onClick={() => void setOrgStatus(org.id, 'reactivate')}>
                     <MaterialIcon icon="lock_open" size="xs" className="mr-1" />
-                    {busyOrg === org.id ? '…' : (isVi ? 'Kich hoat lai' : 'Reactivate')}
+                    {busyOrg === org.id ? '…' : (isVi ? 'Kích hoạt lại' : 'Reactivate')}
                   </Button>
                 ) : (
                   <Button size="sm" variant="primary" className="w-full justify-center !bg-error hover:!bg-error/90"
                     data-testid={`org-suspend-${org.id}`} disabled={busyOrg === org.id}
                     onClick={() => void setOrgStatus(org.id, 'suspend')}>
                     <MaterialIcon icon="block" size="xs" className="mr-1" />
-                    {busyOrg === org.id ? '…' : (isVi ? 'Vo hieu hoa' : 'Suspend')}
+                    {busyOrg === org.id ? '…' : (isVi ? 'Vô hiệu hóa' : 'Suspend')}
                   </Button>
                 )}
               </div>
@@ -652,22 +652,22 @@ export const OrgDetailsSystemadminPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Organization Details"
-      titleVi="Chi tiet to chuc"
+      titleVi="Chi tiết tổ chức"
       subtitleEn="Detailed diagnostics and ownership data"
-      subtitleVi="Chan doan chi tiet va thong tin so huu"
+      subtitleVi="Chẩn đoán chi tiết và thông tin sở hữu"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 p-6 space-y-4">
-          <h3 className="font-bold text-on-surface">{isVi ? 'Chon mot to chuc' : 'Select an organization'}</h3>
+          <h3 className="font-bold text-on-surface">{isVi ? 'Chọn một tổ chức' : 'Select an organization'}</h3>
           <p className="text-on-surface-variant">
             {isVi
-              ? 'Mo trang Danh ba to chuc va chon mot to chuc de xem chi tiet.'
+              ? 'Mở trang Danh bạ tổ chức và chọn một tổ chức để xem chi tiết.'
               : 'Open the Organizations directory and pick an organization to see its details here.'}
           </p>
         </Card>
         <Card className="p-6">
-          <h3 className="font-bold text-on-surface mb-3">{isVi ? 'Trang thai he thong' : 'System Status'}</h3>
-          <Badge variant="success">{isVi ? 'On dinh' : 'Healthy'}</Badge>
+          <h3 className="font-bold text-on-surface mb-3">{isVi ? 'Trạng thái hệ thống' : 'System Status'}</h3>
+          <Badge variant="success">{isVi ? 'Ổn định' : 'Healthy'}</Badge>
         </Card>
       </div>
     </SysShell>
@@ -680,19 +680,19 @@ export const PlatformSettingsLogsPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Platform Settings & Logs"
-      titleVi="Cai dat nen tang va nhat ky"
+      titleVi="Cài đặt nền tảng và nhật ký"
       subtitleEn="Audit controls and system event logs"
-      subtitleVi="Kiem soat audit va nhat ky he thong"
+      subtitleVi="Kiểm soát audit và nhật ký hệ thống"
     >
       <Card className="p-6 flex items-start gap-4">
         <MaterialIcon icon="info" className="text-primary mt-0.5 flex-shrink-0" />
         <div>
           <h3 className="font-bold text-on-surface mb-1">
-            {isVi ? 'Tinh nang nay chua kha dung' : 'Feature not yet available'}
+            {isVi ? 'Tính năng này chưa khả dụng' : 'Feature not yet available'}
           </h3>
           <p className="text-sm text-on-surface-variant">
             {isVi
-              ? 'Nhat ky he thong va cai dat bao mat se duoc trien khai trong giai doan sau. Hien tai, quan tri vien co the su dung API logs tu server hoac cong cu giam sat he thong.'
+              ? 'Nhật ký hệ thống và cài đặt bảo mật sẽ được triển khai trong giai đoạn sau. Hiện tại, quản trị viên có thể sử dụng API logs từ server hoặc công cụ giám sát hệ thống.'
               : 'System logs and security settings will be implemented in a future release. Currently, administrators can use server-side API logs or system monitoring tools.'}
           </p>
         </div>
@@ -709,9 +709,9 @@ export const SystemadminOrganizationDirectoryAltPage: React.FC = () => {
   return (
     <SysShell
       titleEn="Organization Directory"
-      titleVi="Danh ba to chuc"
+      titleVi="Danh bạ tổ chức"
       subtitleEn="Alternate directory view"
-      subtitleVi="Giao dien danh ba thay the"
+      subtitleVi="Giao diện danh bạ thay thế"
     >
       <Card className="p-6 space-y-3">
         {isLoading && (
@@ -769,7 +769,7 @@ export const UserDetailsSystemadminPage: React.FC = () => {
     setSaving(true); setActionMsg(null)
     try {
       const res = await apiClient.patch(`/users/${user.id}`, { role: newRole })
-      if (res.success) { setActionMsg(isVi ? 'Da cap nhat vai tro.' : 'Role updated.'); setUser({ ...user, role: newRole }) }
+      if (res.success) { setActionMsg(isVi ? 'Đã cập nhật vai trò.' : 'Role updated.'); setUser({ ...user, role: newRole }) }
       else setError(res.message || 'Failed to update.')
     } catch (e: any) { setError(e?.message || 'Failed.') }
     finally { setSaving(false) }
@@ -778,15 +778,15 @@ export const UserDetailsSystemadminPage: React.FC = () => {
   return (
     <SysShell
       titleEn="User Details"
-      titleVi="Chi tiet nguoi dung"
+      titleVi="Chi tiết người dùng"
       subtitleEn="Profile, role assignment, and management actions"
-      subtitleVi="Ho so, phan quyen va cac hanh dong quan ly"
+      subtitleVi="Hồ sơ, phân quyền và các hành động quản lý"
     >
       {!userId && (
         <Card className="p-6">
           <p className="text-on-surface-variant">
             {isVi
-              ? 'Nang cap chi tiet nguoi dung: them ?userId=<id> vao URL hoac dieu huong tu trang Quan ly nguoi dung.'
+              ? 'Nâng cấp chi tiết người dùng: thêm ?userId=<id> vào URL hoặc điều hướng từ trang Quản lý người dùng.'
               : 'Navigate here with ?userId=<id> in the URL, or use User Management to pick a user.'}
           </p>
         </Card>
@@ -806,11 +806,11 @@ export const UserDetailsSystemadminPage: React.FC = () => {
                 <span className="text-on-surface-variant">{isVi ? 'Email: ' : 'Email: '}</span>{user.email}
               </div>
               <div className="p-3 rounded-lg bg-surface-container-low">
-                <span className="text-on-surface-variant">{isVi ? 'Vai tro: ' : 'Role: '}</span>
+                <span className="text-on-surface-variant">{isVi ? 'Vai trò: ' : 'Role: '}</span>
                 <Badge variant={user.role === 'SysAdmin' ? 'warning' : 'secondary'} size="sm">{user.role}</Badge>
               </div>
               <div className="p-3 rounded-lg bg-surface-container-low">
-                <span className="text-on-surface-variant">{isVi ? 'Tao luc: ' : 'Created: '}</span>
+                <span className="text-on-surface-variant">{isVi ? 'Tạo lúc: ' : 'Created: '}</span>
                 {new Date(user.createdAt).toLocaleDateString()}
               </div>
               <div className="p-3 rounded-lg bg-surface-container-low">
@@ -820,11 +820,11 @@ export const UserDetailsSystemadminPage: React.FC = () => {
             </div>
           </Card>
           <Card className="p-6 space-y-3">
-            <h3 className="font-bold text-on-surface">{isVi ? 'Hanh dong quan ly' : 'Management'}</h3>
+            <h3 className="font-bold text-on-surface">{isVi ? 'Hành động quản lý' : 'Management'}</h3>
             {actionMsg && <p className="text-sm text-success">{actionMsg}</p>}
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant mb-1">
-                {isVi ? 'Doi vai tro' : 'Change Role'}
+                {isVi ? 'Đổi vai trò' : 'Change Role'}
               </label>
               <select
                 value={newRole}
@@ -837,7 +837,7 @@ export const UserDetailsSystemadminPage: React.FC = () => {
                 <option value="SysAdmin">SysAdmin</option>
               </select>
               <Button className="w-full" onClick={handleRoleUpdate} disabled={saving || newRole === user.role}>
-                {saving ? (isVi ? 'Dang luu...' : 'Saving...') : (isVi ? 'Luu vai tro' : 'Save Role')}
+                {saving ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu vai trò' : 'Save Role')}
               </Button>
             </div>
           </Card>

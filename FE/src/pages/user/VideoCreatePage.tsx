@@ -55,7 +55,7 @@ export const VideoCreatePage: React.FC = () => {
 		setSuccess(null)
 		const videoId = extractVideoId(url.trim())
 		if (!videoId) {
-			setError(t('URL YouTube khong hop le.', 'Invalid YouTube URL.'))
+			setError(t('URL YouTube không hợp lệ.', 'Invalid YouTube URL.'))
 			setPreviewId(null)
 			return
 		}
@@ -67,7 +67,7 @@ export const VideoCreatePage: React.FC = () => {
 		setSuccess(null)
 		const videoId = extractVideoId(url.trim())
 		if (!videoId) {
-			setError(t('URL YouTube khong hop le.', 'Invalid YouTube URL.'))
+			setError(t('URL YouTube không hợp lệ.', 'Invalid YouTube URL.'))
 			return
 		}
 		setBusy(true)
@@ -82,7 +82,7 @@ export const VideoCreatePage: React.FC = () => {
 			// If launched to add content to a course module, link the new video FIRST (throws on
 			// failure → the catch shows the error and we stay here), then return to the course.
 			if (courseLink.active) { await courseLink.linkAndReturn(res.data.contentId); return }
-			setSuccess(t('Da luu vao thu vien!', 'Saved to library!'))
+			setSuccess(t('Đã lưu vào thư viện!', 'Saved to library!'))
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to save video')
 		} finally {
@@ -104,7 +104,7 @@ export const VideoCreatePage: React.FC = () => {
 							<h1 className="text-4xl font-black text-[#111b2d]">{t('Xem Video YouTube', 'Watch YouTube Video')}</h1>
 							<p className="mt-1 text-sm text-[#60708a]">
 								{t(
-									'Dan link YouTube de xem ngay, hoac luu vao thu vien hoc tap.',
+									'Dán link YouTube để xem ngay, hoặc lưu vào thư viện học tập.',
 									'Paste a YouTube URL to watch instantly, or save it to your library.'
 								)}
 							</p>

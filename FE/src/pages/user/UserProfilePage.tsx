@@ -15,7 +15,7 @@ type TabType = 'personal' | 'security' | 'language'
 const SUPPORTED_LANGUAGES: { code: 'vi' | 'ja' | 'en'; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'vi', label: 'Tiếng Việt' },
-  { code: 'ja', label: '日本語' },
+  // { code: 'ja', label: '日本語' },
 ]
 
 export const UserProfilePage: React.FC = () => {
@@ -36,9 +36,9 @@ export const UserProfilePage: React.FC = () => {
   const [savingPw, setSavingPw] = useState(false)
 
   // Language state — initialize from localStorage for immediate display without async flash
-  const [language, setLanguage] = useState<'vi' | 'ja' | 'en'>(() => {
+  const [language, setLanguage] = useState<'vi' | 'en'>(() => {
     const stored = localStorage.getItem('language')
-    return (stored === 'vi' || stored === 'ja' || stored === 'en') ? stored : 'en'
+    return (stored === 'vi' || stored === 'en') ? stored : 'en'
   })
   const [langMsg, setLangMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [savingLang, setSavingLang] = useState(false)
@@ -50,7 +50,7 @@ export const UserProfilePage: React.FC = () => {
     // Sync language from server on mount — authoritative source
     apiClient.get('/auth/me').then(resp => {
       const lang = resp.data?.data?.language
-      if (lang === 'vi' || lang === 'ja' || lang === 'en') {
+      if (lang === 'vi' || lang === 'en') {
         setLanguage(lang)
         localStorage.setItem('language', lang)
       }
@@ -108,7 +108,7 @@ export const UserProfilePage: React.FC = () => {
     }
   }
 
-  const handleLanguageSave = async (newLang: 'vi' | 'ja' | 'en') => {
+  const handleLanguageSave = async (newLang: 'vi' | 'en') => {
     setLangMsg(null)
     setSavingLang(true)
     try {
@@ -116,7 +116,13 @@ export const UserProfilePage: React.FC = () => {
       if (resp.success) {
         setLanguage(newLang)
         localStorage.setItem('language', newLang)
-        setLangMsg({ type: 'success', text: 'Language preference updated.' })
+        setLangMsg({
+          type: 'success',
+          text: newLang === 'vi' ? 'Đã cập nhật ngôn ngữ. Đang tải lại...' : 'Language preference updated. Reloading...',
+        })
+        // Components read getCurrentLanguage() directly (no reactive context), so a reload is the
+        // reliable way to re-render the whole app in the newly-selected language.
+        setTimeout(() => window.location.reload(), 700)
       } else {
         setLangMsg({ type: 'error', text: resp.message ?? 'Update failed.' })
       }
