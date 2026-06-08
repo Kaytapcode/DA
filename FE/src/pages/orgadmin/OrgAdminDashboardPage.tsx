@@ -115,26 +115,28 @@ export const OrgAdminDashboardPage: React.FC = () => {
             {/* Quick Actions */}
             <Card>
               <h3 className="text-xl font-bold text-on-surface mb-6">Quick Actions</h3>
-              <div className="space-y-3">
-                <Link to="/admin/courses">
-                  <Button className="w-full justify-start" variant="secondary">
-                    <MaterialIcon icon="add_circle" className="mr-2" />
-                    Create Course
-                  </Button>
-                </Link>
-                <Link to="/admin/members">
-                  <Button className="w-full justify-start" variant="secondary">
-                    <MaterialIcon icon="people" className="mr-2" />
-                    Manage Members
-                  </Button>
-                </Link>
-                <Link to="/admin/analytics">
-                  <Button className="w-full justify-start" variant="secondary">
-                    <MaterialIcon icon="assessment" className="mr-2" />
-                    View Analytics
-                  </Button>
-                </Link>
-              </div>
+              <div className="flex flex-col gap-3">
+  <Link to="/admin/courses">
+    <Button className="w-full justify-start" variant="secondary">
+      <MaterialIcon icon="add_circle" className="mr-2" />
+      Create Course
+    </Button>
+  </Link>
+
+  <Link to="/admin/members">
+    <Button className="w-full justify-start" variant="secondary">
+      <MaterialIcon icon="people" className="mr-2" />
+      Manage Members
+    </Button>
+  </Link>
+
+  <Link to="/admin/analytics">
+    <Button className="w-full justify-start" variant="secondary">
+      <MaterialIcon icon="assessment" className="mr-2" />
+      View Analytics
+    </Button>
+  </Link>
+</div>
             </Card>
           </div>
         </div>

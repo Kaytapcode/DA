@@ -398,12 +398,11 @@ const DistributionDonut: React.FC<{ summary: LearningAnalyticsSummary; isVi: boo
     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} alignItems="center">
       <Box
         sx={{
-          width: 176,
-          height: 176,
+          width: 188,
+          aspectRatio: '1 / 1',
           borderRadius: '50%',
+          flexShrink: 0,
           background: `conic-gradient(${gradient})`,
-          mask: 'radial-gradient(circle, transparent 53%, black 54%)',
-          WebkitMask: 'radial-gradient(circle, transparent 53%, black 54%)',
         }}
       />
       <Stack spacing={1} sx={{ width: '100%' }}>
