@@ -147,7 +147,7 @@ export const GlobalSearchPage: React.FC = () => {
 						</h2>
 						<p className="mt-2 text-base text-[#60708a]">
 							{t(
-								'Tim kiem tai lieu, quiz, the ghi nho va video tu tat ca nguoi dung.',
+								'Tìm kiếm tài liệu, quiz, thẻ ghi nhớ và video từ tất cả người dùng.',
 								'Search your own and public learning assets from across the platform.',
 							)}
 						</p>
@@ -164,7 +164,7 @@ export const GlobalSearchPage: React.FC = () => {
 							data-testid="global-search-input"
 							onChange={(e) => setQuery(e.target.value)}
 							placeholder={t(
-								'Nhap tu khoa tim kiem…',
+								'Nhập từ khoá tìm kiếm…',
 								'Search quizzes, videos, flashcard decks, documents…',
 							)}
 							className="w-full rounded-2xl border border-[#dfe5ef] bg-white py-4 pl-12 pr-12 text-base text-[#111b2d] shadow-sm outline-none placeholder:text-[#9aa5b5] focus:border-[#1463ff] focus:ring-2 focus:ring-[#1463ff]/20"
@@ -234,7 +234,7 @@ export const GlobalSearchPage: React.FC = () => {
 							<MaterialIcon icon="manage_search" size="md" className="text-[#9aa5b5]" />
 							<p className="text-sm text-[#60708a]">
 								{t(
-									'Nhap tu khoa de bat dau tim kiem.',
+									'Nhập từ khoá để bắt đầu tìm kiếm.',
 									'Start typing to search across all accessible content.',
 								)}
 							</p>
@@ -251,7 +251,7 @@ export const GlobalSearchPage: React.FC = () => {
 								</p>
 								<p className="text-xs text-[#60708a]">
 									{t(
-										'Thu dung tu khoa khac hoac thay doi bo loc.',
+										'Thử dùng từ khoá khác hoặc thay đổi bộ lọc.',
 										'Try different keywords or adjust the scope and type filters.',
 									)}
 								</p>

@@ -510,7 +510,7 @@ export const CollectionsPage: React.FC = () => {
                   data-testid="collection-title-input"
                 />
                 <Input
-                  label={isVi ? 'Mô tả (tùy chọn)' : 'Description (optional)'}
+                  label={isVi ? 'Mô tả (tuỳ chọn)' : 'Description (optional)'}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   data-testid="collection-description-input"

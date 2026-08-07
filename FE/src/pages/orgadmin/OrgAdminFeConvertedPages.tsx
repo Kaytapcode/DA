@@ -999,7 +999,7 @@ export const SystemadminOrganizationDirectoryPage: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-on-surface">{org.name}</h3>
                   <p className="text-xs text-on-surface-variant">
-                    {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+                    {isVi ? `${org.memberCount} thành viên` : `${org.memberCount} members`}
                   </p>
                 </div>
               </div>

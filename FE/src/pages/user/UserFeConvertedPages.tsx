@@ -528,7 +528,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     for (let i = 0; i < editCards.length; i++) {
       const c = editCards[i]
       if (!c.frontText.trim() || !c.backText.trim())
-        return isVi ? `The #${i + 1}: thieu noi dung mat truoc/sau.` : `Card #${i + 1}: front and back are required.`
+        return isVi ? `Thẻ #${i + 1}: thiếu nội dung mặt trước/sau.` : `Card #${i + 1}: front and back are required.`
     }
     return null
   }
@@ -733,7 +733,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
           <>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-xs uppercase tracking-widest text-on-surface-variant" data-testid="flashcard-counter">
-                {isVi ? `The ${currentIndex + 1}/${totalCards}` : `Card ${currentIndex + 1}/${totalCards}`}
+                {isVi ? `Thẻ ${currentIndex + 1}/${totalCards}` : `Card ${currentIndex + 1}/${totalCards}`}
               </p>
               <Button variant="ghost" size="sm" onClick={toggleShuffle} data-testid="flashcard-shuffle-btn">
                 <MaterialIcon icon="shuffle" size="xs" className="mr-1" />
@@ -891,7 +891,7 @@ export const LearningHistoryPage: React.FC = () => {
 
   const getResult = (row: LearningHistoryEntry) => {
     if (row.contentType === 'QUIZ')
-      return isVi ? `Diem: ${row.progressPercentage}%` : `Score: ${row.progressPercentage}%`
+      return isVi ? `Điểm: ${row.progressPercentage}%` : `Score: ${row.progressPercentage}%`
     if (row.isCompleted)
       return isVi ? 'Hoàn thành' : 'Completed'
     if (row.progressPercentage > 0)
@@ -1037,7 +1037,7 @@ export const LearningHistoryPage: React.FC = () => {
                               <div className="space-y-3 rounded-xl bg-surface-container-low p-4">
                                 <div className="flex items-center justify-between">
                                   <p className="text-sm font-semibold text-on-surface">
-                                    {isVi ? `Diem: ${review.scorePercentage}%` : `Score: ${review.scorePercentage}%`}
+                                    {isVi ? `Điểm: ${review.scorePercentage}%` : `Score: ${review.scorePercentage}%`}
                                   </p>
                                   <Link
                                     to={`/user/quiz?quizId=${review.quizId}`}
@@ -1176,7 +1176,7 @@ export const OrganizationListPage: React.FC = () => {
               </div>
               <h3 className="mb-2 font-bold text-on-surface" data-testid="org-card-name">{org.name}</h3>
               <p className="mb-4 text-sm text-on-surface-variant">
-                {isVi ? `${org.memberCount} thanh vien` : `${org.memberCount} members`}
+                {isVi ? `${org.memberCount} thành viên` : `${org.memberCount} members`}
               </p>
               {joined ? (
                 <div className="space-y-2">
@@ -1771,10 +1771,10 @@ export const UserQuizInterfacePage: React.FC = () => {
     if (editQuestions.length === 0) return isVi ? 'Cần ít nhất 1 câu hỏi.' : 'At least one question is required.'
     for (let i = 0; i < editQuestions.length; i++) {
       const q = editQuestions[i]
-      if (!q.questionText.trim()) return isVi ? `Cau ${i + 1}: thieu noi dung.` : `Question ${i + 1}: text required.`
-      if (q.options.length < 2) return isVi ? `Cau ${i + 1}: can it nhat 2 lua chon.` : `Question ${i + 1}: at least 2 options.`
-      if (q.options.some((o) => !o.text.trim())) return isVi ? `Cau ${i + 1}: co lua chon bo trong.` : `Question ${i + 1}: empty option text.`
-      if (!q.options.some((o) => o.isCorrect)) return isVi ? `Cau ${i + 1}: chua chon dap an dung.` : `Question ${i + 1}: pick a correct answer.`
+      if (!q.questionText.trim()) return isVi ? `Câu ${i + 1}: thiếu nội dung.` : `Question ${i + 1}: text required.`
+      if (q.options.length < 2) return isVi ? `Câu ${i + 1}: cần ít nhất 2 lựa chọn.` : `Question ${i + 1}: at least 2 options.`
+      if (q.options.some((o) => !o.text.trim())) return isVi ? `Câu ${i + 1}: có lựa chọn bỏ trống.` : `Question ${i + 1}: empty option text.`
+      if (!q.options.some((o) => o.isCorrect)) return isVi ? `Câu ${i + 1}: chưa chọn đáp án đúng.` : `Question ${i + 1}: pick a correct answer.`
     }
     return null
   }
@@ -1979,7 +1979,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                         type="text"
                         value={opt.text}
                         onChange={(e) => updateOption(qIdx, oIdx, { text: e.target.value })}
-                        placeholder={isVi ? `Lua chon ${oIdx + 1}` : `Option ${oIdx + 1}`}
+                        placeholder={isVi ? `Lựa chọn ${oIdx + 1}` : `Option ${oIdx + 1}`}
                         className="flex-1 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                       />
                       {q.options.length > 2 && (
@@ -2077,7 +2077,7 @@ export const UserQuizInterfacePage: React.FC = () => {
           <>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-sm text-on-surface-variant">
-                {isVi ? `Cau ${currentQuestionIndex + 1}/${questions.length}` : `Question ${currentQuestionIndex + 1}/${questions.length}`}
+                {isVi ? `Câu ${currentQuestionIndex + 1}/${questions.length}` : `Question ${currentQuestionIndex + 1}/${questions.length}`}
               </p>
               {remainingSeconds !== null && (
                 <p className="text-sm font-semibold text-on-surface" data-testid="quiz-play-timer">

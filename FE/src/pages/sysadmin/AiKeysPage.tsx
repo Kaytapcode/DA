@@ -98,7 +98,7 @@ export const AiKeysPage: React.FC = () => {
   }
 
   const handleDelete = async (key: AiKey) => {
-    if (!confirm(isVi ? `Xoa khoa ${key.provider}?` : `Delete ${key.provider} key?`)) return
+    if (!confirm(isVi ? `Xóa khóa ${key.provider}?` : `Delete ${key.provider} key?`)) return
     setBusyKeyId(key.id)
     setError(null)
     try {
@@ -157,7 +157,7 @@ export const AiKeysPage: React.FC = () => {
                 <input
                   type="text"
                   className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
-                  placeholder={isVi ? 'Nhận nhãn đang...' : 'e.g. production-key'}
+                  placeholder={isVi ? 'Nhập nhãn dạng...' : 'e.g. production-key'}
                   value={newKey.label}
                   onChange={(e) => setNewKey({ ...newKey, label: e.target.value })}
                 />
@@ -256,7 +256,7 @@ export const AiKeysPage: React.FC = () => {
                       {k.provider}
                     </Badge>
                     <span className="text-sm font-medium text-on-surface">
-                      {k.label || (isVi ? '(không nhấn)' : '(unlabeled)')}
+                      {k.label || (isVi ? '(không nhãn)' : '(unlabeled)')}
                     </span>
                     <span className="text-xs text-on-surface-variant">
                       ••••{k.keyLastFour ?? '????'}

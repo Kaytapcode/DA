@@ -409,7 +409,7 @@ export const GlobalUserManagementPage: React.FC = () => {
 
   const handleDelete = async (user: UserItem) => {
     const confirmMsg = isVi
-      ? `Xoa nguoi dung "${user.username}"? Hanh dong nay khong the hoan tac.`
+      ? `Xóa người dùng "${user.username}"? Hành động này không thể hoàn tác.`
       : `Delete user "${user.username}"? This cannot be undone.`
     if (!window.confirm(confirmMsg)) return
     setActionError(null)
