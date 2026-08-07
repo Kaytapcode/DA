@@ -447,7 +447,7 @@ export const UserContentLibraryPage: React.FC = () => {
 											{confirmDeleteId === item.id ? (
 												<div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
 													<p className="mb-4 text-center text-sm font-semibold text-red-700">
-														{isVi ? 'Xoá vĩnh viễn mục này?' : 'Permanently delete this item?'}
+														{isVi ? 'Xóa vĩnh viễn mục này?' : 'Permanently delete this item?'}
 													</p>
 													<div className="flex gap-2">
 														<button
@@ -456,7 +456,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															disabled={isDeleting}
 															className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
 														>
-															{isDeleting ? (isVi ? 'Đang xoá...' : 'Deleting…') : (isVi ? 'Xác nhận xoá' : 'Confirm Delete')}
+															{isDeleting ? (isVi ? 'Đang xóa...' : 'Deleting…') : (isVi ? 'Xác nhận xóa' : 'Confirm Delete')}
 														</button>
 														<button
 															type="button"
@@ -464,7 +464,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															disabled={isDeleting}
 															className="rounded-lg border border-[#d5dde9] bg-white px-4 py-2 text-sm font-semibold text-[#5e6f88] transition hover:bg-[#f0f4f9]"
 														>
-															{isVi ? 'Huỷ' : 'Cancel'}
+															{isVi ? 'Hủy' : 'Cancel'}
 														</button>
 													</div>
 												</div>
@@ -542,7 +542,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															type="button"
 															onClick={(e) => { e.preventDefault(); setAddPickerItemId(null); setConfirmDeleteId(item.id) }}
 															className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
-															title={isVi ? 'Xoá' : 'Delete'}
+															title={isVi ? 'Xóa' : 'Delete'}
 														>
 															<MaterialIcon icon="delete" size="xs" />
 														</button>

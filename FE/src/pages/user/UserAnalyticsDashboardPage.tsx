@@ -479,7 +479,7 @@ export const UserAnalyticsDashboardPage: React.FC = () => {
       titleEn="Learning Analytics Dashboard"
       titleVi="Bảng thống kê học tập"
       subtitleEn="Visualize quiz, content views, and score trends"
-      subtitleVi="Biểu đồ hoá quiz, lượt xem nội dung và xu hướng điểm số"
+      subtitleVi="Biểu đồ hóa quiz, lượt xem nội dung và xu hướng điểm số"
     >
       <Stack spacing={3}>
         <Card variant="outlined" sx={{ borderRadius: 3 }}>

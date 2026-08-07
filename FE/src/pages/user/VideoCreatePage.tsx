@@ -111,7 +111,7 @@ export const VideoCreatePage: React.FC = () => {
 						</div>
 						<Button variant="ghost" onClick={() => navigate('/user/library')}>
 							<MaterialIcon icon="arrow_back" size="xs" />
-							<span className="ml-1">{t('Quay lai', 'Back')}</span>
+							<span className="ml-1">{t('Quay lại', 'Back')}</span>
 						</Button>
 					</div>
 
@@ -132,7 +132,7 @@ export const VideoCreatePage: React.FC = () => {
 									/>
 									<Button variant="secondary" onClick={handlePreview}>
 										<MaterialIcon icon="play_arrow" size="xs" />
-										<span className="ml-1">{t('Xem truoc', 'Preview')}</span>
+										<span className="ml-1">{t('Xem trước', 'Preview')}</span>
 									</Button>
 								</div>
 							</div>
@@ -140,26 +140,26 @@ export const VideoCreatePage: React.FC = () => {
 							<div className="grid gap-3 md:grid-cols-2">
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Tieu de (tuy chon)', 'Title (optional)')}
+										{t('Tiêu đề (tùy chọn)', 'Title (optional)')}
 									</label>
 									<input
 										type="text"
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
-										placeholder={t('Bai giang vat ly...', 'Physics lecture...')}
+										placeholder={t('Bài giảng vật lý...', 'Physics lecture...')}
 										data-testid="video-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Mo ta (tuy chon)', 'Description (optional)')}
+										{t('Mô tả (tùy chọn)', 'Description (optional)')}
 									</label>
 									<input
 										type="text"
 										value={description}
 										onChange={(e) => setDescription(e.target.value)}
-										placeholder={t('Ghi chu ngan...', 'Short notes...')}
+										placeholder={t('Ghi chú ngắn...', 'Short notes...')}
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
@@ -168,7 +168,7 @@ export const VideoCreatePage: React.FC = () => {
 							<div className="flex justify-end gap-2">
 								<Button onClick={() => void handleSave()} disabled={busy || !url.trim()} data-testid="video-save-btn">
 									<MaterialIcon icon="bookmark_add" size="xs" />
-									<span className="ml-1">{busy ? t('Dang luu...', 'Saving...') : t('Luu vao thu vien', 'Save to Library')}</span>
+									<span className="ml-1">{busy ? t('Đang lưu...', 'Saving...') : t('Lưu vào thư viện', 'Save to Library')}</span>
 								</Button>
 							</div>
 						</div>
@@ -189,7 +189,7 @@ export const VideoCreatePage: React.FC = () => {
 						<Card>
 							<div className="space-y-3">
 								<h3 className="text-lg font-bold text-[#111b2d]">
-									{savedVideo ? (savedVideo.title || t('Video da luu', 'Saved Video')) : t('Xem truoc', 'Preview')}
+									{savedVideo ? (savedVideo.title || t('Video đã lưu', 'Saved Video')) : t('Xem trước', 'Preview')}
 								</h3>
 								<div className="aspect-video w-full overflow-hidden rounded-xl border border-[#dce3ed] bg-slate-900">
 									<iframe
@@ -207,7 +207,7 @@ export const VideoCreatePage: React.FC = () => {
 								{savedVideo && (
 									<div className="flex justify-end">
 										<Button onClick={() => navigate('/user/library')}>
-											{t('Ve thu vien', 'Back to Library')}
+											{t('Về thư viện', 'Back to Library')}
 										</Button>
 									</div>
 								)}

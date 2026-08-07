@@ -401,7 +401,7 @@ export const CollectionsPage: React.FC = () => {
                               onClick={(e) => { e.preventDefault(); void handleRemoveItem(item.contentId) }}
                               disabled={busyContentId === item.contentId}
                               className="rounded-full p-1 text-[#8a98b0] transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
-                              title={isVi ? 'Xoá khỏi bộ sưu tập' : 'Remove from collection'}
+                              title={isVi ? 'Xóa khỏi bộ sưu tập' : 'Remove from collection'}
                             >
                               <MaterialIcon icon="remove_circle_outline" size="xs" />
                             </button>
@@ -518,7 +518,7 @@ export const CollectionsPage: React.FC = () => {
               </div>
               <div className="mt-4 flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => { setShowCreateForm(false); setTitle(''); setDescription('') }} data-testid="collection-cancel-btn">
-                  {isVi ? 'Huỷ' : 'Cancel'}
+                  {isVi ? 'Hủy' : 'Cancel'}
                 </Button>
                 <Button onClick={() => void handleCreate()} disabled={isCreating || !title.trim()} data-testid="collection-create-btn">
                   {isCreating ? (isVi ? 'Đang tạo...' : 'Creating...') : (isVi ? 'Tạo' : 'Create')}
@@ -567,7 +567,7 @@ export const CollectionsPage: React.FC = () => {
                   {confirmDeleteId === c.id ? (
                     <div className="flex min-h-[190px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
                       <p className="mb-4 text-center text-sm font-semibold text-red-700">
-                        {isVi ? 'Xoá vĩnh viễn bộ sưu tập này?' : 'Permanently delete this collection?'}
+                        {isVi ? 'Xóa vĩnh viễn bộ sưu tập này?' : 'Permanently delete this collection?'}
                       </p>
                       <div className="flex gap-2">
                         <button
@@ -576,14 +576,14 @@ export const CollectionsPage: React.FC = () => {
                           disabled={busyId === c.id}
                           className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
                         >
-                          {busyId === c.id ? (isVi ? 'Đang xoá...' : 'Deleting…') : (isVi ? 'Xác nhận' : 'Confirm')}
+                          {busyId === c.id ? (isVi ? 'Đang xóa...' : 'Deleting…') : (isVi ? 'Xác nhận' : 'Confirm')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(null)}
                           className="rounded-lg border border-[#d5dde9] bg-white px-4 py-2 text-sm font-semibold text-[#5e6f88] transition hover:bg-[#f0f4f9]"
                         >
-                          {isVi ? 'Huỷ' : 'Cancel'}
+                          {isVi ? 'Hủy' : 'Cancel'}
                         </button>
                       </div>
                     </div>
@@ -620,7 +620,7 @@ export const CollectionsPage: React.FC = () => {
                           type="button"
                           onClick={() => setConfirmDeleteId(c.id)}
                           className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
-                          title={isVi ? 'Xoá' : 'Delete'}
+                          title={isVi ? 'Xóa' : 'Delete'}
                         >
                           <MaterialIcon icon="delete" size="xs" />
                         </button>

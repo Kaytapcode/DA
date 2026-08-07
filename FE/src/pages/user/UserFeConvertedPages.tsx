@@ -679,7 +679,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
                       value={c.backText}
                       onChange={(e) => updateCard(idx, { backText: e.target.value })}
                       rows={3}
-                      placeholder={isVi ? 'Dinh nghia hoac mo ta' : 'Definition or description'}
+                      placeholder={isVi ? 'Định nghĩa hoặc mô tả' : 'Definition or description'}
                       className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                     />
                   </div>
@@ -737,7 +737,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
               </p>
               <Button variant="ghost" size="sm" onClick={toggleShuffle} data-testid="flashcard-shuffle-btn">
                 <MaterialIcon icon="shuffle" size="xs" className="mr-1" />
-                {shuffleMode ? (isVi ? 'Bỏ trộn' : 'Shuffled') : (isVi ? 'Trộn thẻ' : 'Shuffle')}
+                {shuffleMode ? (isVi ? 'Bộ trộn' : 'Shuffled') : (isVi ? 'Trộn thẻ' : 'Shuffle')}
               </Button>
             </div>
 
@@ -2340,7 +2340,7 @@ export const VideoLessonPage: React.FC = () => {
 
           {canManageVideo && contentId && (
             <div className="mt-6 space-y-3 border-t border-outline-variant pt-4">
-              <h5 className="text-sm font-semibold text-on-surface">{isVi ? 'Them video YouTube' : 'Add YouTube video'}</h5>
+              <h5 className="text-sm font-semibold text-on-surface">{isVi ? 'Thêm video YouTube' : 'Add YouTube video'}</h5>
               <input
                 value={youtubeUrl}
                 onChange={(event) => setYoutubeUrl(event.target.value)}
@@ -2350,29 +2350,29 @@ export const VideoLessonPage: React.FC = () => {
               <input
                 value={videoTitle}
                 onChange={(event) => setVideoTitle(event.target.value)}
-                placeholder={isVi ? 'Tieu de (tuy chon)' : 'Title (optional)'}
+                placeholder={isVi ? 'Tiêu đề (tùy chọn)' : 'Title (optional)'}
                 className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
               />
               <textarea
                 value={videoDescription}
                 onChange={(event) => setVideoDescription(event.target.value)}
-                placeholder={isVi ? 'Mo ta (tuy chon)' : 'Description (optional)'}
+                placeholder={isVi ? 'Mô tả (tùy chọn)' : 'Description (optional)'}
                 className="min-h-[80px] w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
               />
               <Button onClick={() => void handleCreateVideo()} disabled={isSubmitting || !youtubeUrl.trim()}>
-                {isSubmitting ? (isVi ? 'Dang tao...' : 'Creating...') : (isVi ? 'Tao video' : 'Create Video')}
+                {isSubmitting ? (isVi ? 'Đang tạo...' : 'Creating...') : (isVi ? 'Tạo video' : 'Create Video')}
               </Button>
             </div>
           )}
 
           {canManageVideo && !contentId && (
             <p className="mt-4 text-xs text-on-surface-variant">
-              {isVi ? 'Can ?contentId=... de tao video moi.' : 'Provide ?contentId=... in URL to create a new video.'}
+              {isVi ? 'Cần ?contentId=... để tạo video mới.' : 'Provide ?contentId=... in URL to create a new video.'}
             </p>
           )}
           {!canManageVideo && (
             <p className="mt-4 text-xs text-on-surface-variant">
-              {isVi ? 'Chi Teacher/OrgAdmin/SysAdmin moi co the tao video.' : 'Only Teacher/OrgAdmin/SysAdmin can create videos.'}
+              {isVi ? 'Chỉ Teacher/OrgAdmin/SysAdmin mới có thể tạo video.' : 'Only Teacher/OrgAdmin/SysAdmin can create videos.'}
             </p>
           )}
         </Card>

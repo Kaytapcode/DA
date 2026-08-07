@@ -112,7 +112,7 @@ export const VideoWatchPage: React.FC = () => {
 										{isSavingTitle ? t('Đang lưu...', 'Saving...') : t('Lưu', 'Save')}
 									</Button>
 									<Button size="sm" variant="ghost" onClick={() => { setIsEditingTitle(false); setTitleDraft(video?.title || ''); setRenameError(null) }} disabled={isSavingTitle} data-testid="video-rename-cancel">
-										{t('Huỷ', 'Cancel')}
+										{t('Hủy', 'Cancel')}
 									</Button>
 								</div>
 							) : (
