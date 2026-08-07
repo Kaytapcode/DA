@@ -4,6 +4,8 @@ Lumina is a multi-tenant Learning Management System: users build a personal, pub
 
 The system is spec-driven — every feature in this repo traces back to a line in [`SystemDoc/System_specification`](SystemDoc/System_specification), which is treated as the immutable source of truth during development.
 
+**Demo video:** [https://youtu.be/OtJFF_H0Lkc](https://youtu.be/OtJFF_H0Lkc)
+
 ## Contents
 
 - [Roles](#roles)

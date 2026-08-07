@@ -47,7 +47,6 @@ packages/
 ## OS
 .DS_Store
 Thumbs.db
-.claude/
 
 ## Documentation / Planning Files
 *.txt
@@ -72,8 +71,6 @@ A8.txt
 !start-local.ps1
 
 .*
-.claude/
-.codegraph/
 
 # Test artifacts
 BE/Content.Api/uploads/
