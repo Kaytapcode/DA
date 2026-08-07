@@ -8,6 +8,8 @@ obj/
 *.cache
 *.log
 
+free-react-tailwind-admin-dashboard-main/
+
 ## User-specific files
 *.user
 *.suo
@@ -48,7 +50,7 @@ Thumbs.db
 .claude/
 
 ## Documentation / Planning Files
-
+*.txt
 A7.txt
 A8.txt
 
@@ -60,10 +62,19 @@ A8.txt
 
 
 ## Setup Scripts (explicitly include)
-!setup-environment.ps1
-!setup-environment.bat
-!dev-tasks.ps1
-!dev-tasks.bat
-
 *.ps1
 *.bat
+
+!setup-environment.ps1
+!setup-environment.bat
+# !dev-tasks.ps1
+# !dev-tasks.bat
+!start-local.ps1
+
+
+
+# Test artifacts
+BE/Content.Api/uploads/
+tests/**/__pycache__/
+tests/reports/
+tests/_screens/

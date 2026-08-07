@@ -8,6 +8,7 @@ import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
+import { useCourseContentLink } from '@/hooks/useCourseContentLink'
 
 interface DeckSummary {
 	deckId: string
@@ -37,6 +38,7 @@ interface CardDraft {
 export const DeckEditorPage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const navigate = useNavigate()
+	const courseLink = useCourseContentLink()
 	const { deckId: routeDeckId } = useParams<{ deckId?: string }>()
 	const isCreate = !routeDeckId
 
@@ -86,7 +88,14 @@ export const DeckEditorPage: React.FC = () => {
 			if (!res.success || !res.data) throw new Error(res.message || 'Failed to create deck')
 			const newId = res.data.deckId
 			setDeckId(newId)
-			navigate(`/user/decks/${newId}/edit`, { replace: true })
+			// Course context: link the new deck into the module now (it's filled with cards next),
+			// and carry the context to the edit URL so a "Back to course" button is shown.
+			if (courseLink.active) {
+				await courseLink.linkOnly(res.data.contentId)
+				navigate(`/user/decks/${newId}/edit${courseLink.courseQuery}`, { replace: true })
+			} else {
+				navigate(`/user/decks/${newId}/edit`, { replace: true })
+			}
 			setSuccess(t('Tao bo the thanh cong! Bay gio them the.', 'Deck created! Now add cards.'))
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to create deck')
@@ -135,7 +144,7 @@ export const DeckEditorPage: React.FC = () => {
 	}
 
 	return (
-		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[900px] space-y-6">
 					<div className="flex items-center justify-between">
@@ -149,11 +158,27 @@ export const DeckEditorPage: React.FC = () => {
 									: t('Them, sua hoac xoa the trong bo nay.', 'Add, edit, or remove cards in this deck.')}
 							</p>
 						</div>
-						<Button variant="ghost" onClick={() => navigate('/user/library')}>
-							<MaterialIcon icon="arrow_back" size="xs" />
-							<span className="ml-1">{t('Quay lai', 'Back')}</span>
-						</Button>
+						{courseLink.active ? (
+							<Button data-testid="deck-back-to-course" onClick={() => courseLink.goBack()}>
+								<MaterialIcon icon="check" size="xs" />
+								<span className="ml-1">{t('Xong - ve khoa hoc', 'Done — back to course')}</span>
+							</Button>
+						) : (
+							<Button variant="ghost" onClick={() => navigate('/user/library')}>
+								<MaterialIcon icon="arrow_back" size="xs" />
+								<span className="ml-1">{t('Quay lai', 'Back')}</span>
+							</Button>
+						)}
 					</div>
+
+					{courseLink.active && (
+						<Card className="border border-primary/30 bg-primary/5">
+							<p className="text-sm text-on-surface" data-testid="deck-course-context">
+								{t('Bo the nay se duoc them vao khoa hoc. Them the roi bam "Xong".',
+								   'This deck is being added to a course. Add cards, then click "Done".')}
+							</p>
+						</Card>
+					)}
 
 					{error && (
 						<Card className="border border-red-200 bg-red-50">
@@ -178,6 +203,7 @@ export const DeckEditorPage: React.FC = () => {
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
 										placeholder={t('Vi du: Tu vung Tieng Anh - Du lich', 'e.g., English Vocab - Travel')}
+										data-testid="deck-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
@@ -194,7 +220,7 @@ export const DeckEditorPage: React.FC = () => {
 									/>
 								</div>
 								<div className="flex justify-end">
-									<Button onClick={() => void createDeck()} disabled={busy}>
+									<Button onClick={() => void createDeck()} disabled={busy} data-testid="deck-create-btn">
 										{busy ? t('Dang tao...', 'Creating...') : t('Tao bo the', 'Create Deck')}
 									</Button>
 								</div>
@@ -215,6 +241,7 @@ export const DeckEditorPage: React.FC = () => {
 												onChange={(e) => setDraft({ ...draft, front: e.target.value })}
 												rows={3}
 												placeholder={t('Tu hoac khai niem', 'Word or concept')}
+												data-testid="flashcard-front-input"
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
@@ -227,12 +254,13 @@ export const DeckEditorPage: React.FC = () => {
 												onChange={(e) => setDraft({ ...draft, back: e.target.value })}
 												rows={3}
 												placeholder={t('Dinh nghia hoac mo ta', 'Definition or description')}
+												data-testid="flashcard-back-input"
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
 									</div>
 									<div className="flex justify-end">
-										<Button onClick={() => void addCard()} disabled={busy}>
+										<Button onClick={() => void addCard()} disabled={busy} data-testid="flashcard-add-btn">
 											<MaterialIcon icon="add" size="xs" />
 											<span className="ml-1">{busy ? t('Dang them...', 'Adding...') : t('Them the', 'Add Card')}</span>
 										</Button>

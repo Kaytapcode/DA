@@ -39,6 +39,18 @@ namespace Content.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsCourseScoped")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_course_scoped");
+
+                    b.Property<bool>("IsPublic")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_public");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -58,6 +70,49 @@ namespace Content.Api.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("contents");
+                });
+
+            modelBuilder.Entity("Content.Api.Models.CourseEnrollmentModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CourseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("course_id");
+
+                    b.Property<DateTime>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enrolled_at");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("role");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("course_enrollments");
                 });
 
             modelBuilder.Entity("Content.Api.Models.CourseModel", b =>
@@ -280,6 +335,45 @@ namespace Content.Api.Migrations
                     b.ToTable("flashcards");
                 });
 
+            modelBuilder.Entity("Content.Api.Models.FlashcardUserMasteryModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FlashcardId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("flashcard_id");
+
+                    b.Property<bool>("IsMastered")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_mastered");
+
+                    b.Property<DateTime?>("MasteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("mastered_at");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FlashcardId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("flashcard_user_mastery");
+                });
+
             modelBuilder.Entity("Content.Api.Models.ModuleContentModel", b =>
                 {
                     b.Property<Guid>("Id")
@@ -332,7 +426,7 @@ namespace Content.Api.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("description");
 
-                    b.Property<Guid>("OrgId")
+                    b.Property<Guid?>("OrgId")
                         .HasColumnType("uuid")
                         .HasColumnName("org_id");
 
@@ -491,6 +585,10 @@ namespace Content.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool>("IsAiGenerated")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_ai_generated");
+
                     b.Property<int>("PassingScore")
                         .HasColumnType("integer")
                         .HasColumnName("passing_score");
@@ -522,7 +620,7 @@ namespace Content.Api.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("content_id");
 
-                    b.Property<Guid>("CourseId")
+                    b.Property<Guid?>("CourseId")
                         .HasColumnType("uuid")
                         .HasColumnName("course_id");
 
@@ -560,7 +658,7 @@ namespace Content.Api.Migrations
 
                     b.HasIndex("ModuleId");
 
-                    b.HasIndex("CourseId", "UserId", "ModuleId")
+                    b.HasIndex("CourseId", "UserId", "ModuleId", "ContentId")
                         .IsUnique();
 
                     b.ToTable("student_progress");
@@ -581,14 +679,36 @@ namespace Content.Api.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<int?>("Duration")
                         .HasColumnType("integer")
                         .HasColumnName("duration");
 
-                    b.Property<string>("Url")
-                        .IsRequired()
+                    b.Property<string>("ThumbnailUrl")
                         .HasColumnType("text")
-                        .HasColumnName("url");
+                        .HasColumnName("thumbnail_url");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("YouTubeVideoId")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("youtube_video_id");
 
                     b.HasKey("Id");
 
@@ -596,6 +716,17 @@ namespace Content.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("videos");
+                });
+
+            modelBuilder.Entity("Content.Api.Models.CourseEnrollmentModel", b =>
+                {
+                    b.HasOne("Content.Api.Models.CourseModel", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
                 });
 
             modelBuilder.Entity("Content.Api.Models.CourseModuleModel", b =>
@@ -647,6 +778,17 @@ namespace Content.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Deck");
+                });
+
+            modelBuilder.Entity("Content.Api.Models.FlashcardUserMasteryModel", b =>
+                {
+                    b.HasOne("Content.Api.Models.FlashcardModel", "Flashcard")
+                        .WithMany()
+                        .HasForeignKey("FlashcardId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Flashcard");
                 });
 
             modelBuilder.Entity("Content.Api.Models.ModuleContentModel", b =>
@@ -732,8 +874,7 @@ namespace Content.Api.Migrations
                     b.HasOne("Content.Api.Models.CourseModel", "Course")
                         .WithMany()
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("Content.Api.Models.ModuleModel", "Module")
                         .WithMany()

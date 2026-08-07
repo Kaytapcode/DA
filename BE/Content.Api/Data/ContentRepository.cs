@@ -12,6 +12,8 @@ namespace Content.Api.Data
         Task DeleteAsync(Guid id, Guid moduleId, CancellationToken ct = default);
         Task SetStatusAsync(Guid id, string status, CancellationToken ct = default); // T3.6
         Task ReorderAsync(Guid moduleId, Guid contentId, int newIndex, CancellationToken ct = default); // T3.7
+        // Link an existing ContentModel to a module (no new ContentModel is created)
+        Task<ContentModel?> LinkExistingAsync(Guid contentId, Guid moduleId, CancellationToken ct = default);
     }
 
     public class ContentRepository : IContentRepository
@@ -114,6 +116,47 @@ namespace Content.Api.Data
             content.Status = status;
             content.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync(ct);
+        }
+
+        // Link an existing ContentModel (e.g., a user's quiz/video/doc/deck) to a module.
+        // Creates only the ModuleContent join row; the ContentModel itself is not modified.
+        public async Task<ContentModel?> LinkExistingAsync(Guid contentId, Guid moduleId, CancellationToken ct = default)
+        {
+            var content = await _context.Contents
+                .Include(c => c.Quiz)
+                .Include(c => c.FlashcardDeck)
+                .Include(c => c.Document)
+                .Include(c => c.Video)
+                .FirstOrDefaultAsync(c => c.Id == contentId, ct);
+            if (content == null) return null;
+
+            // Content linked into a course module was created FOR the course (the in-course "add
+            // content" flow is the only caller). Mark it course-scoped so it is hidden from the
+            // creator's personal Library and from public search/clone — visible only in the course.
+            content.IsCourseScoped = true;
+
+            // Prevent duplicate links
+            var already = await _context.ModuleContents
+                .AnyAsync(mc => mc.ContentId == contentId && mc.ModuleId == moduleId, ct);
+            if (already)
+            {
+                await _context.SaveChangesAsync(ct); // persist the course-scoped flag even on re-link
+                return content;
+            }
+
+            var maxOrder = await _context.ModuleContents
+                .Where(mc => mc.ModuleId == moduleId)
+                .Select(mc => (int?)mc.OrderIndex).MaxAsync(ct) ?? -1;
+
+            _context.ModuleContents.Add(new ModuleContentModel
+            {
+                Id = Guid.NewGuid(),
+                ModuleId = moduleId,
+                ContentId = contentId,
+                OrderIndex = maxOrder + 1
+            });
+            await _context.SaveChangesAsync(ct);
+            return content;
         }
 
         // T3.7: reorder content within module

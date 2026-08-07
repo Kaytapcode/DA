@@ -32,6 +32,7 @@ namespace Content.Api.Data
 
         // Users and Organizations
         public DbSet<CourseModel> Courses { get; set; }
+        public DbSet<CourseEnrollmentModel> CourseEnrollments { get; set; }
         public DbSet<ModuleModel> Modules { get; set; }
         public DbSet<CourseModuleModel> CourseModules { get; set; }
 
@@ -51,6 +52,7 @@ namespace Content.Api.Data
         // Flashcards
         public DbSet<FlashcardDeckModel> FlashcardDecks { get; set; }
         public DbSet<FlashcardModel> Flashcards { get; set; }
+        public DbSet<FlashcardUserMasteryModel> FlashcardUserMasteries { get; set; }
 
         // Progress & Attempts
         public DbSet<StudentProgressModel> StudentProgress { get; set; }
@@ -71,13 +73,26 @@ namespace Content.Api.Data
                 .HasForeignKey(m => m.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Personal collections (OrgId == null) are visible to all; org-scoped modules
+            // are filtered by the caller's current org.
             modelBuilder.Entity<ModuleModel>()
-                .HasQueryFilter(m => IsSysAdmin || CurrentOrgId == null || m.OrgId == CurrentOrgId);
+                .HasQueryFilter(m => IsSysAdmin || m.OrgId == null || CurrentOrgId == null || m.OrgId == CurrentOrgId);
 
             // CourseModule - junction table
             modelBuilder.Entity<CourseModuleModel>()
                 .HasIndex(cm => new { cm.CourseId, cm.ModuleId })
                 .IsUnique();
+
+            // CourseEnrollment - per-course Teacher/Student role (spec §4.1)
+            modelBuilder.Entity<CourseEnrollmentModel>()
+                .HasIndex(ce => new { ce.CourseId, ce.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<CourseEnrollmentModel>()
+                .HasOne(ce => ce.Course)
+                .WithMany()
+                .HasForeignKey(ce => ce.CourseId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Content relationships
             modelBuilder.Entity<VideoModel>()
@@ -106,15 +121,29 @@ namespace Content.Api.Data
                 .HasForeignKey<FlashcardDeckModel>(f => f.ContentId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Student progress: unique per (course, user, module) combination
+            // Flashcard user mastery - track per-user mastery progress
+            modelBuilder.Entity<FlashcardUserMasteryModel>()
+                .HasIndex(fum => new { fum.FlashcardId, fum.UserId })
+                .IsUnique();
+
+            modelBuilder.Entity<FlashcardUserMasteryModel>()
+                .HasOne(fum => fum.Flashcard)
+                .WithMany()
+                .HasForeignKey(fum => fum.FlashcardId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Student progress: unique per (course, user, module, content) — progress is tracked per
+            // CONTENT, so ContentId must be part of the key (else two contents in one module collide
+            // and opening one wipes the other's completion).
             modelBuilder.Entity<StudentProgressModel>()
-                .HasIndex(sp => new { sp.CourseId, sp.UserId, sp.ModuleId })
+                .HasIndex(sp => new { sp.CourseId, sp.UserId, sp.ModuleId, sp.ContentId })
                 .IsUnique();
 
             modelBuilder.Entity<StudentProgressModel>()
                 .HasOne(sp => sp.Course)
                 .WithMany()
                 .HasForeignKey(sp => sp.CourseId)
+                .IsRequired(false)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<StudentProgressModel>()

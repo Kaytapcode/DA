@@ -1,5 +1,6 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -7,21 +8,56 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
+import { tokenStore } from '@/utils/tokenStore'
 import { useUserLanguage } from './UserShell'
+import { useCourseContentLink } from '@/hooks/useCourseContentLink'
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
+interface LibraryDoc {
+  id: string
+  fileName: string
+  fileType: string
+}
 
 type CreateMode = 'manual' | 'ai'
+type AiStep = 'input' | 'review'
 
+// ---- Manual mode types ----
 interface OptionDraft {
 	text: string
 	isCorrect: boolean
 }
-
 interface QuestionDraft {
 	questionText: string
 	explanation: string
 	options: OptionDraft[]
 }
 
+// ---- AI mode types ----
+// Shape returned by AI.Api /quiz/generate (inside ApiResponse.data)
+interface AiQuestion {
+	question: string
+	options: string[]
+	correct_index: number
+	explanation: string
+}
+interface QuizGenerationResponse {
+	success: boolean
+	questions_count: number
+	questions: AiQuestion[]
+	message: string
+}
+
+// Editable question for the review step
+interface EditableQ {
+	questionText: string
+	options: string[]
+	correctIndex: number
+	explanation: string
+}
+
+// Response from POST /quizzes
 interface QuizSummaryResp {
 	quizId: string
 	contentId: string
@@ -30,13 +66,7 @@ interface QuizSummaryResp {
 	createdAt: string
 }
 
-interface GeneratedQuestion {
-	id?: string
-	questionText: string
-	explanation?: string | null
-	options: Array<{ id?: string; optionText: string; isCorrect: boolean; orderIndex: number }>
-}
-
+// ---- Helpers ----
 const blankOption = (): OptionDraft => ({ text: '', isCorrect: false })
 const blankQuestion = (): QuestionDraft => ({
 	questionText: '',
@@ -49,71 +79,92 @@ const blankQuestion = (): QuestionDraft => ({
 	],
 })
 
+const aiToEditable = (q: AiQuestion): EditableQ => ({
+	questionText: q.question,
+	options: q.options,
+	correctIndex: q.correct_index,
+	explanation: q.explanation,
+})
+
 export const QuizCreatePage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const navigate = useNavigate()
+	const courseLink = useCourseContentLink()
+	const fileInputRef = useRef<HTMLInputElement>(null)
 
+	const t = (vi: string, en: string) => (isVi ? vi : en)
+
+	// Shared
 	const [mode, setMode] = useState<CreateMode>('manual')
 	const [title, setTitle] = useState('')
 	const [timeLimit, setTimeLimit] = useState<string>('')
-	const [questions, setQuestions] = useState<QuestionDraft[]>([blankQuestion()])
-	const [aiDocTitle, setAiDocTitle] = useState('')
-	const [aiContent, setAiContent] = useState('')
-	const [aiPreview, setAiPreview] = useState<GeneratedQuestion[] | null>(null)
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [success, setSuccess] = useState<string | null>(null)
 
-	const t = (vi: string, en: string) => (isVi ? vi : en)
+	// Manual mode
+	const [questions, setQuestions] = useState<QuestionDraft[]>([blankQuestion()])
 
-	const updateQuestion = (idx: number, patch: Partial<QuestionDraft>) => {
+	// AI mode
+	const [aiStep, setAiStep] = useState<AiStep>('input')
+	const [aiFile, setAiFile] = useState<File | null>(null)
+	const [aiDocTitle, setAiDocTitle] = useState('')
+	const [isGenerating, setIsGenerating] = useState(false)
+	const [editableQuestions, setEditableQuestions] = useState<EditableQ[]>([])
+	const [isDragging, setIsDragging] = useState(false)
+	const [questionCount, setQuestionCount] = useState<'normal' | 'many' | 'more'>('normal')
+	const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard'>('normal')
+	const [aiInputMode, setAiInputMode] = useState<'upload' | 'library'>('upload')
+	const [libraryDocs, setLibraryDocs] = useState<LibraryDoc[]>([])
+	const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+	const [selectedLibraryDocId, setSelectedLibraryDocId] = useState<string | null>(null)
+
+	// ---- Manual mode helpers ----
+	const updateQuestion = (idx: number, patch: Partial<QuestionDraft>) =>
 		setQuestions((prev) => prev.map((q, i) => (i === idx ? { ...q, ...patch } : q)))
-	}
 
-	const updateOption = (qIdx: number, oIdx: number, patch: Partial<OptionDraft>) => {
-		setQuestions((prev) => prev.map((q, i) => {
-			if (i !== qIdx) return q
-			return { ...q, options: q.options.map((o, j) => (j === oIdx ? { ...o, ...patch } : o)) }
-		}))
-	}
+	const updateOption = (qIdx: number, oIdx: number, patch: Partial<OptionDraft>) =>
+		setQuestions((prev) =>
+			prev.map((q, i) => {
+				if (i !== qIdx) return q
+				return { ...q, options: q.options.map((o, j) => (j === oIdx ? { ...o, ...patch } : o)) }
+			})
+		)
 
-	const setCorrect = (qIdx: number, oIdx: number) => {
-		setQuestions((prev) => prev.map((q, i) => {
-			if (i !== qIdx) return q
-			return { ...q, options: q.options.map((o, j) => ({ ...o, isCorrect: j === oIdx })) }
-		}))
-	}
+	const setCorrect = (qIdx: number, oIdx: number) =>
+		setQuestions((prev) =>
+			prev.map((q, i) => {
+				if (i !== qIdx) return q
+				return { ...q, options: q.options.map((o, j) => ({ ...o, isCorrect: j === oIdx })) }
+			})
+		)
 
 	const addQuestion = () => setQuestions((prev) => [...prev, blankQuestion()])
 	const removeQuestion = (idx: number) => setQuestions((prev) => prev.filter((_, i) => i !== idx))
-	const addOption = (qIdx: number) => updateQuestion(qIdx, { options: [...questions[qIdx].options, blankOption()] })
+	const addOption = (qIdx: number) =>
+		updateQuestion(qIdx, { options: [...questions[qIdx].options, blankOption()] })
 	const removeOption = (qIdx: number, oIdx: number) => {
 		const remaining = questions[qIdx].options.filter((_, j) => j !== oIdx)
 		updateQuestion(qIdx, { options: remaining })
 	}
 
 	const validateManual = (): string | null => {
-		if (!title.trim()) return t('Vui long nhap tieu de quiz.', 'Quiz title is required.')
-		if (questions.length === 0) return t('Can it nhat 1 cau hoi.', 'At least one question is required.')
+		if (!title.trim()) return t('Vui lòng nhập tiêu đề quiz.', 'Quiz title is required.')
+		if (questions.length === 0) return t('Cần ít nhất 1 câu hỏi.', 'At least one question is required.')
 		for (let i = 0; i < questions.length; i++) {
 			const q = questions[i]
-			if (!q.questionText.trim()) return t(`Cau ${i + 1}: thieu noi dung.`, `Question ${i + 1}: text required.`)
-			if (q.options.length < 2) return t(`Cau ${i + 1}: can it nhat 2 lua chon.`, `Question ${i + 1}: at least 2 options.`)
-			if (q.options.some((o) => !o.text.trim())) return t(`Cau ${i + 1}: co lua chon bo trong.`, `Question ${i + 1}: empty option text.`)
-			if (!q.options.some((o) => o.isCorrect)) return t(`Cau ${i + 1}: chua chon dap an dung.`, `Question ${i + 1}: pick a correct answer.`)
+			if (!q.questionText.trim()) return t(`Câu ${i + 1}: thiếu nội dung.`, `Question ${i + 1}: text required.`)
+			if (q.options.length < 2) return t(`Câu ${i + 1}: cần ít nhất 2 lựa chọn.`, `Question ${i + 1}: at least 2 options.`)
+			if (q.options.some((o) => !o.text.trim())) return t(`Câu ${i + 1}: có lựa chọn bỏ trống.`, `Question ${i + 1}: empty option text.`)
+			if (!q.options.some((o) => o.isCorrect)) return t(`Câu ${i + 1}: chưa chọn đáp án đúng.`, `Question ${i + 1}: pick a correct answer.`)
 		}
 		return null
 	}
 
 	const submitManual = async () => {
 		const validationError = validateManual()
-		if (validationError) {
-			setError(validationError)
-			return
-		}
-		setError(null)
-		setSuccess(null)
-		setIsSubmitting(true)
+		if (validationError) { setError(validationError); return }
+		setError(null); setSuccess(null); setIsSubmitting(true)
 
 		try {
 			const quizRes = await apiClient.post<QuizSummaryResp>('/quizzes', {
@@ -126,7 +177,7 @@ export const QuizCreatePage: React.FC = () => {
 			const quizId = quizRes.data.quizId
 			for (let i = 0; i < questions.length; i++) {
 				const q = questions[i]
-				const payload = {
+				const qRes = await apiClient.post(`/quizzes/${quizId}/questions`, {
 					questionText: q.questionText.trim(),
 					explanation: q.explanation.trim() || null,
 					orderIndex: i,
@@ -135,34 +186,142 @@ export const QuizCreatePage: React.FC = () => {
 						isCorrect: o.isCorrect,
 						orderIndex: j,
 					})),
-				}
-				const qRes = await apiClient.post(`/quizzes/${quizId}/questions`, payload)
+				})
 				if (!qRes.success) throw new Error(qRes.message || `Failed at question ${i + 1}`)
 			}
 
-			setSuccess(t('Tao quiz thanh cong! Dang chuyen huong...', 'Quiz created! Redirecting...'))
+			// If launched to add content to a course module, link the new quiz FIRST (throws on
+			// failure → the catch shows the error and we stay here), then return to the course.
+			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId); return }
+			setSuccess(t('Tạo quiz thành công! Đang chuyển hướng...', 'Quiz created! Redirecting...'))
 			setTimeout(() => navigate('/user/library'), 1200)
 		} catch (err: any) {
-			const msg = err?.message || (err?.data?.message) || 'Failed to create quiz'
-			setError(msg)
+			setError(err?.message || err?.data?.message || 'Failed to create quiz')
 		} finally {
 			setIsSubmitting(false)
 		}
 	}
 
-	const submitAi = async () => {
-		if (!title.trim()) {
-			setError(t('Vui long nhap tieu de quiz.', 'Quiz title is required.'))
-			return
-		}
-		if (!aiContent.trim() || aiContent.trim().length < 50) {
-			setError(t('Vui long nhap noi dung tai lieu (it nhat 50 ky tu).', 'Paste at least 50 characters of document content.'))
-			return
-		}
+	// ---- AI mode — library helpers ----
+	const loadLibraryDocs = async () => {
+		setIsLoadingLibrary(true)
+		try {
+			if (courseLink.active && courseLink.courseId) {
+				// In-course AI quiz: source documents FROM THE COURSE (its own documents),
+				// not the creator's personal library.
+				const res = await apiClient.get<Array<{ contents?: Array<{ contentType: string; title: string; documentId?: string | null }> }>>(
+					`/courses/${courseLink.courseId}/modules`
+				)
+				if (res.success && res.data) {
+					const docs: LibraryDoc[] = []
+					for (const m of res.data)
+						for (const c of (m.contents ?? []))
+							if ((c.contentType === 'PDF' || c.contentType === 'DOCUMENT') && c.documentId)
+								docs.push({ id: c.documentId, fileName: c.title || 'Document', fileType: 'PDF' })
+					setLibraryDocs(docs)
+				}
+			} else {
+				const res = await apiClient.get<LibraryDoc[]>('/documents')
+				if (res.success && res.data) setLibraryDocs(res.data)
+			}
+		} catch { /* silently fail */ }
+		finally { setIsLoadingLibrary(false) }
+	}
+
+	const selectLibraryDoc = async (doc: LibraryDoc) => {
+		setIsLoadingLibrary(true)
 		setError(null)
-		setSuccess(null)
-		setIsSubmitting(true)
-		setAiPreview(null)
+		setSelectedLibraryDocId(doc.id)
+		try {
+			const token = tokenStore.getAccessToken()
+			const orgId = localStorage.getItem('org_id')
+			const orgSlug = localStorage.getItem('org_slug')
+			const res = await axios.get(`${API_BASE}/documents/${doc.id}`, {
+				responseType: 'blob',
+				headers: {
+					...(token ? { Authorization: `Bearer ${token}` } : {}),
+					...(orgId ? { 'X-Org-Id': orgId } : {}),
+					...(orgSlug ? { 'X-Org-Slug': orgSlug } : {}),
+				},
+			})
+			const mime = String(res.headers['content-type'] || '').split(';')[0].trim() || 'application/pdf'
+			const file = new File([res.data as Blob], doc.fileName, { type: mime })
+			setAiFile(file)
+			setAiDocTitle(doc.fileName.replace(/\.[^.]+$/, ''))
+		} catch {
+			setError(t('Không thể tải tài liệu từ thư viện.', 'Could not load document from library.'))
+			setSelectedLibraryDocId(null)
+		} finally {
+			setIsLoadingLibrary(false)
+		}
+	}
+
+	// ---- AI mode helpers ----
+	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const f = e.target.files?.[0] ?? null
+		setAiFile(f)
+		setError(null)
+	}
+
+	const handleDragOver = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragging(true)
+	}
+
+	const handleDragLeave = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragging(false)
+	}
+
+	const handleDrop = (e: React.DragEvent) => {
+		e.preventDefault()
+		setIsDragging(false)
+		const f = e.dataTransfer.files?.[0]
+		if (!f) return
+		const allowed = ['application/pdf', 'text/plain']
+		const ext = f.name.toLowerCase()
+		if (!allowed.includes(f.type) && !ext.endsWith('.pdf') && !ext.endsWith('.txt')) {
+			setError(t('Chỉ hỗ trợ file PDF hoặc TXT.', 'Only PDF and TXT files are supported.'))
+			return
+		}
+		setAiFile(f)
+		setError(null)
+	}
+
+	const generateWithAi = async () => {
+		if (!title.trim()) { setError(t('Vui lòng nhập tiêu đề quiz.', 'Quiz title is required.')); return }
+		if (!aiFile) { setError(t('Vui lòng chọn file PDF hoặc TXT.', 'Please select a PDF or TXT file.')); return }
+
+		setError(null); setSuccess(null); setIsGenerating(true)
+
+		try {
+			const formData = new FormData()
+			formData.append('file', aiFile)
+			if (aiDocTitle.trim()) formData.append('documentTitle', aiDocTitle.trim())
+			formData.append('questionCount', questionCount)
+			formData.append('difficulty', difficulty)
+
+			// Pass FormData — axios auto-sets multipart/form-data with boundary
+			// Large/hard sets can take 3-4 minutes; use a 5-minute timeout
+			const genRes = await apiClient.post<QuizGenerationResponse>('/quiz/generate', formData, { timeout: 480000 })
+
+			if (!genRes.success || !genRes.data) throw new Error(genRes.message || 'AI generation failed')
+
+			const questions = genRes.data.questions
+			if (!questions || questions.length === 0) throw new Error('AI returned no questions')
+
+			setEditableQuestions(questions.map(aiToEditable))
+			setAiStep('review')
+		} catch (err: any) {
+			setError(err?.message || err?.data?.message || 'AI generation failed')
+		} finally {
+			setIsGenerating(false)
+		}
+	}
+
+	const saveAsDraft = async () => {
+		if (editableQuestions.length === 0) { setError('No questions to save.'); return }
+		setError(null); setSuccess(null); setIsSubmitting(true)
 
 		try {
 			const quizRes = await apiClient.post<QuizSummaryResp>('/quizzes', {
@@ -171,114 +330,149 @@ export const QuizCreatePage: React.FC = () => {
 				passingScore: null,
 			})
 			if (!quizRes.success || !quizRes.data) throw new Error(quizRes.message || 'Failed to create quiz')
+
 			const quizId = quizRes.data.quizId
-
-			const genRes = await apiClient.post<GeneratedQuestion[]>(`/quiz/generate?quizId=${encodeURIComponent(quizId)}`, {
-				documentContent: aiContent,
-				documentTitle: aiDocTitle.trim() || title.trim(),
+			const saveRes = await apiClient.post(`/quizzes/${quizId}/generate`, {
+				questions: editableQuestions.map((q) => ({
+					question: q.questionText,
+					options: q.options,
+					correctIndex: q.correctIndex,
+					explanation: q.explanation,
+				})),
 			})
+			if (!saveRes.success) throw new Error(saveRes.message || 'Failed to save questions')
 
-			if (!genRes.success || !genRes.data) throw new Error(genRes.message || 'AI generation failed')
-
-			setAiPreview(genRes.data)
-			setSuccess(t(
-				`Da tao ${genRes.data.length} cau hoi. Kiem tra ben duoi.`,
-				`Generated ${genRes.data.length} questions. Review them below.`
-			))
+			if (courseLink.active) { await courseLink.linkAndReturn(quizRes.data.contentId); return }
+			setSuccess(t('Đã lưu quiz nháp! Đang chuyển về thư viện...', 'Draft quiz saved! Redirecting to library...'))
+			setTimeout(() => navigate('/user/library'), 1400)
 		} catch (err: any) {
-			const msg = err?.message || (err?.data?.message) || 'AI generation failed'
-			setError(msg)
+			setError(err?.message || err?.data?.message || 'Failed to save quiz')
 		} finally {
 			setIsSubmitting(false)
 		}
 	}
 
+	// ---- Editable question helpers ----
+	const updateEQ = (idx: number, patch: Partial<EditableQ>) =>
+		setEditableQuestions((prev) => prev.map((q, i) => (i === idx ? { ...q, ...patch } : q)))
+
+	const updateEQOption = (qIdx: number, oIdx: number, text: string) =>
+		setEditableQuestions((prev) =>
+			prev.map((q, i) => {
+				if (i !== qIdx) return q
+				const opts = [...q.options]
+				opts[oIdx] = text
+				return { ...q, options: opts }
+			})
+		)
+
+	const removeEQ = (idx: number) =>
+		setEditableQuestions((prev) => prev.filter((_, i) => i !== idx))
+
+	const addBlankEQ = () =>
+		setEditableQuestions((prev) => [
+			...prev,
+			{ questionText: '', options: ['', '', '', ''], correctIndex: 0, explanation: '' },
+		])
+
+	// ---- Render ----
 	return (
-		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[1100px] space-y-6">
+
+					{/* Header */}
 					<div className="flex items-center justify-between">
 						<div>
-							<h1 className="text-4xl font-black text-[#111b2d]">{t('Tao Quiz Moi', 'Create New Quiz')}</h1>
+							<h1 className="text-4xl font-black text-[#111b2d]">{t('Tạo Quiz Mới', 'Create New Quiz')}</h1>
 							<p className="mt-1 text-sm text-[#60708a]">
 								{t(
-									'Tao quiz thu cong hoac de AI sinh tu noi dung tai lieu.',
-									'Build a quiz manually or let AI generate one from document content.'
+									'Tạo quiz thủ công hoặc để AI sinh từ file tài liệu.',
+									'Build a quiz manually or let AI generate one from a document file.'
 								)}
 							</p>
 						</div>
 						<Button variant="ghost" onClick={() => navigate('/user/library')}>
 							<MaterialIcon icon="arrow_back" size="xs" />
-							<span className="ml-1">{t('Quay lai', 'Back')}</span>
+							<span className="ml-1">{t('Quay lại', 'Back')}</span>
 						</Button>
 					</div>
 
+					{/* Shared config card */}
 					<Card>
 						<div className="space-y-4">
 							<div className="grid gap-4 md:grid-cols-[1fr_180px]">
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Tieu de quiz', 'Quiz Title')} <span className="text-red-500">*</span>
+										{t('Tiêu đề quiz', 'Quiz Title')} <span className="text-red-500">*</span>
 									</label>
 									<input
 										type="text"
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
-										placeholder={t('Vi du: He Mat Troi', 'e.g., Solar System Basics')}
+										placeholder={t('Ví dụ: Hệ Mặt Trời', 'e.g., Solar System Basics')}
+										data-testid="quiz-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
 								<div>
 									<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-										{t('Gioi han thoi gian (phut)', 'Time Limit (min)')}
+										{t('Giới hạn thời gian', 'Time Limit')}
 									</label>
-									<input
-										type="number"
-										min={0}
-										value={timeLimit}
-										onChange={(e) => setTimeLimit(e.target.value)}
-										placeholder={t('Khong gioi han', 'Unlimited')}
-										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
-									/>
+									<select
+											value={timeLimit}
+											onChange={(e) => setTimeLimit(e.target.value)}
+											data-testid="quiz-timelimit-select"
+											className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
+										>
+											<option value="">{t('Không giới hạn', 'Unlimited')}</option>
+											{[5, 10, 15, 20, 30, 45, 60, 90, 120].map((m) => (
+												<option key={m} value={String(m)}>{m} {t('phút', 'min')}</option>
+											))}
+										</select>
 								</div>
 							</div>
 
 							<div className="flex gap-2">
 								<button
 									type="button"
-									onClick={() => setMode('manual')}
+									onClick={() => { setMode('manual'); setError(null) }}
+									data-testid="quiz-mode-manual"
 									className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
 										mode === 'manual' ? 'bg-[#1463ff] text-white' : 'border border-[#d7dfeb] bg-white text-[#5e6f88]'
 									}`}
 								>
 									<MaterialIcon icon="edit" size="xs" />
-									<span className="ml-1">{t('Nhap thu cong', 'Manual')}</span>
+									<span className="ml-1">{t('Nhập thủ công', 'Manual')}</span>
 								</button>
 								<button
 									type="button"
-									onClick={() => setMode('ai')}
+									onClick={() => { setMode('ai'); setError(null) }}
+									data-testid="quiz-mode-ai"
 									className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
 										mode === 'ai' ? 'bg-[#1463ff] text-white' : 'border border-[#d7dfeb] bg-white text-[#5e6f88]'
 									}`}
 								>
 									<MaterialIcon icon="auto_awesome" size="xs" />
-									<span className="ml-1">{t('AI sinh tu tai lieu', 'AI from Document')}</span>
+									<span className="ml-1">{t('AI từ tài liệu', 'AI from Document')}</span>
 								</button>
 							</div>
 						</div>
 					</Card>
 
+					{/* Error / success banners */}
 					{error && (
 						<Card className="border border-red-200 bg-red-50">
-							<p className="text-sm text-red-700">{error}</p>
+							<p className="text-sm text-red-700" data-testid="quiz-error">{error}</p>
 						</Card>
 					)}
 					{success && (
 						<Card className="border border-green-200 bg-green-50">
-							<p className="text-sm text-green-700">{success}</p>
+							<p className="text-sm text-green-700" data-testid="quiz-success">{success}</p>
 						</Card>
 					)}
 
+					{/* ===================== MANUAL MODE ===================== */}
 					{mode === 'manual' && (
 						<>
 							{questions.map((q, qIdx) => (
@@ -286,7 +480,7 @@ export const QuizCreatePage: React.FC = () => {
 									<div className="space-y-3">
 										<div className="flex items-center justify-between">
 											<h3 className="text-lg font-bold text-[#111b2d]">
-												{t('Cau hoi', 'Question')} {qIdx + 1}
+												{t('Câu hỏi', 'Question')} {qIdx + 1}
 											</h3>
 											{questions.length > 1 && (
 												<button
@@ -295,7 +489,7 @@ export const QuizCreatePage: React.FC = () => {
 													className="text-xs text-red-600 hover:underline"
 												>
 													<MaterialIcon icon="delete" size="xs" />
-													<span className="ml-1">{t('Xoa', 'Remove')}</span>
+													<span className="ml-1">{t('Xoá', 'Remove')}</span>
 												</button>
 											)}
 										</div>
@@ -303,8 +497,9 @@ export const QuizCreatePage: React.FC = () => {
 										<textarea
 											value={q.questionText}
 											onChange={(e) => updateQuestion(qIdx, { questionText: e.target.value })}
-											placeholder={t('Noi dung cau hoi...', 'Question text...')}
+											placeholder={t('Nội dung câu hỏi...', 'Question text...')}
 											rows={2}
+											data-testid={`quiz-question-${qIdx}-text`}
 											className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 										/>
 
@@ -316,14 +511,16 @@ export const QuizCreatePage: React.FC = () => {
 														name={`correct-${qIdx}`}
 														checked={opt.isCorrect}
 														onChange={() => setCorrect(qIdx, oIdx)}
+														data-testid={`quiz-question-${qIdx}-option-${oIdx}-correct`}
 														className="h-4 w-4 cursor-pointer"
-														title={t('Danh dau dap an dung', 'Mark as correct answer')}
+														title={t('Đánh dấu đáp án đúng', 'Mark as correct answer')}
 													/>
 													<input
 														type="text"
 														value={opt.text}
 														onChange={(e) => updateOption(qIdx, oIdx, { text: e.target.value })}
-														placeholder={t(`Lua chon ${oIdx + 1}`, `Option ${oIdx + 1}`)}
+														placeholder={t(`Lựa chọn ${oIdx + 1}`, `Option ${oIdx + 1}`)}
+														data-testid={`quiz-question-${qIdx}-option-${oIdx}-text`}
 														className="flex-1 rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 													/>
 													{q.options.length > 2 && (
@@ -343,20 +540,21 @@ export const QuizCreatePage: React.FC = () => {
 													onClick={() => addOption(qIdx)}
 													className="text-xs font-semibold text-[#1463ff] hover:underline"
 												>
-													+ {t('Them lua chon', 'Add option')}
+													+ {t('Thêm lựa chọn', 'Add option')}
 												</button>
 											)}
 										</div>
 
 										<div>
 											<label className="mb-1 block text-xs font-semibold text-[#60708a]">
-												{t('Giai thich (tuy chon)', 'Explanation (optional)')}
+												{t('Giải thích (tuỳ chọn)', 'Explanation (optional)')}
 											</label>
 											<input
 												type="text"
 												value={q.explanation}
 												onChange={(e) => updateQuestion(qIdx, { explanation: e.target.value })}
-												placeholder={t('Giai thich vi sao dap an dung...', 'Why this answer is correct...')}
+												placeholder={t('Giải thích vì sao đáp án đúng...', 'Why this answer is correct...')}
+												data-testid={`quiz-question-${qIdx}-explanation`}
 												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 											/>
 										</div>
@@ -365,98 +563,371 @@ export const QuizCreatePage: React.FC = () => {
 							))}
 
 							<div className="flex justify-between">
-								<Button variant="secondary" onClick={addQuestion} disabled={isSubmitting}>
+								<Button variant="secondary" onClick={addQuestion} disabled={isSubmitting} data-testid="quiz-add-question-btn">
 									<MaterialIcon icon="add" size="xs" />
-									<span className="ml-1">{t('Them cau hoi', 'Add Question')}</span>
+									<span className="ml-1">{t('Thêm câu hỏi', 'Add Question')}</span>
 								</Button>
-								<Button onClick={() => void submitManual()} disabled={isSubmitting}>
-									{isSubmitting ? t('Dang luu...', 'Saving...') : t('Luu quiz', 'Save Quiz')}
+								<Button onClick={() => void submitManual()} disabled={isSubmitting} data-testid="quiz-save-btn">
+									{isSubmitting ? t('Đang lưu...', 'Saving...') : t('Lưu quiz', 'Save Quiz')}
 								</Button>
 							</div>
 						</>
 					)}
 
+					{/* ===================== AI MODE ===================== */}
 					{mode === 'ai' && (
 						<>
-							<Card>
-								<div className="space-y-3">
-									<div>
-										<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-											{t('Tieu de tai lieu (tuy chon)', 'Document Title (optional)')}
-										</label>
-										<input
-											type="text"
-											value={aiDocTitle}
-											onChange={(e) => setAiDocTitle(e.target.value)}
-											placeholder={t('Vi du: Chuong 1 - Sinh hoc', 'e.g., Chapter 1 - Biology')}
-											className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
-										/>
-									</div>
-									<div>
-										<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
-											{t('Noi dung tai lieu', 'Document Content')} <span className="text-red-500">*</span>
-										</label>
-										<textarea
-											value={aiContent}
-											onChange={(e) => setAiContent(e.target.value)}
-											rows={10}
-											placeholder={t(
-												'Dan noi dung PDF/text vao day. AI se tao cau hoi dua tren noi dung nay (it nhat 50 ky tu).',
-												'Paste PDF/text content here. AI will generate questions based on it (min 50 chars).'
-											)}
-											className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
-										/>
-										<p className="mt-1 text-xs text-[#9aa5b5]">
-											{aiContent.length} {t('ky tu', 'characters')}
-										</p>
-									</div>
-									<div className="flex justify-end">
-										<Button onClick={() => void submitAi()} disabled={isSubmitting}>
-											<MaterialIcon icon="auto_awesome" size="xs" />
-											<span className="ml-1">
-												{isSubmitting ? t('AI dang xu ly...', 'Generating...') : t('Sinh quiz bang AI', 'Generate with AI')}
-											</span>
-										</Button>
-									</div>
-								</div>
-							</Card>
-
-							{aiPreview && aiPreview.length > 0 && (
+							{/* Step 1: Upload file */}
+							{aiStep === 'input' && (
 								<Card>
 									<div className="space-y-4">
-										<h3 className="text-lg font-bold text-[#111b2d]">
-											{t('Cau hoi AI sinh ra', 'AI-Generated Questions')}
+										<h3 className="text-base font-bold text-[#111b2d]">
+											{t('Tải lên tài liệu để AI sinh câu hỏi', 'Upload a document for AI to generate questions')}
 										</h3>
-										{aiPreview.map((q, idx) => (
-											<div key={q.id ?? idx} className="rounded-lg border border-[#dce3ed] p-4">
-												<p className="font-semibold text-[#111b2d]">
-													{idx + 1}. {q.questionText}
-												</p>
-												<ul className="mt-2 space-y-1 text-sm">
-													{q.options.map((o) => (
-														<li
-															key={o.id ?? `${idx}-${o.orderIndex}`}
-															className={o.isCorrect ? 'font-semibold text-green-700' : 'text-[#60708a]'}
-														>
-															{o.isCorrect ? '✓ ' : '○ '}
-															{o.optionText}
-														</li>
-													))}
-												</ul>
-												{q.explanation && (
-													<p className="mt-2 text-xs italic text-[#60708a]">
-														{t('Giai thich', 'Explanation')}: {q.explanation}
+
+										<div>
+											<label className="mb-1 block text-sm font-semibold text-[#111b2d]">
+												{t('Tiêu đề tài liệu (tuỳ chọn)', 'Document Title (optional)')}
+											</label>
+											<input
+												type="text"
+												value={aiDocTitle}
+												onChange={(e) => setAiDocTitle(e.target.value)}
+												placeholder={t('Ví dụ: Chương 1 - Sinh học', 'e.g., Chapter 1 - Biology')}
+												className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
+											/>
+										</div>
+
+										{/* Question count */}
+									<div>
+										<label className="mb-2 block text-sm font-semibold text-[#111b2d]">
+											{t('Số lượng câu hỏi', 'Number of Questions')}
+										</label>
+										<div className="flex gap-2">
+											{(
+												[
+													{ value: 'normal', label: t('Thường', 'Normal'), desc: '10–12' },
+													{ value: 'many',   label: t('Nhiều',  'Many'),   desc: '15–18' },
+													{ value: 'more',   label: t('Nhiều hơn', 'More'), desc: '20–25' },
+												] as const
+											).map(({ value, label, desc }) => (
+												<button
+													key={value}
+													type="button"
+													onClick={() => setQuestionCount(value)}
+													className={`flex flex-1 flex-col items-center rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+														questionCount === value
+															? 'border-[#1463ff] bg-[#1463ff] text-white'
+															: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+													}`}
+												>
+													<span>{label}</span>
+													<span className={`text-xs font-normal ${questionCount === value ? 'text-blue-100' : 'text-[#9aa5b5]'}`}>{desc} {t('câu', 'Qs')}</span>
+												</button>
+											))}
+										</div>
+									</div>
+
+									{/* Difficulty */}
+									<div>
+										<label className="mb-2 block text-sm font-semibold text-[#111b2d]">
+											{t('Độ khó', 'Difficulty')}
+										</label>
+										<div className="flex gap-2">
+											{(
+												[
+													{ value: 'easy',   label: t('Dễ',    'Easy'),   icon: '🟢' },
+													{ value: 'normal', label: t('Thường','Normal'), icon: '🟡' },
+													{ value: 'hard',   label: t('Khó',   'Hard'),   icon: '🔴' },
+												] as const
+											).map(({ value, label, icon }) => (
+												<button
+													key={value}
+													type="button"
+													onClick={() => setDifficulty(value)}
+													className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+														difficulty === value
+															? 'border-[#1463ff] bg-[#1463ff] text-white'
+															: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+													}`}
+												>
+													<span>{icon}</span>
+													<span>{label}</span>
+												</button>
+											))}
+										</div>
+									</div>
+
+									{/* Source mode toggle: Upload vs Library */}
+									<div>
+										<label className="mb-2 block text-sm font-semibold text-[#111b2d]">
+											{t('Nguồn tài liệu', 'Document Source')} <span className="text-red-500">*</span>
+										</label>
+										<div className="flex gap-2 mb-3">
+											<button
+												type="button"
+												onClick={() => { setAiInputMode('upload'); setError(null) }}
+												className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+													aiInputMode === 'upload'
+														? 'border-[#1463ff] bg-[#1463ff] text-white'
+														: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+												}`}
+											>
+												<MaterialIcon icon="upload_file" size="xs" />
+												{t('Tải file mới', 'Upload File')}
+											</button>
+											<button
+												type="button"
+												onClick={() => {
+													setAiInputMode('library')
+													setError(null)
+													if (libraryDocs.length === 0) void loadLibraryDocs()
+												}}
+												className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+													aiInputMode === 'library'
+														? 'border-[#1463ff] bg-[#1463ff] text-white'
+														: 'border-[#d7dfeb] bg-white text-[#5e6f88] hover:border-[#1463ff]'
+												}`}
+											>
+												<MaterialIcon icon="library_books" size="xs" />
+												{courseLink.active
+													? t('Tài liệu trong khoá học', 'From Course')
+													: t('Chọn từ thư viện', 'From My Library')}
+											</button>
+										</div>
+
+										{/* Upload tab */}
+										{aiInputMode === 'upload' && (
+											<>
+												<div className="flex items-center gap-2 mb-1">
+													<span className="text-sm font-semibold text-[#111b2d]">
+														{t('File tài liệu', 'Document File')}
+													</span>
+													<span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">
+														PDF · TXT · max 200 MB
+													</span>
+												</div>
+												<div
+													className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 transition ${
+														isDragging
+															? 'border-[#1463ff] bg-blue-100'
+															: 'border-[#d7dfeb] bg-[#f6f8fb] hover:border-[#1463ff] hover:bg-blue-50'
+													}`}
+													onClick={() => fileInputRef.current?.click()}
+													onDragOver={handleDragOver}
+													onDragLeave={handleDragLeave}
+													onDrop={handleDrop}
+												>
+													<MaterialIcon icon="upload_file" size="lg" className="text-[#1463ff]" />
+													{aiFile && aiInputMode === 'upload' ? (
+														<>
+															<p className="text-sm font-semibold text-[#111b2d]">{aiFile.name}</p>
+															<p className="text-xs text-[#60708a]">
+																{(aiFile.size / 1024).toFixed(1)} KB — {t('Nhấn để thay đổi', 'Click to change')}
+															</p>
+														</>
+													) : (
+														<>
+															<p className="text-sm font-semibold text-[#111b2d]">
+																{t('Nhấn hoặc kéo thả file vào đây', 'Click or drag & drop a file here')}
+															</p>
+															<p className="text-xs text-[#60708a]">
+																{t('Chỉ hỗ trợ PDF và TXT, tối đa 200 MB', 'PDF and TXT only, max 200 MB')}
+															</p>
+														</>
+													)}
+												</div>
+												<input
+													ref={fileInputRef}
+													type="file"
+													accept=".pdf,.txt,application/pdf,text/plain"
+													className="hidden"
+													onChange={handleFileChange}
+												/>
+											</>
+										)}
+
+										{/* Library tab */}
+										{aiInputMode === 'library' && (
+											<>
+												{isLoadingLibrary && !aiFile && (
+													<div className="flex justify-center py-4">
+														<div className="h-6 w-6 animate-spin rounded-full border-b-2 border-[#1463ff]" />
+													</div>
+												)}
+												{!isLoadingLibrary && libraryDocs.length === 0 && (
+													<p className="rounded-xl border border-[#d7dfeb] p-6 text-center text-sm text-[#60708a]">
+														{t(
+															'Chưa có tài liệu nào trong thư viện. Hãy chuyển sang tab "Tải file mới".',
+															'No documents in your library yet. Switch to "Upload File" tab.'
+														)}
 													</p>
 												)}
-											</div>
-										))}
+												{libraryDocs.length > 0 && (
+													<div className="max-h-56 overflow-y-auto rounded-xl border border-[#d7dfeb] bg-white">
+														{libraryDocs.map((doc) => (
+															<button
+																key={doc.id}
+																type="button"
+																onClick={() => void selectLibraryDoc(doc)}
+																disabled={isLoadingLibrary}
+																className={`flex w-full items-center gap-3 border-b border-[#f0f2f5] px-4 py-3 text-left text-sm transition last:border-b-0 hover:bg-blue-50 disabled:opacity-60 ${
+																	selectedLibraryDocId === doc.id
+																		? 'bg-blue-50 font-semibold text-[#1463ff]'
+																		: 'text-[#111b2d]'
+																}`}
+															>
+																<MaterialIcon
+																	icon={doc.fileType?.toLowerCase() === 'pdf' ? 'picture_as_pdf' : 'description'}
+																	size="xs"
+																	className="flex-shrink-0 text-[#1463ff]"
+																/>
+																<span className="flex-1 truncate">{doc.fileName}</span>
+																<span className="flex-shrink-0 text-xs text-[#9aa5b5] uppercase">{doc.fileType}</span>
+																{selectedLibraryDocId === doc.id && (
+																	<MaterialIcon icon="check_circle" size="xs" className="flex-shrink-0 text-[#1463ff]" />
+																)}
+															</button>
+														))}
+													</div>
+												)}
+												{aiFile && selectedLibraryDocId && (
+													<p className="mt-2 text-xs text-[#60708a]">
+														{t('Đã chọn: ', 'Selected: ')}<strong>{aiFile.name}</strong>
+														{' '}({(aiFile.size / 1024).toFixed(1)} KB)
+													</p>
+												)}
+											</>
+										)}
+									</div>
+
 										<div className="flex justify-end">
-											<Button onClick={() => navigate('/user/library')}>
-												{t('Hoan tat, ve thu vien', 'Done, Back to Library')}
+											<Button onClick={() => void generateWithAi()} disabled={isGenerating || !aiFile} data-testid="quiz-ai-generate-btn">
+												<MaterialIcon icon="auto_awesome" size="xs" />
+												<span className="ml-1">
+													{isGenerating
+														? t('AI đang xử lý...', 'Generating...')
+														: t('Sinh câu hỏi bằng AI', 'Generate with AI')}
+												</span>
 											</Button>
 										</div>
 									</div>
 								</Card>
+							)}
+
+							{/* Step 2: Review & edit generated questions */}
+							{aiStep === 'review' && (
+								<>
+									<div className="flex items-center justify-between">
+										<div>
+											<h3 className="text-lg font-bold text-[#111b2d]">
+												{t('Kiểm tra & chỉnh sửa câu hỏi', 'Review & Edit Questions')}
+											</h3>
+											<p className="text-xs text-[#60708a]">
+												{t(
+													`AI đã sinh ${editableQuestions.length} câu hỏi. Kiểm tra và chỉnh sửa trước khi lưu.`,
+													`AI generated ${editableQuestions.length} questions. Review and edit before saving.`
+												)}
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={() => { setAiStep('input'); setError(null) }}
+											className="text-xs text-[#1463ff] hover:underline"
+										>
+											← {t('Thay file khác', 'Change file')}
+										</button>
+									</div>
+
+									{editableQuestions.map((q, qIdx) => (
+										<Card key={qIdx}>
+											<div className="space-y-3">
+												<div className="flex items-center justify-between">
+													<h4 className="font-bold text-[#111b2d]">
+														{t('Câu', 'Q')} {qIdx + 1}
+													</h4>
+													{editableQuestions.length > 1 && (
+														<button
+															type="button"
+															onClick={() => removeEQ(qIdx)}
+															className="text-xs text-red-600 hover:underline"
+														>
+															<MaterialIcon icon="delete" size="xs" />
+															<span className="ml-1">{t('Xoá', 'Remove')}</span>
+														</button>
+													)}
+												</div>
+
+												<textarea
+													value={q.questionText}
+													onChange={(e) => updateEQ(qIdx, { questionText: e.target.value })}
+													rows={2}
+													data-testid={`quiz-ai-question-${qIdx}-text`}
+													className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
+												/>
+
+												<div className="space-y-2">
+													<p className="text-xs font-semibold text-[#60708a]">
+														{t('Lựa chọn (chọn đáp án đúng)', 'Options (select the correct answer)')}
+													</p>
+													{q.options.map((opt, oIdx) => (
+														<div key={oIdx} className="flex items-center gap-2">
+															<input
+																type="radio"
+																name={`ai-correct-${qIdx}`}
+																checked={q.correctIndex === oIdx}
+																onChange={() => updateEQ(qIdx, { correctIndex: oIdx })}
+																className="h-4 w-4 cursor-pointer"
+																title={t('Đáp án đúng', 'Correct answer')}
+															/>
+															<input
+																type="text"
+																value={opt}
+																onChange={(e) => updateEQOption(qIdx, oIdx, e.target.value)}
+																placeholder={t(`Lựa chọn ${oIdx + 1}`, `Option ${oIdx + 1}`)}
+																className={`flex-1 rounded-lg border px-3 py-2 text-sm focus:outline-none ${
+																	q.correctIndex === oIdx
+																		? 'border-green-400 bg-green-50 focus:border-green-500'
+																		: 'border-[#d7dfeb] focus:border-[#1463ff]'
+																}`}
+															/>
+														</div>
+													))}
+												</div>
+
+												<div>
+													<label className="mb-1 block text-xs font-semibold text-[#60708a]">
+														{t('Giải thích (bắt buộc với câu hỏi AI)', 'Explanation (required for AI questions)')}
+													</label>
+													<textarea
+														value={q.explanation}
+														onChange={(e) => updateEQ(qIdx, { explanation: e.target.value })}
+														rows={2}
+														placeholder={t('Giải thích dựa trên tài liệu...', 'Explanation based on the document...')}
+														className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
+													/>
+												</div>
+											</div>
+										</Card>
+									))}
+
+									<div className="flex justify-between">
+										<Button
+											variant="secondary"
+											onClick={addBlankEQ}
+											disabled={isSubmitting}
+										>
+											<MaterialIcon icon="add" size="xs" />
+											<span className="ml-1">{t('Thêm câu hỏi', 'Add Question')}</span>
+										</Button>
+										<Button onClick={() => void saveAsDraft()} disabled={isSubmitting} data-testid="quiz-ai-save-btn">
+											<MaterialIcon icon="save" size="xs" />
+											<span className="ml-1">
+												{isSubmitting ? t('Đang lưu...', 'Saving...') : t('Lưu', 'Save')}
+											</span>
+										</Button>
+									</div>
+								</>
 							)}
 						</>
 					)}

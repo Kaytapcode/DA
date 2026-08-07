@@ -1,33 +1,48 @@
 ﻿import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuthContext } from '@/contexts/AuthContext';
-import { ValidationRules } from '@/utils/validation';
+import { useOrgContext } from '@/contexts/OrgContext';
+import { apiClient } from '@/utils/apiClient';
 
 interface LoginFormData {
-  email: string;
+  identifier: string;
   password: string;
 }
 
 interface FormErrors {
-  email?: string;
+  identifier?: string;
   password?: string;
+}
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: object) => void;
+          prompt: () => void;
+        };
+      };
+    };
+  }
 }
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isLoading } = useAuthContext();
+  const { setOrg } = useOrgContext();
 
   const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
+    identifier: '',
     password: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleFieldChange = (field: keyof LoginFormData, value: string) => {
+  const handleFieldChange = (field: keyof FormErrors, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear field error when user starts typing
     if (errors[field]) {
       setErrors((prev) => {
         const updated = { ...prev };
@@ -40,18 +55,16 @@ export const LoginPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    // Validate email
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!ValidationRules.email.pattern.test(formData.email)) {
-      newErrors.email = ValidationRules.email.message;
+    if (!formData.identifier.trim()) {
+      newErrors.identifier = 'Email or username is required';
     }
 
-    // Validate password
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+    } else if (/\s/.test(formData.password)) {
+      newErrors.password = 'Password cannot contain spaces';
     }
 
     setErrors(newErrors);
@@ -67,10 +80,31 @@ export const LoginPage: React.FC = () => {
     }
 
     try {
-      await login(formData.email, formData.password, undefined);
+      const { user, orgId } = await login(
+        formData.identifier.trim(),
+        formData.password,
+      );
 
-      // Navigate to user home
-      navigate('/user/home', { replace: true });
+      // For OrgAdmin, fetch full org info and store in OrgContext so the admin
+      // dashboard has access to org name/slug without requiring the user to
+      // manually enter an Org ID.
+      if (user.role === 'OrgAdmin' && orgId) {
+        try {
+          const orgRes = await apiClient.get<{ id: string; name: string; slug: string }>(
+            `/organizations/${orgId}`
+          );
+          if (orgRes.success && orgRes.data) {
+            setOrg({ id: orgRes.data.id, slug: orgRes.data.slug, name: orgRes.data.name });
+          }
+        } catch { /* org fetch failure is non-fatal; OrgContext will be blank */ }
+      }
+
+      // Route by role
+      const dest =
+        user.role === 'SysAdmin'  ? '/sysadmin/dashboard' :
+        user.role === 'OrgAdmin'  ? '/admin/dashboard' :
+        '/user/home';
+      navigate(dest, { replace: true });
     } catch (err) {
       setSubmitError(
         typeof err === 'string'
@@ -80,23 +114,75 @@ export const LoginPage: React.FC = () => {
     }
   };
 
+  const handleGoogleLogin = () => {
+    // Google SSO requires a configured OAuth client id (FE) AND the BE /auth/google verifier.
+    // When the client id isn't configured, show an honest message instead of a misleading
+    // "chưa load xong" that loops forever.
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
+    if (!clientId) {
+      setSubmitError('Đăng nhập Google chưa được cấu hình. Vui lòng đăng nhập bằng tài khoản & mật khẩu.');
+      return;
+    }
+    if (!window.google) {
+      setSubmitError('Google Sign-In chưa load xong, thử lại sau giây lát.');
+      return;
+    }
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: async (response: { credential: string }) => {
+        try {
+          const res = await apiClient.post<{
+            accessToken: string;
+            refreshToken: string;
+            accessTokenExpiresInSeconds: number;
+            user: { id: string; username: string; email: string; role: string };
+            orgId?: string;
+            isNewUser: boolean;
+          }>('/auth/google', { idToken: response.credential });
+
+          if (!res.success || !res.data) throw new Error(res.message || 'Google login failed');
+
+          const { refreshToken, user, isNewUser } = res.data;
+
+          // Lưu token (dùng tokenStore từ useAuth nếu exposed, hoặc gọi login flow)
+          // Cách đơn giản nhất: gọi endpoint rồi reload để bootstrap auth
+          localStorage.setItem('lms_rt', refreshToken);
+          // Sau khi set RT, doRefresh() trong useAuth bootstrap sẽ tự lấy AT mới
+
+          if (isNewUser) {
+            navigate('/sso/complete-profile');
+          } else {
+            const dest =
+              user.role === 'SysAdmin' ? '/sysadmin/dashboard' :
+              user.role === 'OrgAdmin' ? '/admin/dashboard' :
+              '/user/home';
+            navigate(dest, { replace: true });
+          }
+        } catch (err) {
+          setSubmitError((err as any)?.message || 'Google login thất bại.');
+        }
+      },
+    });
+    window.google.accounts.id.prompt();
+  };
+
   return (
     <div className="min-h-screen bg-white">
       {/* Main Container */}
       <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
         {/* Left Section - Branding */}
-        <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#001a4d] via-[#0d2b7a] to-[#051535] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+        <section className="relative hidden overflow-hidden bg-gradient-to-br from-[#001a4d] via-[#0d2b7a] to-[#051535] p-12 text-white lg:flex lg:flex-col lg:justify-center">
           {/* Decorative Blobs */}
           <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-[#0066ff]/20 blur-3xl" />
           <div className="absolute -bottom-20 right-0 h-96 w-96 rounded-full bg-[#0099ff]/10 blur-3xl" />
           <div className="absolute left-1/3 top-1/2 h-80 w-80 rounded-full bg-[#00ccff]/5 blur-3xl" />
 
           {/* Badge */}
-          <div className="relative">
+          {/* <div className="relative">
             <div className="inline-block rounded-full border border-[#0099ff]/40 bg-white/5 px-4 py-2 backdrop-blur-sm">
               <p className="text-xs font-semibold uppercase tracking-widest text-[#99ccff]">+ THE ETHEREAL LABORATORY</p>
             </div>
-          </div>
+          </div> */}
 
           {/* Heading and Description */}
           <div className="relative mt-8">
@@ -109,7 +195,7 @@ export const LoginPage: React.FC = () => {
           </div>
 
           {/* Stats */}
-          <div className="relative space-y-4">
+          {/* <div className="relative space-y-4">
             <div className="flex items-baseline gap-4">
               <div>
                 <div className="text-4xl font-black text-white">14k+</div>
@@ -122,7 +208,7 @@ export const LoginPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-widest text-[#99ccff] mt-1">Success Rate</div>
               </div>
             </div>
-          </div>
+          </div> */}
         </section>
 
         {/* Right Section - Login Form */}
@@ -146,38 +232,39 @@ export const LoginPage: React.FC = () => {
 
             {/* Error Alert */}
             {submitError && (
-              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
+              <div className="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3" data-testid="login-error">
                 <p className="text-sm font-medium text-red-700">{submitError}</p>
               </div>
             )}
 
             {/* Login Form */}
-            <form onSubmit={handleLogin} className="mt-8 space-y-4">
-              {/* Email Field */}
+            <form onSubmit={handleLogin} className="mt-8 space-y-4" data-testid="login-form">
+              {/* Email or Username Field */}
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-widest text-[#6b7280] mb-2">
-                  Email Address
+                  Email or Username
                 </label>
                 <div className="relative">
                   <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="name@institution.edu"
-                    value={formData.email}
-                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    id="identifier"
+                    name="identifier"
+                    type="text"
+                    autoComplete="username"
+                    placeholder="name@institution.edu or username"
+                    data-testid="login-identifier"
+                    value={formData.identifier}
+                    onChange={(e) => handleFieldChange('identifier', e.target.value)}
                     className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
-                      errors.email
+                      errors.identifier
                         ? 'border-red-400'
                         : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'
                     }`}
                   />
                   <div className="absolute right-4 top-3 text-[#d1d5db]">
-                    <span className="material-symbols-outlined text-lg">alternate_email</span>
+                    <span className="material-symbols-outlined text-lg">person</span>
                   </div>
                 </div>
-                {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
+                {errors.identifier && <p className="mt-1 text-xs text-red-500">{errors.identifier}</p>}
               </div>
 
               {/* Password Field */}
@@ -194,20 +281,28 @@ export const LoginPage: React.FC = () => {
                   <input
                     id="password"
                     name="password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     placeholder="••••••••••••"
+                    data-testid="login-password"
                     value={formData.password}
                     onChange={(e) => handleFieldChange('password', e.target.value)}
-                    className={`w-full rounded-lg border bg-white px-4 py-3 text-sm outline-none transition ${
+                    className={`w-full rounded-lg border bg-white px-4 py-3 pr-12 text-sm outline-none transition ${
                       errors.password
                         ? 'border-red-400'
                         : 'border-[#e5e7eb] focus:border-[#0066ff] focus:ring-1 focus:ring-[#0066ff]'
                     }`}
                   />
-                  <div className="absolute right-4 top-3 text-[#d1d5db]">
-                    <span className="material-symbols-outlined text-lg">lock</span>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-3 text-[#d1d5db] hover:text-[#6b7280] transition"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showPassword ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
                 </div>
                 {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
               </div>
@@ -216,6 +311,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={isLoading}
+                data-testid="login-submit"
                 className={`mt-6 w-full rounded-full px-6 py-3 text-base font-bold text-white transition ${
                   isLoading
                     ? 'cursor-not-allowed bg-gray-400'
@@ -227,54 +323,63 @@ export const LoginPage: React.FC = () => {
               </button>
             </form>
 
-            {/* OAuth / Alternative Login */}
-            <div className="mt-8">
-              <div className="relative mb-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-[#e5e7eb]"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-3 text-[#9ca3af] uppercase tracking-widest font-semibold text-xs">Or Access With</span>
-                </div>
+            {/* SSO Section */}
+            {/* <div className="mt-6">
+              <div className="relative flex items-center">
+                <div className="flex-grow border-t border-[#e5e7eb]" />
+                <span className="mx-4 text-xs font-semibold uppercase tracking-widest text-[#9ca3af]">Or Sign In With</span>
+                <div className="flex-grow border-t border-[#e5e7eb]" />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3">
                 <button
                   type="button"
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
+                  data-testid="login-sso-google"
+                  onClick={handleGoogleLogin}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb] transition"
                 >
-                  <span className="material-symbols-outlined text-lg">tag</span>
-                  SSO
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Google
                 </button>
                 <button
                   type="button"
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-semibold text-[#374151] transition hover:bg-[#f9fafb] disabled:opacity-50"
+                  data-testid="login-sso-microsoft"
+                  onClick={() => alert('Microsoft SSO — OAuth credentials not yet configured.')}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-4 py-2.5 text-sm font-medium text-[#374151] hover:bg-[#f9fafb] transition"
                 >
-                  <span className="material-symbols-outlined text-lg">fingerprint</span>
-                  Passkey
+                  <svg className="h-4 w-4" viewBox="0 0 23 23" aria-hidden="true">
+                    <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
+                    <path fill="#f35325" d="M1 1h10v10H1z"/>
+                    <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                    <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                    <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                  </svg>
+                  Microsoft
                 </button>
               </div>
-            </div>
+            </div> */}
 
             {/* Create Account Link */}
             <div className="mt-8 text-center">
               <p className="text-sm text-[#6b7280]">
-                New to the Laboratory?{' '}
+                New to the Lumina?{' '}
                 <Link to="/register" className="font-semibold text-[#0066ff] hover:underline">
-                  Create
+                  Create Account
                 </Link>
               </p>
             </div>
           </div>
 
           {/* Footer - System Status */}
-          <div className="flex items-center gap-2 mt-8">
+          {/* <div className="flex items-center gap-2 mt-8">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
             <span className="text-xs font-medium text-[#6b7280]">SYSTEM STATUS</span>
             <span className="text-xs text-[#9ca3af]">All neural networks fully operational at 99.9% uptime.</span>
-          </div>
+          </div> */}
         </section>
       </div>
     </div>

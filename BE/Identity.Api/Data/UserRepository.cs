@@ -12,6 +12,7 @@ namespace Identity.Api.Data
         Task<List<UserModel>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
         Task<UserModel?> GetByUsernameAsync(string username, CancellationToken ct = default);
         Task<UserModel?> GetByEmailAsync(string email, CancellationToken ct = default);
+        Task<UserModel?> GetByGoogleSubAsync(string googleSub, CancellationToken ct = default);
         Task<List<UserModel>> GetAllAsync(CancellationToken ct = default);
         Task<(List<UserModel> Items, int Total)> SearchAsync(string? query, int pageIndex, int pageSize, CancellationToken ct = default);
         Task AddAsync(UserModel user, CancellationToken ct = default);
@@ -49,6 +50,11 @@ namespace Identity.Api.Data
         public async Task<UserModel?> GetByEmailAsync(string email, CancellationToken ct = default)
         {
             return await _context.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        }
+
+        public async Task<UserModel?> GetByGoogleSubAsync(string googleSub, CancellationToken ct = default)
+        {
+            return await _context.Users.FirstOrDefaultAsync(u => u.GoogleSub == googleSub, ct);
         }
 
         public async Task<List<UserModel>> GetAllAsync(CancellationToken ct = default)

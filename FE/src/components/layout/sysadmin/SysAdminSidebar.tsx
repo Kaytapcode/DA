@@ -18,7 +18,7 @@ export const SysAdminSidebar: React.FC = () => {
       items={SYSADMIN_NAV_ITEMS}
       title="Lumina"
       subtitle="System"
-      sectionDividers={[1, 3, 4]}
+      // sectionDividers={[1, 3, 4]}
       variant="sysadmin"
       profileName={user?.username || 'System Administrator'}
       profileRole={user?.role || 'SysAdmin'}

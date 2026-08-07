@@ -1,171 +1,135 @@
-import React from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
 import { Card } from '@components/ui/Card'
-import { Button } from '@components/ui/Button'
+import { Badge } from '@components/ui/Badge'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { MainLayout } from '@layouts/MainLayout'
+import { useUserLanguage } from './UserShell'
+import { apiClient } from '@/utils/apiClient'
 
-interface Course {
+// Mirrors Shared.Contracts.Responses.EnrolledCourseDto — the courses the user is APPROVED in.
+interface EnrolledCourse {
   id: string
   title: string
-  instructor: string
-  progress: number
-  students: number
-  thumbnail?: string
-  slug: string
-  theme: string
+  description?: string | null
+  courseCode?: string | null
+  role: 'Teacher' | 'Student'
+  status: string
+  orgId: string
 }
 
 /**
- * User Course List Page
+ * User "My Courses" page — lists the courses the user is actually enrolled in (real data from
+ * GET /api/courses/enrolled). No hardcoded/sample data: shows a loading skeleton then either the
+ * real list or an empty state linking to Browse Courses.
  */
 export const CourseListPage: React.FC = () => {
-  const courses: Course[] = [
-    {
-      id: '1',
-      title: 'Advanced Quantum Mechanics',
-      instructor: 'Dr. Sarah Chen',
-      progress: 45,
-      students: 1200,
-      slug: 'advanced-quantum-mechanics',
-      theme: 'from-[#4f6cf7] via-[#dfe7ff] to-[#f7f9ff]',
-    },
-    {
-      id: '2',
-      title: 'Quantum Field Foundations',
-      instructor: 'Prof. Marcus V.',
-      progress: 65,
-      students: 950,
-      slug: 'quantum-field-foundations',
-      theme: 'from-[#f6b27a] via-[#fff1e6] to-[#fff9f5]',
-    },
-    {
-      id: '3',
-      title: 'Subatomic Simulation Lab',
-      instructor: 'Dr. Linh Tran',
-      progress: 80,
-      students: 800,
-      slug: 'subatomic-simulation-lab',
-      theme: 'from-[#7bc6ff] via-[#eaf6ff] to-[#f8fbff]',
-    },
-  ]
+  const isVi = useUserLanguage()
+  const [courses, setCourses] = useState<EnrolledCourse[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const res = await apiClient.get<EnrolledCourse[]>('/courses/enrolled')
+      if (res.success && res.data) setCourses(res.data)
+      else throw new Error(res.message || 'Failed to load courses')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load courses')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void refresh() }, [refresh])
 
   return (
     <MainLayout
-      navbar={<UserNavbar title="My Courses" />}
+      navbar={<UserNavbar title={isVi ? 'Khoá học của tôi' : 'My Courses'} />}
       sidebar={<UserSidebar />}
     >
       <div className="p-8">
-        <div className="max-w-6xl mx-auto space-y-8">
-          {/* Header */}
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#7380a0]">Courses</p>
-            <h2 className="mt-2 text-4xl font-black text-on-surface font-headline">Your Learning Path</h2>
-            <p className="mt-3 max-w-2xl text-on-surface-variant">
-              Continue your courses, open the detailed lesson view, and jump back into the next module.
-            </p>
-          </div>
-
-          {/* Featured Card */}
-          <Card className="overflow-hidden border border-[#e3e8f3] p-0 shadow-[0_20px_50px_rgba(58,78,153,0.12)]">
-            <div className="grid gap-0 lg:grid-cols-[1.5fr_0.9fr]">
-              <div className="space-y-5 bg-gradient-to-br from-[#f8fbff] via-white to-[#eef3ff] p-8">
-                <div className="text-xs font-black uppercase tracking-[0.22em] text-[#7885a6]">Featured Course</div>
-                <div>
-                  <h3 className="max-w-2xl text-4xl font-black leading-[1.05] text-on-surface font-headline">
-                    Advanced <span className="text-[#4f6cf7]">Quantum Mechanics</span>
-                  </h3>
-                  <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                    Deep dive into wave-particle duality, Schrödinger&apos;s equation, and the mathematical foundations of subatomic phenomena.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="primary">Continue Learning</Button>
-                  <Link
-                    to="/user/course/advanced-quantum-mechanics"
-                    className="inline-flex items-center justify-center rounded-lg border border-[#d6def0] bg-white px-6 py-2.5 text-base font-medium text-on-surface transition hover:bg-[#f6f8ff]"
-                  >
-                    Open Course
-                  </Link>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center bg-white p-8 lg:p-10">
-                <div className="w-full max-w-[260px] rounded-[28px] border border-[#edf1f9] bg-white p-6 shadow-[0_18px_40px_rgba(57,74,150,0.08)]">
-                  <div className="text-xs font-black uppercase tracking-[0.22em] text-[#8a95af]">Current Progress</div>
-                  <div className="mt-3 flex items-end justify-between gap-4">
-                    <div>
-                      <div className="text-4xl font-black text-on-surface">45%</div>
-                      <p className="mt-1 text-sm text-on-surface-variant">8 / 18 units completed</p>
-                    </div>
-                    <div className="rounded-2xl bg-[#eef2ff] px-3 py-2 text-center text-xs font-bold text-[#4f6cf7]">
-                      8 / 18
-                      <br />
-                      Units
-                    </div>
-                  </div>
-                  <div className="mt-5 h-2 rounded-full bg-[#e5eaf6]">
-                    <div className="h-2 w-[45%] rounded-full bg-[#4f6cf7]" />
-                  </div>
-                  <Button className="mt-6 w-full justify-center" size="md">
-                    Continue Learning
-                  </Button>
-                </div>
-              </div>
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#7380a0]">{isVi ? 'Khoá học' : 'Courses'}</p>
+              <h2 className="mt-2 text-3xl font-black text-on-surface font-headline">{isVi ? 'Khoá học của tôi' : 'My Courses'}</h2>
+              <p className="mt-2 text-on-surface-variant">
+                {isVi ? 'Các khoá học bạn đã được ghi danh.' : 'Courses you are enrolled in.'}
+              </p>
             </div>
-          </Card>
-
-          {/* Filters */}
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            <Button variant="primary">All Courses</Button>
-            <Button variant="secondary">In Progress</Button>
-            <Button variant="secondary">Completed</Button>
-            <Button variant="secondary">Wishlist</Button>
+            <Link
+              to="/user/courses/browse"
+              data-testid="my-courses-browse-link"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:bg-primary/90"
+            >
+              <MaterialIcon icon="travel_explore" size="xs" />
+              {isVi ? 'Khám phá khoá học' : 'Browse Courses'}
+            </Link>
           </div>
 
-          {/* Courses Grid */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            {courses.map(course => (
-              <Card key={course.id} className="overflow-hidden transition-transform hover:-translate-y-1 hover:shadow-xl">
-                <div className={`mb-4 h-40 rounded-xl bg-gradient-to-br ${course.theme} flex items-center justify-center`}>
-                  <div className="rounded-3xl bg-white/75 p-8 shadow-sm backdrop-blur-sm">
-                    <MaterialIcon icon="school" className="text-4xl text-[#4f6cf7]" />
-                  </div>
-                </div>
-                
-                <h3 className="mb-1 text-lg font-bold text-on-surface">{course.title}</h3>
-                <p className="mb-4 text-sm text-on-surface-variant">{course.instructor}</p>
-                
-                {/* Progress Bar */}
-                <div className="mb-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-xs font-medium text-on-surface-variant">Progress</span>
-                    <span className="text-xs font-bold text-on-surface">{course.progress}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-surface-container-low">
-                    <div
-                      className="h-full bg-primary transition-all"
-                      style={{ width: `${course.progress}%` }}
-                    />
-                  </div>
-                </div>
+          {error && (
+            <Card className="border border-error/30 p-4">
+              <p className="text-sm text-error" data-testid="my-courses-error">{error}</p>
+            </Card>
+          )}
 
-                {/* Footer */}
-                <div className="flex items-center justify-between border-t border-outline-variant pt-4">
-                  <span className="text-xs text-on-surface-variant">{course.students} students</span>
-                  <Link
-                    to={`/user/course/${course.slug}`}
-                    className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:bg-primary/90"
-                  >
-                    Continue
-                  </Link>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {isLoading && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {[0, 1, 2].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <div className="mb-4 h-32 rounded-xl bg-surface-container-low" />
+                  <div className="mb-2 h-5 w-2/3 rounded bg-surface-container-low" />
+                  <div className="h-4 w-1/3 rounded bg-surface-container-low" />
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!isLoading && !error && courses.length === 0 && (
+            <Card className="p-10 text-center" data-testid="my-courses-empty">
+              <MaterialIcon icon="school" className="mb-3 text-5xl text-on-surface-variant" />
+              <p className="text-on-surface-variant">
+                {isVi ? 'Bạn chưa được ghi danh khoá học nào.' : 'You are not enrolled in any course yet.'}
+              </p>
+              <Link to="/user/courses/browse" className="mt-4 inline-block text-primary underline">
+                {isVi ? 'Khám phá và yêu cầu ghi danh' : 'Browse and request to enroll'}
+              </Link>
+            </Card>
+          )}
+
+          {!isLoading && courses.length > 0 && (
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {courses.map((course) => (
+                <Card key={course.id} data-testid={`my-course-card-${course.id}`} className="flex flex-col transition-transform hover:-translate-y-1 hover:shadow-xl">
+                  <div className="mb-4 flex h-32 items-center justify-center rounded-xl bg-gradient-to-br from-[#eef2ff] to-[#f8fbff]">
+                    <MaterialIcon icon="menu_book" className="text-4xl text-[#4f6cf7]" />
+                  </div>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-lg font-bold text-on-surface" data-testid="my-course-title">{course.title}</h3>
+                    <Badge variant={course.role === 'Teacher' ? 'warning' : 'primary'} size="sm">{course.role}</Badge>
+                  </div>
+                  {course.courseCode && <p className="mt-1 font-mono text-xs text-on-surface-variant">{course.courseCode}</p>}
+                  <p className="mt-2 line-clamp-3 flex-1 text-sm text-on-surface-variant">
+                    {course.description || (isVi ? 'Chưa có mô tả.' : 'No description.')}
+                  </p>
+                  <div className="mt-4 border-t border-outline-variant pt-4">
+                    <Link
+                      to={`/user/course/${course.id}`}
+                      data-testid={`my-course-open-${course.id}`}
+                      className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition hover:bg-primary/90"
+                    >
+                      {isVi ? 'Mở khoá học' : 'Open Course'}
+                    </Link>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </MainLayout>

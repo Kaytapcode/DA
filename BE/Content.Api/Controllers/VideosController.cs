@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Text.RegularExpressions;
 using Content.Api.Data;
 using Content.Api.Models;
@@ -17,15 +20,41 @@ namespace Content.Api.Controllers
         private readonly IVideoRepository _videoRepository;
         private readonly IContentRepository _contentRepository;
         private readonly IOrgContextService _orgContext;
+        private readonly ICourseAccessService _access;
+        private readonly ContentDbContext _db;
 
         public VideosController(
             IVideoRepository videoRepository,
             IContentRepository contentRepository,
-            IOrgContextService orgContext)
+            IOrgContextService orgContext,
+            ICourseAccessService access,
+            ContentDbContext db)
         {
             _videoRepository = videoRepository;
             _contentRepository = contentRepository;
             _orgContext = orgContext;
+            _access = access;
+            _db = db;
+        }
+
+        // Spec 2.4 — Automatically extract video Title from the YouTube API.
+        // Uses the public oEmbed endpoint (no API key required, returns title + thumbnail).
+        // Returns null on any failure so the caller can fall back to a sensible default.
+        private static readonly HttpClient _oEmbedClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+        private async Task<string?> FetchYouTubeTitleAsync(string videoId, CancellationToken ct)
+        {
+            try
+            {
+                var url = $"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={videoId}&format=json";
+                var doc = await _oEmbedClient.GetFromJsonAsync<System.Text.Json.JsonElement>(url, ct);
+                if (doc.TryGetProperty("title", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String)
+                    return t.GetString();
+            }
+            catch
+            {
+                // Network failure / video unlisted: leave title null, caller will use fallback.
+            }
+            return null;
         }
 
         private string? ExtractYouTubeVideoId(string url)
@@ -54,11 +83,18 @@ namespace Content.Api.Controllers
                 return false;
 
             var moduleId = content.ModuleContents.FirstOrDefault()?.ModuleId;
+            // Personal/public video (not attached to any module/course): allow any authenticated
+            // user per spec §1 (User personal resources are public).
             if (moduleId == null)
-                return _orgContext.IsSysAdmin();
+                return _orgContext.GetCurrentUserId().HasValue;
 
             var orgId = await _videoRepository.GetModuleOrgIdAsync(moduleId.Value);
-            return _orgContext.IsSysAdmin() || orgId == _orgContext.GetCurrentOrgId();
+            if (orgId == null)
+                return _orgContext.GetCurrentUserId().HasValue;
+            if (_orgContext.IsSysAdmin() || orgId == _orgContext.GetCurrentOrgId()) return true;
+            // In-course video: an enrolled (Teacher/Student) user usually has no selected org, so
+            // fall back to per-course access — same fix already applied to quizzes/decks/documents.
+            return await _access.CanViewContentAsync(contentId);
         }
 
         // POST /api/videos - Create YouTube video
@@ -93,6 +129,7 @@ namespace Content.Api.Controllers
                 Success: true,
                 Data: new VideoDto(
                     Id: created.Id,
+                    ContentId: created.ContentId,
                     YouTubeVideoId: created.YouTubeVideoId,
                     Title: created.Title,
                     Description: created.Description,
@@ -114,17 +151,80 @@ namespace Content.Api.Controllers
             if (!await VerifyContentAccessAsync(video.ContentId))
                 return Forbid();
 
+            // Owner-of-personal-video check needs Content.CreatedByUserId — load it separately
+            // so the existing repo signature isn't disturbed.
+            var content = await _db.Contents.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == video.ContentId, ct);
+
             return Ok(new ApiResponse<VideoDto>(
                 Success: true,
                 Data: new VideoDto(
                     Id: video.Id,
+                    ContentId: video.ContentId,
                     YouTubeVideoId: video.YouTubeVideoId,
                     Title: video.Title,
                     Description: video.Description,
                     ThumbnailUrl: video.ThumbnailUrl,
-                    EmbeddableUrl: $"https://www.youtube.com/embed/{video.YouTubeVideoId}"
+                    EmbeddableUrl: $"https://www.youtube.com/embed/{video.YouTubeVideoId}",
+                    CreatedByUserId: content?.CreatedByUserId
                 ),
                 Message: null
+            ));
+        }
+
+        // PATCH /api/videos/{videoId} - Rename a personal video (owner-only, any auth role).
+        // Course-bound videos must still go through the Teacher-gated PUT endpoint above.
+        [HttpPatch("{videoId:guid}")]
+        public async Task<IActionResult> RenameVideo(Guid videoId, [FromBody] UpdateVideoRequestDto request, CancellationToken ct = default)
+        {
+            var userId = _orgContext.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(Success: false, Message: "Invalid user context."));
+
+            if (string.IsNullOrWhiteSpace(request.Title) && request.Description == null)
+                return BadRequest(new ApiResponse(Success: false, Message: "Nothing to update."));
+
+            var video = await _videoRepository.GetByIdAsync(videoId, ct);
+            if (video == null)
+                return NotFound(new ApiResponse(Success: false, Message: "Video not found."));
+
+            var content = await _db.Contents
+                .Include(c => c.ModuleContents)
+                .FirstOrDefaultAsync(c => c.Id == video.ContentId, ct);
+            if (content == null)
+                return NotFound(new ApiResponse(Success: false, Message: "Content not found."));
+
+            // Course-bound videos use the existing teacher-gated PUT instead.
+            if (content.ModuleContents.Any())
+                return StatusCode(403, new ApiResponse(Success: false, Message: "Course-bound videos must be renamed via the teacher endpoint."));
+
+            if (content.CreatedByUserId != userId && !_orgContext.IsSysAdmin())
+                return StatusCode(403, new ApiResponse(Success: false, Message: "Only the video owner may rename it."));
+
+            if (!string.IsNullOrWhiteSpace(request.Title))
+            {
+                video.Title = request.Title.Trim();
+                content.Title = request.Title.Trim();
+            }
+            if (request.Description != null)
+                video.Description = request.Description;
+
+            await _videoRepository.UpdateAsync(video, ct);
+            await _db.SaveChangesAsync(ct);
+
+            return Ok(new ApiResponse<VideoDto>(
+                Success: true,
+                Data: new VideoDto(
+                    Id: video.Id,
+                    ContentId: video.ContentId,
+                    YouTubeVideoId: video.YouTubeVideoId,
+                    Title: video.Title,
+                    Description: video.Description,
+                    ThumbnailUrl: video.ThumbnailUrl,
+                    EmbeddableUrl: $"https://www.youtube.com/embed/{video.YouTubeVideoId}",
+                    CreatedByUserId: content.CreatedByUserId
+                ),
+                Message: "Video renamed."
             ));
         }
 
@@ -140,6 +240,7 @@ namespace Content.Api.Controllers
 
             var result = videos.Select(v => new VideoDto(
                 Id: v.Id,
+                ContentId: v.ContentId,
                 YouTubeVideoId: v.YouTubeVideoId,
                 Title: v.Title,
                 Description: v.Description,
@@ -167,13 +268,20 @@ namespace Content.Api.Controllers
 
             var thumbnailUrl = $"https://i.ytimg.com/vi/{videoId}/maxresdefault.jpg";
 
+            // Spec 2.4 — auto-extract title from YouTube when the user did not provide one.
+            // If the oEmbed lookup fails (offline / unlisted video), fall back to a generic label.
+            var title = request.Title;
+            if (string.IsNullOrWhiteSpace(title))
+                title = await FetchYouTubeTitleAsync(videoId, ct) ?? "YouTube Video";
+
             var created = await _videoRepository.CreatePersonalAsync(
-                videoId, request.Title, request.Description, thumbnailUrl, ct);
+                videoId, title, request.Description, thumbnailUrl, _orgContext.GetCurrentUserId(), ct);
 
             return Ok(new ApiResponse<VideoDto>(
                 Success: true,
                 Data: new VideoDto(
                     Id: created.Id,
+                    ContentId: created.ContentId,
                     YouTubeVideoId: created.YouTubeVideoId,
                     Title: created.Title,
                     Description: created.Description,
@@ -184,13 +292,14 @@ namespace Content.Api.Controllers
             ));
         }
 
-        // GET /api/videos/personal - List videos not attached to any module (personal/public)
+        // GET /api/videos/personal - List videos not attached to any module, owned by caller
         [HttpGet("personal")]
         public async Task<IActionResult> GetPersonalVideos(CancellationToken ct = default)
         {
-            var videos = await _videoRepository.GetPersonalAsync(ct);
+            var videos = await _videoRepository.GetPersonalAsync(_orgContext.GetCurrentUserId(), ct);
             var result = videos.Select(v => new VideoDto(
                 Id: v.Id,
+                ContentId: v.ContentId,
                 YouTubeVideoId: v.YouTubeVideoId,
                 Title: v.Title,
                 Description: v.Description,
@@ -233,6 +342,7 @@ namespace Content.Api.Controllers
                 Success: true,
                 Data: new VideoDto(
                     Id: updated.Id,
+                    ContentId: updated.ContentId,
                     YouTubeVideoId: updated.YouTubeVideoId,
                     Title: updated.Title,
                     Description: updated.Description,
@@ -244,18 +354,45 @@ namespace Content.Api.Controllers
         }
 
         // DELETE /api/videos/{videoId} - Delete video
+        // Personal videos (no module attachment) can be deleted by their owner or a SysAdmin.
+        // Course-bound videos require Teacher-or-above within the same org.
         [HttpDelete("{videoId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
         public async Task<IActionResult> DeleteVideo(Guid videoId, CancellationToken ct = default)
         {
+            var userId = _orgContext.GetCurrentUserId();
+            if (!userId.HasValue)
+                return Unauthorized(new ApiResponse(Success: false, Message: "Invalid user context."));
+
             var video = await _videoRepository.GetByIdAsync(videoId, ct);
             if (video == null)
                 return NotFound(new ApiResponse(Success: false, Message: "Video not found."));
 
-            if (!await VerifyContentAccessAsync(video.ContentId))
-                return Forbid();
+            var content = await _db.Contents
+                .Include(c => c.ModuleContents)
+                .FirstOrDefaultAsync(c => c.Id == video.ContentId, ct);
+            if (content == null)
+                return NotFound(new ApiResponse(Success: false, Message: "Content not found."));
 
-            await _videoRepository.SoftDeleteAsync(videoId, ct);
+            if (content.ModuleContents.Any())
+            {
+                // Course-bound: require teacher role and org membership
+                var role = _orgContext.GetCurrentRole();
+                if (role is not ("SysAdmin" or "OrgAdmin" or "Teacher"))
+                    return Forbid();
+                if (!await VerifyContentAccessAsync(video.ContentId))
+                    return Forbid();
+            }
+            else
+            {
+                // Personal video: owner or SysAdmin only
+                if (content.CreatedByUserId != userId && !_orgContext.IsSysAdmin())
+                    return Forbid();
+            }
+
+            // Deleting ContentModel cascades to VideoModel (OnDelete Cascade).
+            // StudentProgress.ContentId is set to null (OnDelete SetNull).
+            _db.Contents.Remove(content);
+            await _db.SaveChangesAsync(ct);
 
             return Ok(new ApiResponse(Success: true, Message: "Video deleted successfully."));
         }
@@ -283,10 +420,12 @@ namespace Content.Api.Controllers
 
     public record VideoDto(
         Guid Id,
+        Guid ContentId,
         string YouTubeVideoId,
         string? Title,
         string? Description,
         string? ThumbnailUrl,
-        string EmbeddableUrl
+        string EmbeddableUrl,
+        Guid? CreatedByUserId = null
     );
 }

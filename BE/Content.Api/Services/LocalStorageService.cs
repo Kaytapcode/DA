@@ -25,6 +25,26 @@ namespace Content.Api.Services
             return (fullPath, file.Length);
         }
 
+        public async Task<(string filePath, long fileSize)> CopyAsync(string sourceFilePath, Guid userId, string fileName, CancellationToken ct = default)
+        {
+            if (!File.Exists(sourceFilePath))
+                throw new FileNotFoundException("Source document file not found.", sourceFilePath);
+
+            var userDir = Path.Combine(_basePath, userId.ToString());
+            Directory.CreateDirectory(userDir);
+
+            var uniqueName = $"{Guid.NewGuid()}_{Path.GetFileName(fileName)}";
+            var fullPath = Path.Combine(userDir, uniqueName);
+
+            await using (var src = new FileStream(sourceFilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            await using (var dst = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
+            {
+                await src.CopyToAsync(dst, ct);
+            }
+
+            return (fullPath, new FileInfo(fullPath).Length);
+        }
+
         public void Delete(string filePath)
         {
             if (File.Exists(filePath))

@@ -84,7 +84,11 @@ try
 
     // DI registrations
     builder.Services.AddScoped<IUserRepository, UserRepository>();
+    builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
     builder.Services.AddScoped<ITokenService, TokenService>();
+    // Spec §1 — Forgot Password email. Real SMTP when "Smtp" is configured; otherwise the
+    // service reports IsConfigured=false and AuthController returns the reset link on-screen.
+    builder.Services.AddScoped<Identity.Api.Services.IEmailService, Identity.Api.Services.SmtpEmailService>();
 
     // HTTP client for inter-service membership check (Identity → Organization)
     builder.Services.AddHttpClient<IOrganizationServiceClient, OrganizationServiceClient>();
@@ -128,6 +132,14 @@ try
     app.UseMiddleware<OrgContextMiddleware>(); // T3.9: resolves X-Org-Slug ? org_id after auth
     app.UseAuthorization();
     app.MapControllers();
+
+    // Seed spec-required test accounts (Section 5) on first startup
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<Identity.Api.Data.AuthDbContext>();
+        await db.Database.MigrateAsync();
+        await Identity.Api.Data.DbInitializer.SeedAsync(db);
+    }
 
     app.Run();
 }

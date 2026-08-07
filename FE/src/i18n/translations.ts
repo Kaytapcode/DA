@@ -54,6 +54,10 @@ export const translations = {
   'user.learning': { en: 'Learning History', vi: 'Lịch Sử Học Tập' },
   'user.inbox': { en: 'Messages', vi: 'Tin Nhắn' },
   'user.library': { en: 'Content Library', vi: 'Thư Viện Nội Dung' },
+  'user.collections': { en: 'Collections', vi: 'Bộ Sưu Tập' },
+  'user.search': { en: 'Search', vi: 'Tìm Kiếm' },
+  'user.browse': { en: 'Browse Public', vi: 'Khám Phá' },
+  'user.browseCourses': { en: 'Browse Courses', vi: 'Khám phá khoá học' },
   'user.quiz': { en: 'Quizzes', vi: 'Bài Kiểm Tra' },
   'user.lesson': { en: 'Video Lessons', vi: 'Bài Học Video' },
   'user.flashcards': { en: 'Flashcards', vi: 'Thẻ Ghi Nhớ' },
@@ -71,13 +75,16 @@ export const translations = {
   'admin.courseEditor': { en: 'Course Editor', vi: 'Chỉnh Sửa Khóa Học' },
   'admin.curriculum': { en: 'Curriculum', vi: 'Chương Trình Học' },
   'admin.roles': { en: 'Member Roles', vi: 'Vai Trò Thành Viên' },
+  'admin.content': { en: 'Content', vi: 'Nội Dung' },
 
   // System Admin
   'sysadmin.overview': { en: 'System Overview', vi: 'Tổng Quan Hệ Thống' },
   'sysadmin.users': { en: 'User Management', vi: 'Quản Lý Người Dùng' },
   'sysadmin.organizations': { en: 'Organizations', vi: 'Tổ Chức' },
   'sysadmin.courses': { en: 'Global Courses', vi: 'Khóa Học Toàn Cục' },
+  'sysadmin.content': { en: 'Global Content', vi: 'Nội Dung Toàn Cục' },
   'sysadmin.logs': { en: 'System Logs', vi: 'Nhật Ký Hệ Thống' },
+  'sysadmin.aiKeys': { en: 'AI API Keys', vi: 'Khóa API AI' },
   'sysadmin.settings': { en: 'Platform Settings', vi: 'Cài Đặt Nền Tảng' },
 
   // Common UI

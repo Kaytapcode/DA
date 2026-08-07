@@ -6,8 +6,11 @@ export const ValidationRules = {
   },
   password: {
     minLength: 6,
+    maxLength: 128,
     pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
     message: 'Password must contain at least 6 characters, including uppercase, lowercase, and numbers',
+    hasSpecialChar: /[$@#&!]/,
+    specialCharMessage: 'Consider adding special characters ($@#&!) for stronger security',
   },
   username: {
     minLength: 3,

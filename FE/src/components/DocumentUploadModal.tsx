@@ -2,11 +2,19 @@ import React, { useMemo, useState } from 'react'
 import axios from 'axios'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
+import { tokenStore } from '@/utils/tokenStore'
+
+interface UploadedDoc {
+  id: string
+  contentId?: string | null
+  fileName?: string
+}
 
 interface DocumentUploadModalProps {
   isOpen: boolean
   onClose: () => void
-  onUploaded: () => void
+  // Receives the created document (incl. its contentId) so callers can e.g. link it to a course module.
+  onUploaded: (doc?: UploadedDoc) => void
 }
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
@@ -83,7 +91,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     const formData = new FormData()
     formData.append('file', file)
 
-    const token = localStorage.getItem('auth_token')
+    const token = tokenStore.getAccessToken()
     const orgId = localStorage.getItem('org_id')
     const orgSlug = localStorage.getItem('org_slug')
 
@@ -105,7 +113,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
       }
 
       setSuccessMessage('Upload completed successfully.')
-      onUploaded()
+      onUploaded(response.data?.data as UploadedDoc | undefined)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Upload failed'
       setError(message)
@@ -115,7 +123,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" data-testid="document-upload-modal">
       <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-xl font-bold text-on-surface">Upload Document</h3>
@@ -148,6 +156,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
             id="document-upload-input"
             type="file"
             className="hidden"
+            data-testid="document-upload-input"
             accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain"
             onChange={(event) => validateAndSetFile(event.target.files?.[0] ?? null)}
           />
@@ -172,8 +181,8 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           </div>
         )}
 
-        {error && <p className="mt-4 text-sm text-error">{error}</p>}
-        {successMessage && <p className="mt-4 text-sm text-green-600">{successMessage}</p>}
+        {error && <p className="mt-4 text-sm text-error" data-testid="document-upload-error">{error}</p>}
+        {successMessage && <p className="mt-4 text-sm text-green-600" data-testid="document-upload-success">{successMessage}</p>}
 
         <div className="mt-6 flex justify-end gap-3">
           <Button
@@ -187,7 +196,7 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
           >
             Cancel
           </Button>
-          <Button type="button" onClick={() => void handleUpload()} disabled={isUploading}>
+          <Button type="button" onClick={() => void handleUpload()} disabled={isUploading} data-testid="document-upload-submit">
             {isUploading ? 'Uploading...' : 'Upload'}
           </Button>
         </div>

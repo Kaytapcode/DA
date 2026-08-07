@@ -2,6 +2,7 @@ using SysAdmin.Api.Data;
 using SysAdmin.Api.Mappings;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
@@ -25,6 +26,9 @@ try
     builder.Host.UseSerilog(Log.Logger);
 
     builder.Services.AddHttpContextAccessor();
+
+    // Encrypt AI provider keys at rest (spec §1: SysAdmin "Configure AI API Keys").
+    builder.Services.AddDataProtection().SetApplicationName("Lumina.SysAdmin");
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<SysAdminDbContext>(options =>

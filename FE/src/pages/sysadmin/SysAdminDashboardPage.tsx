@@ -3,23 +3,28 @@ import { SysAdminSidebar } from '@components/layout/sysadmin/SysAdminSidebar'
 import { Card } from '@components/ui/Card'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { MainLayout } from '@layouts/MainLayout'
+import { useSysAdminAnalytics } from '@/hooks/useAnalytics'
 
-/**
- * SysAdmin Dashboard Page
- */
 export const SysAdminDashboardPage: React.FC = () => {
-  const systemStats = [
-    { label: 'Active Orgs', value: '45', icon: 'business', trend: 'up' },
-    { label: 'Total Users', value: '12,456', icon: 'people', trend: 'up' },
-    { label: 'Storage Used', value: '482 GB', icon: 'storage', trend: 'up' },
-    { label: 'System Uptime', value: '99.97%', icon: 'cloud_done', trend: 'stable' },
+  const { data, isLoading, error } = useSysAdminAnalytics()
+
+  const stat = (n: number | undefined | null) =>
+    isLoading ? '…' : (n ?? 0).toLocaleString()
+
+  const topStats = [
+    { label: 'Total Organizations', value: stat(data.orgs?.totalOrgs), icon: 'business' },
+    { label: 'Total Users', value: stat(data.orgs?.totalMembers), icon: 'people' },
+    { label: 'Total Courses', value: stat(data.content?.totalCourses), icon: 'school' },
+    { label: 'Total Quizzes', value: stat(data.content?.totalQuizzes), icon: 'quiz' },
   ]
 
-  const recentActivities = [
-    { type: 'org_created', message: 'New organization created', timestamp: '2 hours ago' },
-    { type: 'user_signup', message: '125 new users signed up', timestamp: '1 hour ago' },
-    { type: 'course_published', message: '5 new courses published', timestamp: '30 minutes ago' },
-    { type: 'error', message: 'High CPU usage on server 3', timestamp: '15 minutes ago' },
+  const contentStats = [
+    { label: 'Modules', value: stat(data.content?.totalModules), icon: 'view_module' },
+    { label: 'Flashcard Decks', value: stat(data.content?.totalFlashcardDecks), icon: 'style' },
+    { label: 'Videos', value: stat(data.content?.totalVideos), icon: 'play_circle' },
+    { label: 'Documents', value: stat(data.content?.totalDocuments), icon: 'description' },
+    { label: 'Quiz Attempts', value: stat(data.content?.totalQuizAttempts), icon: 'done_all' },
+    { label: 'Recent Member Joins', value: stat(data.orgs?.recentJoins), icon: 'person_add' },
   ]
 
   return (
@@ -29,84 +34,45 @@ export const SysAdminDashboardPage: React.FC = () => {
     >
       <div className="p-8">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-on-surface mb-2 font-headline">System Overview</h2>
-            <p className="text-on-surface-variant">Monitor platform health and manage resources</p>
+            <h2 className="text-3xl font-bold text-on-surface mb-2 font-headline" data-testid="sysadmin-dashboard-heading">
+              System Overview
+            </h2>
+            <p className="text-on-surface-variant">Platform-wide statistics from live data.</p>
           </div>
 
-          {/* System Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {systemStats.map((stat, i) => (
-              <Card key={i}>
+          {error && !isLoading && (
+            <p className="text-sm text-error mb-4" data-testid="sysadmin-analytics-error">{error}</p>
+          )}
+
+          {/* Top stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" data-testid="sysadmin-stats-grid">
+            {topStats.map((s) => (
+              <Card key={s.label} data-testid={`sysadmin-stat-${s.label.toLowerCase().replace(/\s+/g, '-')}`}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-on-surface mb-2">{stat.value}</p>
-                    <p className="text-sm text-on-surface-variant">{stat.label}</p>
+                    <p className="text-3xl font-bold text-on-surface mb-1">{s.value}</p>
+                    <p className="text-sm text-on-surface-variant">{s.label}</p>
                   </div>
-                  <div className={`p-3 rounded-lg ${stat.trend === 'up' ? 'bg-green-100' : 'bg-blue-100'}`}>
-                    <MaterialIcon
-                      icon={stat.trend === 'up' ? 'trending_up' : 'check_circle'}
-                      className={stat.trend === 'up' ? 'text-green-600' : 'text-blue-600'}
-                    />
+                  <div className="p-3 rounded-lg bg-primary/10">
+                    <MaterialIcon icon={s.icon} className="text-primary" />
                   </div>
                 </div>
               </Card>
             ))}
           </div>
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Activity */}
-            <div className="lg:col-span-2">
-              <Card>
-                <h3 className="text-xl font-bold text-on-surface mb-6">Recent Activity</h3>
-                <div className="space-y-4">
-                  {recentActivities.map((activity, i) => (
-                    <div key={i} className="flex items-start gap-4 p-4 bg-surface-container-low rounded-lg">
-                      <div className={`p-2 rounded-lg flex-shrink-0 ${
-                        activity.type === 'error' ? 'bg-error/10' : 'bg-primary/10'
-                      }`}>
-                        <MaterialIcon
-                          icon={activity.type === 'error' ? 'error_outline' : 'info'}
-                          className={activity.type === 'error' ? 'text-error' : 'text-primary'}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-on-surface">{activity.message}</p>
-                        <p className="text-xs text-on-surface-variant">{activity.timestamp}</p>
-                      </div>
-                    </div>
-                  ))}
+          {/* Secondary content stats */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {contentStats.map((s) => (
+              <Card key={s.label} data-testid={`sysadmin-stat-${s.label.toLowerCase().replace(/\s+/g, '-')}`}>
+                <div className="flex flex-col items-center text-center gap-2 py-2">
+                  <MaterialIcon icon={s.icon} className="text-2xl text-on-surface-variant" />
+                  <p className="text-2xl font-bold text-on-surface">{s.value}</p>
+                  <p className="text-xs text-on-surface-variant">{s.label}</p>
                 </div>
               </Card>
-            </div>
-
-            {/* System Health */}
-            <Card>
-              <h3 className="text-xl font-bold text-on-surface mb-6">System Health</h3>
-              <div className="space-y-4">
-                {[
-                  { label: 'CPU Usage', value: 45, status: 'good' },
-                  { label: 'Memory', value: 68, status: 'good' },
-                  { label: 'Disk I/O', value: 32, status: 'good' },
-                  { label: 'API Response', value: 125, status: 'good' },
-                ].map((item, i) => (
-                  <div key={i}>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-on-surface">{item.label}</span>
-                      <span className="text-xs font-bold text-on-surface">{item.value}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-surface-container-low rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${item.status === 'good' ? 'bg-green-500' : 'bg-warning'}`}
-                        style={{ width: `${item.value}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
+            ))}
           </div>
         </div>
       </div>

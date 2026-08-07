@@ -8,9 +8,11 @@ import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
 import { useUserLanguage } from './UserShell'
+import { useCourseContentLink } from '@/hooks/useCourseContentLink'
 
 interface SavedVideo {
 	id: string
+	contentId: string
 	youTubeVideoId: string
 	title?: string | null
 	description?: string | null
@@ -35,6 +37,7 @@ function extractVideoId(url: string): string | null {
 export const VideoCreatePage: React.FC = () => {
 	const isVi = useUserLanguage()
 	const navigate = useNavigate()
+	const courseLink = useCourseContentLink()
 
 	const [url, setUrl] = useState('')
 	const [title, setTitle] = useState('')
@@ -52,7 +55,7 @@ export const VideoCreatePage: React.FC = () => {
 		setSuccess(null)
 		const videoId = extractVideoId(url.trim())
 		if (!videoId) {
-			setError(t('URL YouTube khong hop le.', 'Invalid YouTube URL.'))
+			setError(t('URL YouTube không hợp lệ.', 'Invalid YouTube URL.'))
 			setPreviewId(null)
 			return
 		}
@@ -64,7 +67,7 @@ export const VideoCreatePage: React.FC = () => {
 		setSuccess(null)
 		const videoId = extractVideoId(url.trim())
 		if (!videoId) {
-			setError(t('URL YouTube khong hop le.', 'Invalid YouTube URL.'))
+			setError(t('URL YouTube không hợp lệ.', 'Invalid YouTube URL.'))
 			return
 		}
 		setBusy(true)
@@ -76,7 +79,10 @@ export const VideoCreatePage: React.FC = () => {
 			})
 			if (!res.success || !res.data) throw new Error(res.message || 'Failed to save video')
 			setSavedVideo(res.data)
-			setSuccess(t('Da luu vao thu vien!', 'Saved to library!'))
+			// If launched to add content to a course module, link the new video FIRST (throws on
+			// failure → the catch shows the error and we stay here), then return to the course.
+			if (courseLink.active) { await courseLink.linkAndReturn(res.data.contentId); return }
+			setSuccess(t('Đã lưu vào thư viện!', 'Saved to library!'))
 		} catch (err: any) {
 			setError(err?.message || err?.data?.message || 'Failed to save video')
 		} finally {
@@ -90,7 +96,7 @@ export const VideoCreatePage: React.FC = () => {
 	}, [previewId, savedVideo])
 
 	return (
-		<MainLayout navbar={<UserNavbar title="EduFutura" />} sidebar={<UserSidebar />}>
+		<MainLayout navbar={<UserNavbar title="Lumina" />} sidebar={<UserSidebar />}>
 			<div className="bg-[#f6f8fb] p-8">
 				<div className="mx-auto max-w-[900px] space-y-6">
 					<div className="flex items-center justify-between">
@@ -98,7 +104,7 @@ export const VideoCreatePage: React.FC = () => {
 							<h1 className="text-4xl font-black text-[#111b2d]">{t('Xem Video YouTube', 'Watch YouTube Video')}</h1>
 							<p className="mt-1 text-sm text-[#60708a]">
 								{t(
-									'Dan link YouTube de xem ngay, hoac luu vao thu vien hoc tap.',
+									'Dán link YouTube để xem ngay, hoặc lưu vào thư viện học tập.',
 									'Paste a YouTube URL to watch instantly, or save it to your library.'
 								)}
 							</p>
@@ -121,6 +127,7 @@ export const VideoCreatePage: React.FC = () => {
 										value={url}
 										onChange={(e) => setUrl(e.target.value)}
 										placeholder="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+										data-testid="video-url-input"
 										className="flex-1 rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 									<Button variant="secondary" onClick={handlePreview}>
@@ -140,6 +147,7 @@ export const VideoCreatePage: React.FC = () => {
 										value={title}
 										onChange={(e) => setTitle(e.target.value)}
 										placeholder={t('Bai giang vat ly...', 'Physics lecture...')}
+										data-testid="video-title-input"
 										className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 									/>
 								</div>
@@ -158,7 +166,7 @@ export const VideoCreatePage: React.FC = () => {
 							</div>
 
 							<div className="flex justify-end gap-2">
-								<Button onClick={() => void handleSave()} disabled={busy || !url.trim()}>
+								<Button onClick={() => void handleSave()} disabled={busy || !url.trim()} data-testid="video-save-btn">
 									<MaterialIcon icon="bookmark_add" size="xs" />
 									<span className="ml-1">{busy ? t('Dang luu...', 'Saving...') : t('Luu vao thu vien', 'Save to Library')}</span>
 								</Button>

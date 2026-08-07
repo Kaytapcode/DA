@@ -1,7 +1,10 @@
 // Auth Pages
 export { LoginPage } from './LoginPage'
 export { RegisterPage } from './RegisterPage'
+export { RegisterOrgAdminPage } from './RegisterOrgAdminPage'
 export { ResetPasswordPage } from './ResetPasswordPage'
 export { TwoFactorPage } from './TwoFactorPage'
 export { ForgotPasswordPage } from './ForgotPasswordPage'
 export { HomePage } from './HomePage'
+export { SysAdminLoginPage } from './SysAdminLoginPage'
+export { SsoCompleteProfilePage } from './SsoCompleteProfilePage'

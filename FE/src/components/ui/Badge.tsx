@@ -1,7 +1,7 @@
 import React from 'react'
 import { MaterialIcon } from './MaterialIcon'
 
-interface BadgeProps {
+interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   children: React.ReactNode
   variant?: 'primary' | 'secondary' | 'tertiary' | 'error' | 'success' | 'warning'
   size?: 'sm' | 'md' | 'lg'
@@ -12,12 +12,13 @@ interface BadgeProps {
 /**
  * Reusable Badge Component
  */
-export const Badge: React.FC<BadgeProps> = ({ 
-  children, 
-  variant = 'primary', 
+export const Badge: React.FC<BadgeProps> = ({
+  children,
+  variant = 'primary',
   size = 'md',
   icon,
-  className = ""
+  className = "",
+  ...rest
 }) => {
   const variants = {
     primary: 'bg-primary/10 text-primary',
@@ -35,10 +36,10 @@ export const Badge: React.FC<BadgeProps> = ({
   }
 
   return (
-    <span className={`
-      inline-flex items-center gap-1 rounded-full font-medium
-      ${variants[variant]} ${sizes[size]} ${className}
-    `}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full font-medium ${variants[variant]} ${sizes[size]} ${className}`}
+      {...rest}
+    >
       {icon && <MaterialIcon icon={icon} className="text-xs" />}
       {children}
     </span>

@@ -2,7 +2,7 @@ namespace Shared.Contracts.Responses
 {
     public record ModuleResponseDto(
         Guid Id,
-        Guid OrgId,
+        Guid? OrgId,
         string Title,
         string? Description,
         int OrderIndex,

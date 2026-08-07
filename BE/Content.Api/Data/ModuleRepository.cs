@@ -23,7 +23,13 @@ namespace Content.Api.Data
             => await _context.CourseModules
                 .Where(cm => cm.CourseId == courseId)
                 .OrderBy(cm => cm.OrderIndex)
-                .Include(cm => cm.Module).ThenInclude(m => m!.ModuleContents).ThenInclude(mc => mc.Content)
+                // Hydrate each content's child entity (Quiz/Document/Video/Deck) so the API can return
+                // the concrete QuizId/DocumentId/VideoId/DeckId — the FE needs these to build the
+                // viewer links (e.g. /user/lesson?videoId=...). Without them the links are incomplete.
+                .Include(cm => cm.Module).ThenInclude(m => m!.ModuleContents).ThenInclude(mc => mc.Content).ThenInclude(c => c!.Quiz)
+                .Include(cm => cm.Module).ThenInclude(m => m!.ModuleContents).ThenInclude(mc => mc.Content).ThenInclude(c => c!.Document)
+                .Include(cm => cm.Module).ThenInclude(m => m!.ModuleContents).ThenInclude(mc => mc.Content).ThenInclude(c => c!.Video)
+                .Include(cm => cm.Module).ThenInclude(m => m!.ModuleContents).ThenInclude(mc => mc.Content).ThenInclude(c => c!.FlashcardDeck)
                 .Select(cm => cm.Module!)
                 .ToListAsync(ct);
 

@@ -5,16 +5,18 @@ namespace Content.Api.Data
 {
     public interface IFlashcardRepository
     {
-        Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
+        Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default);
         Task<FlashcardDeckModel?> GetDeckByIdAsync(Guid deckId, CancellationToken ct = default);
         Task<Guid?> GetDeckOrgIdAsync(Guid deckId, CancellationToken ct = default);
-        Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, CancellationToken ct = default);
+        Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, Guid? createdByUserId, CancellationToken ct = default);
+        Task<int> ResetMasteredAsync(Guid deckId, Guid userId, CancellationToken ct = default);
         Task<List<FlashcardModel>> GetByDeckIdAsync(Guid deckId, CancellationToken ct = default);
         Task<FlashcardModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<FlashcardModel> CreateAsync(FlashcardModel card, CancellationToken ct = default);
         Task<FlashcardModel> UpdateAsync(FlashcardModel card, CancellationToken ct = default);
         Task DeleteAsync(Guid id, CancellationToken ct = default);
-        Task MarkMasteredAsync(Guid id, bool mastered, CancellationToken ct = default);
+        Task MarkMasteredAsync(Guid cardId, Guid userId, bool mastered, CancellationToken ct = default);
+        Task<bool> IsCardMasteredByUserAsync(Guid cardId, Guid userId, CancellationToken ct = default);
     }
 
     public class FlashcardRepository : IFlashcardRepository
@@ -23,7 +25,7 @@ namespace Content.Api.Data
 
         public FlashcardRepository(ContentDbContext db) => _db = db;
 
-        public async Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default)
+        public async Task<List<FlashcardDeckModel>> GetDecksAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default)
         {
             var query = _db.FlashcardDecks
                 .Include(d => d.Content)
@@ -34,10 +36,17 @@ namespace Content.Api.Data
 
             if (!isSysAdmin)
             {
-                if (!orgId.HasValue) return [];
+                if (!orgId.HasValue && !userId.HasValue) return [];
+                // "My Decks" — decks in the user's org (via module) OR the user's OWN personal decks.
+                // It must NOT include every public deck (that was a data-isolation leak: a new user
+                // saw everyone's decks). Public discovery belongs to Browse/Search, not this list.
                 query = query.Where(d =>
                     d.Content != null &&
-                    d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value));
+                    !d.Content.IsCourseScoped && // course-created content stays inside its course
+                    (
+                        (orgId.HasValue && d.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
+                        || (userId.HasValue && d.Content.CreatedByUserId == userId.Value)
+                    ));
             }
 
             return await query
@@ -55,7 +64,7 @@ namespace Content.Api.Data
                 .Select(mc => (Guid?)mc.Module!.OrgId)
                 .FirstOrDefaultAsync(ct);
 
-        public async Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, CancellationToken ct = default)
+        public async Task<FlashcardDeckModel> CreateDeckAsync(string title, string? theme, Guid? createdByUserId, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
             var content = new ContentModel
@@ -64,6 +73,8 @@ namespace Content.Api.Data
                 Title = title,
                 ContentType = "FLASHCARD",
                 Status = "DRAFT",
+                CreatedByUserId = createdByUserId,
+                IsPublic = true, // Spec §1
                 CreatedAt = now
             };
             var deck = new FlashcardDeckModel
@@ -79,6 +90,21 @@ namespace Content.Api.Data
             await _db.SaveChangesAsync(ct);
             deck.Content = content;
             return deck;
+        }
+
+        public async Task<int> ResetMasteredAsync(Guid deckId, Guid userId, CancellationToken ct = default)
+        {
+            var masteries = await _db.FlashcardUserMasteries
+                .Where(fum => fum.Flashcard!.DeckId == deckId && fum.UserId == userId && fum.IsMastered)
+                .ToListAsync(ct);
+            foreach (var m in masteries)
+            {
+                m.IsMastered = false;
+                m.MasteredAt = null;
+                m.UpdatedAt = DateTime.UtcNow;
+            }
+            if (masteries.Count > 0) await _db.SaveChangesAsync(ct);
+            return masteries.Count;
         }
 
         public async Task<List<FlashcardModel>> GetByDeckIdAsync(Guid deckId, CancellationToken ct = default)
@@ -121,14 +147,42 @@ namespace Content.Api.Data
             await _db.SaveChangesAsync(ct);
         }
 
-        public async Task MarkMasteredAsync(Guid id, bool mastered, CancellationToken ct = default)
+        public async Task MarkMasteredAsync(Guid cardId, Guid userId, bool mastered, CancellationToken ct = default)
         {
-            var card = await _db.Flashcards.FindAsync(new object[] { id }, cancellationToken: ct)
-                ?? throw new KeyNotFoundException($"Flashcard {id} not found.");
-            card.IsMastered = mastered;
-            card.MasteredAt = mastered ? DateTime.UtcNow : null;
-            card.UpdatedAt = DateTime.UtcNow;
+            var card = await _db.Flashcards.FindAsync(new object[] { cardId }, cancellationToken: ct)
+                ?? throw new KeyNotFoundException($"Flashcard {cardId} not found.");
+
+            var mastery = await _db.FlashcardUserMasteries
+                .FirstOrDefaultAsync(fum => fum.FlashcardId == cardId && fum.UserId == userId, ct);
+
+            if (mastery == null)
+            {
+                mastery = new FlashcardUserMasteryModel
+                {
+                    FlashcardId = cardId,
+                    UserId = userId,
+                    IsMastered = mastered,
+                    MasteredAt = mastered ? DateTime.UtcNow : null,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                _db.FlashcardUserMasteries.Add(mastery);
+            }
+            else
+            {
+                mastery.IsMastered = mastered;
+                mastery.MasteredAt = mastered ? DateTime.UtcNow : null;
+                mastery.UpdatedAt = DateTime.UtcNow;
+            }
+
             await _db.SaveChangesAsync(ct);
+        }
+
+        public async Task<bool> IsCardMasteredByUserAsync(Guid cardId, Guid userId, CancellationToken ct = default)
+        {
+            var mastery = await _db.FlashcardUserMasteries
+                .FirstOrDefaultAsync(fum => fum.FlashcardId == cardId && fum.UserId == userId, ct);
+            return mastery?.IsMastered ?? false;
         }
     }
 }

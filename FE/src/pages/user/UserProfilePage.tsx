@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -6,61 +6,138 @@ import { Card } from '@components/ui/Card'
 import { Input } from '@components/ui/Input'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
-import { Badge } from '@components/ui/Badge'
 import { t } from '@/i18n/translations'
-import { useForm } from '@hooks/useForm'
+import { useAuthContext } from '@/contexts/AuthContext'
+import { apiClient } from '@/utils/apiClient'
 
-interface ProfileFormData {
-  fullName: string
-  email: string
-  bio: string
-  institution: string
-  degree: string
-}
+type TabType = 'personal' | 'security' | 'language'
 
-type TabType = 'personal' | 'security' | 'wallet' | 'notifications'
+const SUPPORTED_LANGUAGES: { code: 'vi' | 'ja' | 'en'; label: string }[] = [
+  { code: 'en', label: 'English' },
+  { code: 'vi', label: 'Tiếng Việt' },
+  // { code: 'ja', label: '日本語' },
+]
 
-/**
- * User Profile Settings Page with tabs
- * Demonstrates full pattern for i18n, forms, and tabs
- */
 export const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('personal')
-  const [isSaved, setIsSaved] = useState(false)
+  const { user } = useAuthContext()
 
-  const { values, handleChange, handleSubmit } = useForm<ProfileFormData>(
-    {
-      fullName: 'Alex Johnson',
-      email: 'alex.johnson@lumina-learning.edu',
-      bio: 'Passionate learner focusing on Quantum Physics and Neural Computing.',
-      institution: 'Stanford University',
-      degree: 'M.S. Physics',
-    },
-    async (data) => {
-      console.log('Saving profile:', data)
-      setIsSaved(true)
-      setTimeout(() => setIsSaved(false), 2000)
+  // Personal details state
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [savingPw, setSavingPw] = useState(false)
+
+  // Language state — initialize from localStorage for immediate display without async flash
+  const [language, setLanguage] = useState<'vi' | 'en'>(() => {
+    const stored = localStorage.getItem('language')
+    return (stored === 'vi' || stored === 'en') ? stored : 'en'
+  })
+  const [langMsg, setLangMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [savingLang, setSavingLang] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    setUsername(user.username ?? '')
+    setEmail(user.email ?? '')
+    // Sync language from server on mount — authoritative source
+    apiClient.get('/auth/me').then(resp => {
+      const lang = resp.data?.data?.language
+      if (lang === 'vi' || lang === 'en') {
+        setLanguage(lang)
+        localStorage.setItem('language', lang)
+      }
+    }).catch(() => {})
+  }, [user])
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setProfileMsg(null)
+    setSavingProfile(true)
+    try {
+      const payload: { username?: string; email?: string } = {}
+      if (username && username !== user?.username) payload.username = username
+      if (email && email !== user?.email) payload.email = email
+      const resp = await apiClient.patch('/auth/me', payload)
+      if (resp.success) {
+        setProfileMsg({ type: 'success', text: 'Profile updated.' })
+      } else {
+        setProfileMsg({ type: 'error', text: resp.message ?? 'Update failed.' })
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setProfileMsg({ type: 'error', text: msg ?? 'Update failed.' })
+    } finally {
+      setSavingProfile(false)
     }
-  )
+  }
+
+  const handlePasswordSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPwMsg(null)
+    if (newPassword !== confirmPassword) {
+      setPwMsg({ type: 'error', text: 'New password and confirmation do not match.' })
+      return
+    }
+    setSavingPw(true)
+    try {
+      const resp = await apiClient.post('/auth/change-password', {
+        currentPassword,
+        newPassword,
+      })
+      if (resp.success) {
+        setPwMsg({ type: 'success', text: 'Password changed.' })
+        setCurrentPassword('')
+        setNewPassword('')
+        setConfirmPassword('')
+      } else {
+        setPwMsg({ type: 'error', text: resp.message ?? 'Password change failed.' })
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setPwMsg({ type: 'error', text: msg ?? 'Password change failed.' })
+    } finally {
+      setSavingPw(false)
+    }
+  }
+
+  const handleLanguageSave = async (newLang: 'vi' | 'en') => {
+    setLangMsg(null)
+    setSavingLang(true)
+    try {
+      const resp = await apiClient.patch('/auth/me/language', { language: newLang })
+      if (resp.success) {
+        setLanguage(newLang)
+        localStorage.setItem('language', newLang)
+        setLangMsg({
+          type: 'success',
+          text: newLang === 'vi' ? 'Đã cập nhật ngôn ngữ. Đang tải lại...' : 'Language preference updated. Reloading...',
+        })
+        // Components read getCurrentLanguage() directly (no reactive context), so a reload is the
+        // reliable way to re-render the whole app in the newly-selected language.
+        setTimeout(() => window.location.reload(), 700)
+      } else {
+        setLangMsg({ type: 'error', text: resp.message ?? 'Update failed.' })
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+      setLangMsg({ type: 'error', text: msg ?? 'Update failed.' })
+    } finally {
+      setSavingLang(false)
+    }
+  }
 
   const tabs: { id: TabType; label: string; icon: string }[] = [
     { id: 'personal', label: 'Personal Details', icon: 'person' },
-    { id: 'security', label: 'Security', icon: 'lock' },
-    { id: 'wallet', label: 'Academic Wallet', icon: 'account_balance_wallet' },
-    { id: 'notifications', label: 'Notifications', icon: 'notifications' },
-  ]
-
-  const achievements = [
-    { icon: 'star', title: 'Quantum Master', date: '3 weeks ago', color: 'text-yellow-500' },
-    { icon: 'verified', title: 'Data Ethics Certification', date: '2 days ago', color: 'text-blue-500' },
-    { icon: 'trophy', title: 'Top 1% Learner', date: '1 week ago', color: 'text-orange-500' },
-  ]
-
-  const learningStats = [
-    { label: 'Course Completion', value: '84%' },
-    { label: 'Cognitive Score', value: '1,240 XP' },
-    { label: 'Study Streak', value: '23 days' },
-    { label: 'Total Hours', value: '340 hrs' },
+    { id: 'security', label: 'Password', icon: 'lock' },
+    { id: 'language', label: 'Language', icon: 'translate' },
   ]
 
   return (
@@ -68,31 +145,21 @@ export const UserProfilePage: React.FC = () => {
       navbar={<UserNavbar title={t('common.profile')} />}
       sidebar={<UserSidebar />}
     >
-      <div className="p-8">
+      <div className="p-8" data-testid="user-profile-page">
         <div className="max-w-6xl mx-auto">
-          {/* Save Notification */}
-          {isSaved && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
-              <MaterialIcon icon="check_circle" className="text-green-600" />
-              <span className="text-green-700">{t('ui.success')}! {t('ui.changes')} saved.</span>
-            </div>
-          )}
-
-          {/* Tab Navigation */}
-          <div className="mb-8 border-b border-outline-variant overflow-x-auto">
+          {/* Tabs */}
+          <div className="mb-8 border-b border-outline-variant overflow-x-auto" data-testid="profile-tabs">
             <div className="flex gap-10 pb-4">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 pb-4 font-medium transition-all whitespace-nowrap
-                    ${
-                      activeTab === tab.id
-                        ? 'text-primary border-b-2 border-primary -mb-[18px]'
-                        : 'text-on-surface-variant hover:text-primary'
-                    }
-                  `}
+                  data-testid={`profile-tab-${tab.id}`}
+                  className={`flex items-center gap-2 pb-4 font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'text-primary border-b-2 border-primary -mb-[18px]'
+                      : 'text-on-surface-variant hover:text-primary'
+                  }`}
                 >
                   <MaterialIcon icon={tab.icon} className="text-lg" />
                   <span>{tab.label}</span>
@@ -101,234 +168,147 @@ export const UserProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Main Content - 2/3 width */}
-            <div className="lg:col-span-8">
-              {/* Personal Details Tab */}
-              {activeTab === 'personal' && (
-                <Card className="p-10 glass-card space-y-8">
-                  <form onSubmit={handleSubmit} className="space-y-8">
-                    {/* Profile Picture & Basic Info */}
-                    <div className="flex flex-col md:flex-row gap-8 items-start">
-                      <div className="relative group shrink-0">
-                        <img
-                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuA3b7h7MU8sg26t0mcgt2ZcpVsoiUfYCcJ0s7VbatFAUf7oF_O1B_Gw-L9K9j9ATAXI5gcGrUcVG8jXBbmDRjCCmIwQ0ZGk_-gb_Xj9Dlo6qh17tNPkiOPaf-Z11NkgMiuFiXT59AbUEPEOSd1HRwmeaGByKCwQ2Zc_ZmoHtL_Jmz_CpydPui2WN2XWNjA-dq8THz058CUGDaalDz0Tu4MyzhcmBVEllVcM6Gz7lv8tKjWiILwElM1ZoUBnMwIA_vB1alYHzBgFWcK5"
-                          alt="Profile"
-                          className="w-32 h-32 rounded-xl object-cover shadow-xl"
-                        />
-                        <button
-                          type="button"
-                          className="absolute -bottom-2 -right-2 bg-primary-container text-white p-2 rounded-full shadow-lg hover:scale-110 transition-transform"
-                        >
-                          <MaterialIcon icon="edit" className="text-sm" />
-                        </button>
-                      </div>
-
-                      {/* Form Fields */}
-                      <div className="flex-1 w-full space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <Input
-                            label="Full Name"
-                            name="fullName"
-                            value={values.fullName}
-                            onChange={handleChange}
-                          />
-                          <Input
-                            label="Email Address"
-                            type="email"
-                            name="email"
-                            value={values.email}
-                            onChange={handleChange}
-                          />
-                        </div>
-                        <Input
-                          label="Bio"
-                          name="bio"
-                          value={values.bio}
-                          onChange={handleChange}
-                          placeholder="Tell us about yourself"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Academic Info */}
-                    <div className="pt-8 border-t border-outline-variant">
-                      <h3 className="text-xl font-bold mb-6">Academic Information</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Institution
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">{values.institution}</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Degree
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">{values.degree}</p>
-                        </div>
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
-                            Graduation Date
-                          </label>
-                          <p className="text-xl font-semibold text-on-surface">June 2025</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Save Button */}
-                    <div className="flex justify-end pt-4">
-                      <Button variant="primary" type="submit" size="md">
-                        {t('ui.save')} Changes
-                      </Button>
-                    </div>
-                  </form>
-                </Card>
-              )}
-
-              {/* Security Tab */}
-              {activeTab === 'security' && (
-                <Card className="p-10 space-y-6">
-                  <div>
-                    <h3 className="text-lg font-bold mb-4">Change Password</h3>
-                    <div className="space-y-4">
-                      <Input label="Current Password" type="password" />
-                      <Input label="New Password" type="password" />
-                      <Input label="Confirm Password" type="password" />
-                      <Button variant="primary" size="md">
-                        Update Password
-                      </Button>
-                    </div>
+          {/* Personal Details */}
+          {activeTab === 'personal' && (
+            <Card className="p-10 glass-card space-y-8">
+              <form onSubmit={handleProfileSave} className="space-y-6" data-testid="profile-form">
+                <Input
+                  label="Username"
+                  name="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  data-testid="profile-username-input"
+                />
+                <Input
+                  label="Email Address"
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  data-testid="profile-email-input"
+                />
+                {profileMsg && (
+                  <div
+                    data-testid={`profile-${profileMsg.type}`}
+                    className={`p-3 rounded-md ${
+                      profileMsg.type === 'success'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}
+                  >
+                    {profileMsg.text}
                   </div>
-                  <div className="border-t border-outline-variant pt-6">
-                    <h3 className="text-lg font-bold mb-4">Two-Factor Authentication</h3>
-                    <Badge variant="success" size="md">
-                      ✓ Enabled
-                    </Badge>
-                    <p className="text-sm text-on-surface-variant mt-2">
-                      Your account is protected with 2FA
-                    </p>
-                  </div>
-                </Card>
-              )}
-
-              {/* Wallet Tab */}
-              {activeTab === 'wallet' && (
-                <Card className="p-10 space-y-6">
-                  <p className="text-on-surface-variant">
-                    Your academic credentials and certifications are stored here
-                  </p>
-                  <div className="space-y-4">
-                    {achievements.map((achievement, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 p-4 bg-surface-container-low rounded-lg"
-                      >
-                        <div className={`text-2xl ${achievement.color}`}>
-                          <MaterialIcon icon={achievement.icon} fill />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-on-surface">{achievement.title}</p>
-                          <p className="text-xs text-on-surface-variant">{achievement.date}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-
-              {/* Notifications Tab */}
-              {activeTab === 'notifications' && (
-                <Card className="p-10 space-y-4">
-                  <div className="space-y-4">
-                    {[
-                      { label: 'Email Notifications', enabled: true },
-                      { label: 'Course Updates', enabled: true },
-                      { label: 'Achievement Badges', enabled: false },
-                      { label: 'Weekly Digest', enabled: true },
-                    ].map((notif, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-4 bg-surface-container-low rounded-lg">
-                        <label className="font-medium text-on-surface cursor-pointer">
-                          {notif.label}
-                        </label>
-                        <div className="relative inline-flex w-12 h-7 bg-slate-300 rounded-full transition-colors" >
-                          <input
-                            type="checkbox"
-                            defaultChecked={notif.enabled}
-                            className="w-full h-full opacity-0 cursor-pointer"
-                          />
-                          <div className={`absolute top-1 left-1 w-5 h-5 rounded-full transition-all ${
-                            notif.enabled ? 'bg-primary translate-x-5' : 'bg-white'
-                          }`} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-              )}
-            </div>
-
-            {/* Sidebar - 1/3 width */}
-            <div className="lg:col-span-4 space-y-6">
-              {/* Learning Stats */}
-              <Card className="p-6">
-                <h3 className="font-headline text-lg font-bold mb-6">Learning Vitality</h3>
-                <div className="space-y-6">
-                  {learningStats.map((stat, idx) => (
-                    <div key={idx}>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-medium text-on-surface-variant">{stat.label}</span>
-                        <span className="font-bold text-primary">{stat.value}</span>
-                      </div>
-                      <div className="h-2 bg-surface-container-low rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-tertiary"
-                          style={{ width: `${30 + idx * 15}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* Upgrade Card */}
-              <Card className="bg-gradient-to-br from-primary/10 to-tertiary/10 p-6 border border-primary/20">
-                <div className="text-center">
-                  <MaterialIcon icon="workspace_premium" className="text-4xl text-primary mx-auto mb-4" />
-                  <h3 className="font-headline font-bold mb-2">Personalize Learning</h3>
-                  <p className="text-sm text-on-surface-variant mb-4">
-                    Tune recommendations and keep your study flow optimized
-                  </p>
-                  <Button variant="primary" size="sm" className="w-full">
-                    Open Preferences
+                )}
+                <div className="flex justify-end pt-4">
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    size="md"
+                    disabled={savingProfile}
+                    data-testid="profile-save-btn"
+                  >
+                    {savingProfile ? 'Saving…' : `${t('ui.save')} Changes`}
                   </Button>
                 </div>
-              </Card>
+              </form>
+            </Card>
+          )}
 
-              {/* Recent Activity */}
-              <Card className="p-6">
-                <h3 className="font-headline text-lg font-bold mb-4">Recent Activity</h3>
-                <div className="space-y-3">
-                  {[
-                    { action: 'Completed Quiz', time: '2 hours ago' },
-                    { action: 'Earned Badge', time: '1 day ago' },
-                    { action: 'Joined Course', time: '3 days ago' },
-                  ].map((activity, idx) => (
-                    <div key={idx} className="flex gap-3 text-sm">
-                      <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                      <div>
-                        <p className="font-medium text-on-surface">{activity.action}</p>
-                        <p className="text-xs text-on-surface-variant">{activity.time}</p>
-                      </div>
-                    </div>
-                  ))}
+          {/* Security / Change Password */}
+          {activeTab === 'security' && (
+            <Card className="p-10 space-y-6">
+              <h3 className="text-lg font-bold mb-4">Change Password</h3>
+              <form onSubmit={handlePasswordSave} className="space-y-4" data-testid="change-password-form">
+                <Input
+                  label="Current Password"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  data-testid="change-password-current"
+                />
+                <Input
+                  label="New Password"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  data-testid="change-password-new"
+                />
+                <Input
+                  label="Confirm Password"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  data-testid="change-password-confirm"
+                />
+                {pwMsg && (
+                  <div
+                    data-testid={`change-password-${pwMsg.type}`}
+                    className={`p-3 rounded-md ${
+                      pwMsg.type === 'success'
+                        ? 'bg-green-50 text-green-700 border border-green-200'
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}
+                  >
+                    {pwMsg.text}
+                  </div>
+                )}
+                <Button
+                  variant="primary"
+                  type="submit"
+                  size="md"
+                  disabled={savingPw}
+                  data-testid="change-password-submit"
+                >
+                  {savingPw ? 'Saving…' : 'Update Password'}
+                </Button>
+              </form>
+            </Card>
+          )}
+
+          {/* Language */}
+          {activeTab === 'language' && (
+            <Card className="p-10 space-y-6">
+              <div data-testid="language-section">
+              <h3 className="text-lg font-bold mb-4">Display Language</h3>
+              <p className="text-sm text-on-surface-variant mb-4">
+                Choose how Lumina is displayed. Your preference is saved to your account and applies on every device.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {SUPPORTED_LANGUAGES.map((opt) => (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    onClick={() => handleLanguageSave(opt.code)}
+                    disabled={savingLang}
+                    data-testid={`language-option-${opt.code}`}
+                    className={`p-4 rounded-lg border transition-all text-left ${
+                      language === opt.code
+                        ? 'border-primary bg-primary/5 text-primary font-semibold'
+                        : 'border-outline-variant hover:border-primary/40'
+                    }`}
+                  >
+                    <div className="text-sm font-medium">{opt.label}</div>
+                    <div className="text-xs text-on-surface-variant mt-1">{opt.code.toUpperCase()}</div>
+                  </button>
+                ))}
+              </div>
+              {langMsg && (
+                <div
+                  data-testid={`language-${langMsg.type}`}
+                  className={`p-3 rounded-md ${
+                    langMsg.type === 'success'
+                      ? 'bg-green-50 text-green-700 border border-green-200'
+                      : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}
+                >
+                  {langMsg.text}
                 </div>
-              </Card>
-            </div>
-          </div>
+              )}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </MainLayout>
   )
 }
-

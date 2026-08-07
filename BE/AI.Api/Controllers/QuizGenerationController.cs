@@ -1,9 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using AI.Api.Services;
-using Shared.Contracts.Requests;
 using Shared.Contracts.Responses;
-using System.Text.Json;
+using UglyToad.PdfPig;
 
 namespace AI.Api.Controllers
 {
@@ -13,57 +12,82 @@ namespace AI.Api.Controllers
     public class QuizGenerationController : ControllerBase
     {
         private readonly IOpenRouterService _openRouterService;
+        private readonly IAiQuotaService _quotaService;
         private readonly ILogger<QuizGenerationController> _logger;
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IConfiguration _configuration;
 
         public QuizGenerationController(
             IOpenRouterService openRouterService,
-            ILogger<QuizGenerationController> logger,
-            IHttpClientFactory httpClientFactory,
-            IConfiguration configuration)
+            IAiQuotaService quotaService,
+            ILogger<QuizGenerationController> logger)
         {
             _openRouterService = openRouterService;
+            _quotaService = quotaService;
             _logger = logger;
-            _httpClientFactory = httpClientFactory;
-            _configuration = configuration;
+        }
+
+        // Spec 1 SysAdmin — read org_id from JWT claim so we can scope quota per organization.
+        private Guid? GetOrgId()
+        {
+            var claim = User.FindFirst("org_id")?.Value;
+            return Guid.TryParse(claim, out var g) ? g : null;
         }
 
         /// <summary>
-        /// Generate quiz questions from document content using OpenRouter LLM
-        /// Optionally auto-save to Content.Api if quizId is provided
+        /// Generate quiz questions from an uploaded PDF or text file.
+        /// Returns questions for the client to review/edit before saving.
         /// </summary>
         [HttpPost("generate")]
-        public async Task<IActionResult> GenerateQuiz([FromBody] GenerateQuizRequest request, [FromQuery] Guid? quizId = null)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> GenerateQuiz(
+            IFormFile file,
+            [FromForm] string? documentTitle = null,
+            [FromForm] string? questionCount = "normal",
+            [FromForm] string? difficulty = "normal")
         {
-            if (string.IsNullOrWhiteSpace(request?.DocumentContent))
+            if (file == null || file.Length == 0)
+                return BadRequest(new ApiResponse(false, "A PDF or text file is required."));
+
+            if (file.Length > 10 * 1024 * 1024)
+                return BadRequest(new ApiResponse(false, "File size must not exceed 10 MB."));
+
+            string documentContent;
+            try
             {
-                return BadRequest(new ApiResponse(false, "Document content is required"));
+                documentContent = await ExtractTextAsync(file);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to extract text from {FileName}", file.FileName);
+                return BadRequest(new ApiResponse(false, "Failed to read file content. Ensure the file is a valid PDF or plain text file."));
+            }
+
+            if (string.IsNullOrWhiteSpace(documentContent) || documentContent.Trim().Length < 50)
+                return BadRequest(new ApiResponse(false, "File content is too short (minimum 50 characters of text)."));
+
+            // Spec 1 SysAdmin — enforce per-org AI quota. Skip check when org_id is null
+            // (personal user not yet attached to an org).
+            var orgId = GetOrgId();
+            if (orgId.HasValue && !await _quotaService.CanMakeCallAsync(orgId.Value))
+            {
+                return StatusCode(429, new ApiResponse(false, "AI quota exhausted for this organization."));
+            }
+
+            var title = !string.IsNullOrWhiteSpace(documentTitle)
+                ? documentTitle.Trim()
+                : Path.GetFileNameWithoutExtension(file.FileName);
 
             try
             {
-                _logger.LogInformation("Generating quiz for document: {DocumentTitle}", request.DocumentTitle);
-
+                _logger.LogInformation("Generating quiz for document: {Title}", title);
                 var response = await _openRouterService.GenerateQuizAsync(
-                    request.DocumentContent,
-                    request.DocumentTitle ?? "Document"
-                );
+                    documentContent.Trim(), title,
+                    questionCount ?? "normal",
+                    difficulty ?? "normal");
+                _logger.LogInformation("Quiz generated with {Count} questions", response.QuestionsCount);
 
-                _logger.LogInformation("Quiz generated successfully with {QuestionCount} questions", response.QuestionsCount);
-
-                // If quizId provided, auto-save to Content.Api
-                if (quizId.HasValue)
-                {
-                    var saveResult = await SaveQuestionsToContentApiAsync(quizId.Value, response);
-                    if (!saveResult.Success)
-                    {
-                        _logger.LogWarning("Failed to save questions to Content.Api: {Message}", saveResult.Message);
-                        return StatusCode(500, new ApiResponse(false, $"Generated but failed to save: {saveResult.Message}"));
-                    }
-
-                    _logger.LogInformation("Questions saved to Content.Api for quiz {QuizId}", quizId);
-                }
+                // Spec 1 SysAdmin — decrement quota only on success.
+                if (orgId.HasValue)
+                    await _quotaService.IncrementUsageAsync(orgId.Value);
 
                 return Ok(new ApiResponse<QuizGenerationResponse>(true, response, "Quiz generated successfully"));
             }
@@ -84,53 +108,26 @@ namespace AI.Api.Controllers
             }
         }
 
-        private async Task<(bool Success, string Message)> SaveQuestionsToContentApiAsync(Guid quizId, QuizGenerationResponse response)
+        private static async Task<string> ExtractTextAsync(IFormFile file)
         {
-            try
+            var contentType = (file.ContentType ?? string.Empty).ToLowerInvariant();
+            var extension = Path.GetExtension(file.FileName ?? string.Empty).ToLowerInvariant();
+
+            if (contentType == "application/pdf" || extension == ".pdf")
             {
-                var contentApiUrl = _configuration["Identity:InternalBaseUrl"] ?? "http://localhost:5003";
-                var client = _httpClientFactory.CreateClient();
-                var token = Request.Headers["Authorization"].ToString();
-
-                var importRequest = new ImportAiQuestionsRequestDto(
-                    response.Questions.Select(q => new GeneratedQuestionDto(
-                        q.Question,
-                        q.Options,
-                        q.CorrectIndex,
-                        q.Explanation
-                    )).ToList()
-                );
-
-                var json = JsonSerializer.Serialize(importRequest);
-                var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
-
-                if (!string.IsNullOrEmpty(token))
-                {
-                    client.DefaultRequestHeaders.Add("Authorization", token);
-                }
-
-                var endpoint = $"{contentApiUrl}/api/quizzes/{quizId}/generate";
-                var httpResponse = await client.PostAsync(endpoint, content);
-
-                if (!httpResponse.IsSuccessStatusCode)
-                {
-                    var errorContent = await httpResponse.Content.ReadAsStringAsync();
-                    return (false, $"Content.Api returned {httpResponse.StatusCode}: {errorContent}");
-                }
-
-                return (true, "Questions saved successfully");
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                using var pdfDoc = PdfDocument.Open(ms.ToArray());
+                var sb = new System.Text.StringBuilder();
+                foreach (var page in pdfDoc.GetPages())
+                    sb.AppendLine(page.Text);
+                return sb.ToString();
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error saving questions to Content.Api");
-                return (false, ex.Message);
+                using var reader = new StreamReader(file.OpenReadStream());
+                return await reader.ReadToEndAsync();
             }
         }
-    }
-
-    public class GenerateQuizRequest
-    {
-        public required string DocumentContent { get; set; }
-        public string? DocumentTitle { get; set; }
     }
 }

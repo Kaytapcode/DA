@@ -11,9 +11,10 @@ namespace Content.Api.Models
         [Column("id")]
         public Guid Id { get; set; }
 
-        [Required]
+        // Null when the module is a personal Collection (spec §3.1, "Collection (For Users)").
+        // Set when the module belongs to a course inside an organization.
         [Column("org_id")]
-        public Guid OrgId { get; set; }
+        public Guid? OrgId { get; set; }
 
         [Column("created_by")]
         public Guid? CreatedBy { get; set; }

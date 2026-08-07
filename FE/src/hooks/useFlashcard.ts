@@ -39,6 +39,8 @@ export const useFlashcard = (deckId: string | null) => {
   const [isLoading, setIsLoading] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Separate from load error — mastery failures must not hide the card UI.
+  const [masteryError, setMasteryError] = useState<string | null>(null)
 
   useEffect(() => {
     setResolvedDeckId(deckId)
@@ -134,7 +136,7 @@ export const useFlashcard = (deckId: string | null) => {
     if (!activeDeckId || !currentCard) return false
 
     setIsUpdating(true)
-    setError(null)
+    setMasteryError(null)
 
     try {
       const response = await apiClient.put(`/decks/${activeDeckId}/flashcards/${currentCard.id}/master`)
@@ -150,13 +152,36 @@ export const useFlashcard = (deckId: string | null) => {
 
       return true
     } catch (err) {
+      // Use masteryError so the main error state (which hides the cards) is not affected.
       const message = err instanceof Error ? err.message : 'Unable to update flashcard'
-      setError(message)
+      setMasteryError(message)
       return false
     } finally {
       setIsUpdating(false)
     }
   }, [currentCard, deckId, orderedCards.length, resolvedDeckId])
+
+  // Spec §2.3: "...unless the User resets them." Calls POST /decks/{id}/flashcards/reset-mastered
+  // and reloads so previously hidden cards reappear.
+  const resetMastered = useCallback(async () => {
+    const activeDeckId = deckId ?? resolvedDeckId
+    if (!activeDeckId) return false
+
+    setIsUpdating(true)
+    setMasteryError(null)
+    try {
+      const response = await apiClient.post(`/decks/${activeDeckId}/flashcards/reset-mastered`)
+      if (!response.success) throw new Error(response.message || 'Unable to reset mastered cards')
+      await refresh()
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to reset mastered cards'
+      setMasteryError(message)
+      return false
+    } finally {
+      setIsUpdating(false)
+    }
+  }, [deckId, resolvedDeckId, refresh])
 
   return {
     cards: orderedCards,
@@ -169,12 +194,14 @@ export const useFlashcard = (deckId: string | null) => {
     isLoading,
     isUpdating,
     error,
+    masteryError,
     refresh,
     toggleShuffle,
     toggleFlip,
     nextCard,
     previousCard,
     markCurrentAsMastered,
+    resetMastered,
   }
 }
 

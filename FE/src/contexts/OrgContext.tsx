@@ -35,11 +35,10 @@ export const OrgProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.setItem(ORG_STORAGE_KEY, JSON.stringify(org));
       localStorage.setItem('org_id', org.id);
       localStorage.setItem('org_slug', org.slug);
-    } else {
-      localStorage.removeItem(ORG_STORAGE_KEY);
-      localStorage.removeItem('org_id');
-      localStorage.removeItem('org_slug');
     }
+    // Don't clear on null here — clearOrg() handles explicit removal.
+    // Clearing on null caused a race: login() sets org_id, then this effect
+    // (org=null at init) would immediately remove it before pages could read it.
   }, [org]);
 
   const setOrg = useCallback((newOrg: OrgInfo | null) => {
@@ -71,6 +70,9 @@ export const OrgProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const clearOrg = useCallback(() => {
     setOrgState(null);
+    localStorage.removeItem(ORG_STORAGE_KEY);
+    localStorage.removeItem('org_id');
+    localStorage.removeItem('org_slug');
   }, []);
 
   return (

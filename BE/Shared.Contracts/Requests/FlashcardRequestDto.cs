@@ -15,4 +15,9 @@ namespace Shared.Contracts.Requests
         string Title,
         string? Theme
     );
+
+    public record UpdateDeckRequestDto(
+        string? Title,
+        string? Theme
+    );
 }

@@ -5,7 +5,7 @@ namespace Shared.Contracts.Responses
 {
     public record StudentProgressDto(
         Guid Id,
-        Guid CourseId,
+        Guid? CourseId,
         Guid UserId,
         Guid? ModuleId,
         Guid? ContentId,

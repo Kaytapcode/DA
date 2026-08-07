@@ -6,10 +6,12 @@ namespace Content.Api.Data
     public interface IStudentProgressRepository
     {
         Task<StudentProgressModel?> GetByKeyAsync(Guid courseId, Guid userId, Guid? moduleId, CancellationToken ct = default);
+        Task<StudentProgressModel?> GetPersonalByContentAsync(Guid userId, Guid contentId, CancellationToken ct = default);
         Task<List<StudentProgressModel>> GetByCourseUserAsync(Guid courseId, Guid userId, CancellationToken ct = default);
         Task<List<StudentProgressModel>> GetByCourseAsync(Guid courseId, CancellationToken ct = default);
         Task<StudentProgressModel> UpsertAsync(StudentProgressModel progress, CancellationToken ct = default);
         Task<int> CountCourseModulesAsync(Guid courseId, CancellationToken ct = default);
+        Task<int> CountCourseContentsAsync(Guid courseId, CancellationToken ct = default);
     }
 
     public class StudentProgressRepository : IStudentProgressRepository
@@ -25,6 +27,10 @@ namespace Content.Api.Data
                     p.UserId == userId &&
                     p.ModuleId == moduleId, ct);
 
+        public async Task<StudentProgressModel?> GetPersonalByContentAsync(Guid userId, Guid contentId, CancellationToken ct = default)
+            => await _db.StudentProgress
+                .FirstOrDefaultAsync(p => p.CourseId == null && p.UserId == userId && p.ContentId == contentId, ct);
+
         public async Task<List<StudentProgressModel>> GetByCourseUserAsync(Guid courseId, Guid userId, CancellationToken ct = default)
             => await _db.StudentProgress
                 .Where(p => p.CourseId == courseId && p.UserId == userId)
@@ -38,7 +44,24 @@ namespace Content.Api.Data
 
         public async Task<StudentProgressModel> UpsertAsync(StudentProgressModel progress, CancellationToken ct = default)
         {
-            var existing = await GetByKeyAsync(progress.CourseId, progress.UserId, progress.ModuleId, ct);
+            // Course progress is tracked PER CONTENT: the key must include ContentId, otherwise two
+            // contents in the same module collapse onto one row and opening content B wipes content A's
+            // completion. (A module-level row — ContentId == null — is still matched the old way.)
+            StudentProgressModel? existing;
+            if (progress.CourseId.HasValue)
+            {
+                existing = progress.ContentId.HasValue
+                    ? await _db.StudentProgress.FirstOrDefaultAsync(p =>
+                        p.CourseId == progress.CourseId &&
+                        p.UserId == progress.UserId &&
+                        p.ModuleId == progress.ModuleId &&
+                        p.ContentId == progress.ContentId, ct)
+                    : await GetByKeyAsync(progress.CourseId.Value, progress.UserId, progress.ModuleId, ct);
+            }
+            else
+            {
+                existing = await GetPersonalByContentAsync(progress.UserId, progress.ContentId ?? Guid.Empty, ct);
+            }
 
             if (existing != null)
             {
@@ -50,9 +73,6 @@ namespace Content.Api.Data
                     existing.IsCompleted = true;
                     existing.CompletedAt = DateTime.UtcNow;
                 }
-
-                if (progress.ContentId.HasValue)
-                    existing.ContentId = progress.ContentId;
 
                 existing.ProgressPercentage = progress.ProgressPercentage;
                 _db.StudentProgress.Update(existing);
@@ -73,5 +93,13 @@ namespace Content.Api.Data
 
         public async Task<int> CountCourseModulesAsync(Guid courseId, CancellationToken ct = default)
             => await _db.CourseModules.CountAsync(cm => cm.CourseId == courseId, ct);
+
+        // Total content items across all modules of the course — the denominator for a per-student
+        // completion %. (Progress is tracked per content, so % = completed contents / total contents.)
+        public async Task<int> CountCourseContentsAsync(Guid courseId, CancellationToken ct = default)
+            => await _db.CourseModules
+                .Where(cm => cm.CourseId == courseId)
+                .SelectMany(cm => cm.Module!.ModuleContents)
+                .CountAsync(ct);
     }
 }

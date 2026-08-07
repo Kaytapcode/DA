@@ -93,6 +93,11 @@ try
     builder.Services.AddScoped<IStorageService, LocalStorageService>();
     // Removed: IOrganizationRepository, IUserRepository - use HttpClient through Gateway for inter-service queries
     builder.Services.AddScoped<IOrgContextService, OrgContextService>();
+    builder.Services.AddScoped<ICourseAccessService, CourseAccessService>();
+    // For service-to-service calls (e.g. auto-provisioning an approved student into the org,
+    // and checking org suspension status for the course-access guard).
+    builder.Services.AddHttpClient();
+    builder.Services.AddMemoryCache();
 
     // AutoMapper registration
     builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
@@ -118,6 +123,15 @@ try
     });
 
     var app = builder.Build();
+
+    // Apply any pending EF migrations on startup (idempotent — only unapplied migrations run).
+    // Keeps the course_enrollments.status column and future schema changes in sync without a
+    // manual `dotnet ef database update` step. Mirrors Identity.Api's startup behaviour.
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ContentDbContext>();
+        await db.Database.MigrateAsync();
+    }
 
     // Use Serilog request logging
     app.UseSerilogRequestLogging();

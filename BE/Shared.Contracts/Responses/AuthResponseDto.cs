@@ -1,9 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Shared.Contracts.Responses
 {
     public record AuthResponseDto(
@@ -12,7 +6,10 @@ namespace Shared.Contracts.Responses
     );
 
     public record LoginResponseDto(
-        string Token,
+        string AccessToken,
+        string RefreshToken,
+        int AccessTokenExpiresInSeconds,
+        DateTime RefreshTokenExpiresAt,
         string Message,
         UserInfoDto User,
         string? OrgId = null
@@ -23,6 +20,6 @@ namespace Shared.Contracts.Responses
         string Username,
         string Email,
         string Role,
-        bool IsSystemAdmin
+        string? Language = null
     );
 }

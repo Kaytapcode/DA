@@ -14,6 +14,8 @@ namespace Shared.Contracts.Responses
         string Username,
         string Email,
         string Role,
-        DateTime JoinDate
+        DateTime JoinDate,
+        // 'Pending' | 'Approved' | 'Rejected' — Pending rows are join requests awaiting OrgAdmin approval.
+        string Status = "Approved"
     );
 }

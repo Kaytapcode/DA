@@ -13,9 +13,18 @@ namespace Organization.Api.Mappings
             CreateMap<OrganizationModel, OrganizationResponseDto>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id));
 
+            // OrganizationListResponseDto is a positional `record` — AutoMapper cannot
+            // ForMember constructor parameters directly. Use ConstructUsing so the mapper
+            // calls the constructor with the right arguments.
             CreateMap<OrganizationModel, OrganizationListResponseDto>()
-                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
-                .ForMember(dest => dest.MemberCount, opt => opt.MapFrom(src => src.Members != null ? src.Members.Count : 0));
+                .ConstructUsing(src => new OrganizationListResponseDto(
+                    src.Id,
+                    src.Name,
+                    src.Slug,
+                    src.Members != null ? src.Members.Count : 0,
+                    src.CreatedAt,
+                    src.Status
+                ));
 
             CreateMap<CreateOrganizationRequestDto, OrganizationModel>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())

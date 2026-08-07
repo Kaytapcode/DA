@@ -120,6 +120,16 @@ export const useQuiz = (quizId: string | null) => {
         )
       }
 
+      // The /questions endpoint returns a bare array (no time limit), so fetch the quiz meta to
+      // get the per-quiz time limit (minutes). null/0 ⇒ unlimited (no countdown shown).
+      try {
+        const meta = await apiClient.get<{ timeLimit?: number | null }>(`/quizzes/${activeQuizId}`)
+        const tl = meta?.data?.timeLimit
+        setTimeLimitSeconds(typeof tl === 'number' && tl > 0 ? tl * 60 : null)
+      } catch {
+        /* no time limit available — treat as unlimited */
+      }
+
       setAnswers({})
       setResult(null)
       setStartedAt(Date.now())

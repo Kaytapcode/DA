@@ -51,4 +51,10 @@ namespace Shared.Contracts.Requests
         int? TimeLimit,
         int? PassingScore
     );
+
+    public record UpdateQuizRequestDto(
+        string? Title,
+        int? TimeLimit,
+        int? PassingScore
+    );
 }

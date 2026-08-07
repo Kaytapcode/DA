@@ -30,13 +30,21 @@ namespace Identity.Api.Models
         [StringLength(50)]
         public string Role { get; set; } = "Student"; // Student, Teacher, OrgAdmin, SysAdmin
 
-        [Column("is_system_admin")]
-        public bool IsSystemAdmin { get; set; } = false;
-
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [Column("updated_at")]
         public DateTime? UpdatedAt { get; set; }
+
+        // Spec 1 — i18n preference. Supported: "vi", "ja", "en". Null = no preference set (FE defaults to "en").
+        [Column("language")]
+        [StringLength(8)]
+        public string? Language { get; set; }
+
+        // Google SSO — the Google account subject id ("sub"), set on first Google sign-in and used
+        // to match returning SSO users. Null for password-only accounts.
+        [Column("google_sub")]
+        [StringLength(64)]
+        public string? GoogleSub { get; set; }
     }
 }

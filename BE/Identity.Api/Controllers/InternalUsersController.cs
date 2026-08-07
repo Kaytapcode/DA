@@ -29,7 +29,7 @@ namespace Identity.Api.Controllers
                 return Ok(new ApiResponse<IEnumerable<UserInfoDto>>(true, [], null));
 
             var users = await _userRepository.GetByIdsAsync(ids, ct);
-            var result = users.Select(u => new UserInfoDto(u.Id, u.Username, u.Email, u.Role, u.IsSystemAdmin));
+            var result = users.Select(u => new UserInfoDto(u.Id, u.Username, u.Email, u.Role));
             return Ok(new ApiResponse<IEnumerable<UserInfoDto>>(true, result, null));
         }
     }

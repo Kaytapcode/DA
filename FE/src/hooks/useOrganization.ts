@@ -37,13 +37,16 @@ interface UseOrganizationReturn {
   currentOrganization: Organization | null;
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchOrganizations: (pageIndex?: number, pageSize?: number) => Promise<void>;
   fetchOrganization: (id: string) => Promise<void>;
   createOrganization: (data: CreateOrganizationPayload) => Promise<Organization | null>;
   updateOrganization: (data: UpdateOrganizationPayload) => Promise<Organization | null>;
   deleteOrganization: (id: string) => Promise<boolean>;
+  joinSelf: (orgId: string) => Promise<boolean>;
+  approveMember: (orgId: string, userId: string) => Promise<boolean>;
+  rejectMember: (orgId: string, userId: string) => Promise<boolean>;
   setCurrentOrganization: (org: Organization | null) => void;
   clearError: () => void;
 }
@@ -68,12 +71,15 @@ export const useOrganization = (): UseOrganizationReturn => {
       setError(null);
 
       try {
-        const response = await apiClient.get<PaginatedResponse<OrganizationList>>(
+        const response = await apiClient.get<OrganizationList[] | PaginatedResponse<OrganizationList>>(
           `/organizations?pageIndex=${pageIndex}&pageSize=${pageSize}`
         );
 
         if (response.success && response.data) {
-          setOrganizations(response.data.data);
+          // BE may return flat array or paginated wrapper
+          const raw = response.data as any
+          const list: OrganizationList[] = Array.isArray(raw) ? raw : (raw.data ?? [])
+          setOrganizations(list)
         } else {
           throw new Error(response.message || 'Failed to fetch organizations');
         }
@@ -196,6 +202,41 @@ export const useOrganization = (): UseOrganizationReturn => {
     [handleError, currentOrganization?.id]
   );
 
+  // Spec §1, User role: "Can join Organizations." Calls POST /api/orgs/{id}/members/self.
+  const joinSelf = useCallback(
+    async (orgId: string): Promise<boolean> => {
+      setError(null);
+      try {
+        const response = await apiClient.post(`/orgs/${orgId}/members/self`);
+        if (!response.success) throw new Error(response.message || 'Failed to join organization');
+        return true;
+      } catch (err) {
+        handleError(err);
+        return false;
+      }
+    },
+    [handleError]
+  );
+
+  // OrgAdmin approves / rejects a pending join request (mirrors course-enrollment approval).
+  const approveMember = useCallback(async (orgId: string, userId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const r = await apiClient.post(`/orgs/${orgId}/members/${userId}/approve`);
+      if (!r.success) throw new Error(r.message || 'Failed to approve member');
+      return true;
+    } catch (err) { handleError(err); return false; }
+  }, [handleError]);
+
+  const rejectMember = useCallback(async (orgId: string, userId: string): Promise<boolean> => {
+    setError(null);
+    try {
+      const r = await apiClient.post(`/orgs/${orgId}/members/${userId}/reject`);
+      if (!r.success) throw new Error(r.message || 'Failed to reject member');
+      return true;
+    } catch (err) { handleError(err); return false; }
+  }, [handleError]);
+
   const clearError = useCallback(() => {
     setError(null);
   }, []);
@@ -210,6 +251,9 @@ export const useOrganization = (): UseOrganizationReturn => {
     createOrganization,
     updateOrganization,
     deleteOrganization,
+    joinSelf,
+    approveMember,
+    rejectMember,
     setCurrentOrganization,
     clearError,
   };

@@ -6,12 +6,13 @@ namespace Content.Api.Data
 {
     public interface IQuestionRepository
     {
-        Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default);
+        Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default);
         Task<List<QuestionModel>> GetByQuizIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuestionModel?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<Guid?> GetQuizOrgIdAsync(Guid quizId, CancellationToken ct = default);
         Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default);
-        Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, CancellationToken ct = default);
+        Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, Guid? createdByUserId, CancellationToken ct = default);
+        Task MarkQuizAiGeneratedAsync(Guid quizId, CancellationToken ct = default);
         Task<QuestionModel> CreateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
         Task<List<QuestionModel>> CreateBulkAsync(Guid quizId, List<(string QuestionText, List<string> Options, int CorrectIndex, string? Explanation)> questions, CancellationToken ct = default);
         Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default);
@@ -26,7 +27,7 @@ namespace Content.Api.Data
 
         public QuestionRepository(ContentDbContext db) => _db = db;
 
-        public async Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, bool isSysAdmin, CancellationToken ct = default)
+        public async Task<List<QuizModel>> GetQuizzesAsync(Guid? orgId, Guid? userId, bool isSysAdmin, CancellationToken ct = default)
         {
             var query = _db.Quizzes
                 .Include(q => q.Content)
@@ -36,10 +37,16 @@ namespace Content.Api.Data
 
             if (!isSysAdmin)
             {
-                if (!orgId.HasValue) return [];
+                if (!orgId.HasValue && !userId.HasValue) return [];
+                // Show quizzes belonging to the user's org (via module) OR personal quizzes
+                // owned by the current user (Content.CreatedByUserId, no module attachment).
                 query = query.Where(q =>
                     q.Content != null &&
-                    q.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value));
+                    !q.Content.IsCourseScoped && // course-created content stays inside its course
+                    (
+                        (orgId.HasValue && q.Content.ModuleContents.Any(mc => mc.Module != null && mc.Module.OrgId == orgId.Value))
+                        || (userId.HasValue && q.Content.CreatedByUserId == userId.Value)
+                    ));
             }
 
             return await query
@@ -67,7 +74,7 @@ namespace Content.Api.Data
                 .Select(mc => (Guid?)mc.Module!.OrgId)
                 .FirstOrDefaultAsync(ct);
 
-        public async Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, CancellationToken ct = default)
+        public async Task<QuizModel> CreateQuizAsync(string title, int? timeLimit, int? passingScore, Guid? createdByUserId, CancellationToken ct = default)
         {
             var now = DateTime.UtcNow;
             var content = new ContentModel
@@ -75,7 +82,9 @@ namespace Content.Api.Data
                 Id = Guid.NewGuid(),
                 Title = title,
                 ContentType = "QUIZ",
-                Status = "DRAFT",
+                Status = "PUBLISHED",
+                CreatedByUserId = createdByUserId,
+                IsPublic = true, // Spec §1: personal resources MUST be public.
                 CreatedAt = now
             };
             var quiz = new QuizModel
@@ -92,6 +101,19 @@ namespace Content.Api.Data
             await _db.SaveChangesAsync(ct);
             quiz.Content = content;
             return quiz;
+        }
+
+        public async Task MarkQuizAiGeneratedAsync(Guid quizId, CancellationToken ct = default)
+        {
+            var quiz = await _db.Quizzes
+                .Include(q => q.Content)
+                .FirstOrDefaultAsync(q => q.Id == quizId, ct);
+            if (quiz == null) return;
+            if (quiz.IsAiGenerated && quiz.Content?.Status == "DRAFT") return;
+            quiz.IsAiGenerated = true;
+            // Spec 2.1 — AI-imported quiz lands in DRAFT state for user verification before publish.
+            if (quiz.Content != null) quiz.Content.Status = "DRAFT";
+            await _db.SaveChangesAsync(ct);
         }
 
         public async Task<QuizModel?> GetQuizWithQuestionsAsync(Guid quizId, CancellationToken ct = default)
@@ -168,23 +190,43 @@ namespace Content.Api.Data
 
         public async Task<QuestionModel> UpdateAsync(QuestionModel question, List<QuestionOptionModel> options, CancellationToken ct = default)
         {
-            // Remove old options
-            var oldOptions = await _db.QuestionOptions.Where(o => o.QuestionId == question.Id).ToListAsync(ct);
-            _db.QuestionOptions.RemoveRange(oldOptions);
+            // Detach any tracked entities from prior reads so we start clean.
+            foreach (var entry in _db.ChangeTracker.Entries<QuestionModel>().Where(e => e.Entity.Id == question.Id).ToList())
+                entry.State = EntityState.Detached;
+            foreach (var entry in _db.ChangeTracker.Entries<QuestionOptionModel>().Where(e => e.Entity.QuestionId == question.Id).ToList())
+                entry.State = EntityState.Detached;
 
-            // Add new options
+            // Wholesale-replace the options table for this question via raw delete (no navigation collection drama).
+            await _db.QuestionOptions
+                .Where(o => o.QuestionId == question.Id)
+                .ExecuteDeleteAsync(ct);
+
+            // Update the question scalar fields with a bulk update — no concurrency token, no row tracking churn.
+            var rowsUpdated = await _db.Questions
+                .Where(q => q.Id == question.Id)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(q => q.QuestionText, question.QuestionText)
+                    .SetProperty(q => q.Explanation, question.Explanation)
+                    .SetProperty(q => q.UpdatedAt, DateTime.UtcNow), ct);
+
+            if (rowsUpdated == 0)
+                throw new KeyNotFoundException($"Question {question.Id} not found.");
+
+            // Insert the new options.
             foreach (var opt in options)
             {
                 opt.Id = Guid.NewGuid();
                 opt.QuestionId = question.Id;
                 opt.CreatedAt = DateTime.UtcNow;
+                _db.QuestionOptions.Add(opt);
             }
-
-            question.UpdatedAt = DateTime.UtcNow;
-            question.Options = options;
-            _db.Questions.Update(question);
             await _db.SaveChangesAsync(ct);
-            return question;
+
+            // Return a fresh read with Options included.
+            return await _db.Questions
+                .Include(q => q.Options.OrderBy(o => o.OrderIndex))
+                .AsNoTracking()
+                .FirstAsync(q => q.Id == question.Id, ct);
         }
 
         public async Task SoftDeleteAsync(Guid id, CancellationToken ct = default)
