@@ -71,7 +71,9 @@ A8.txt
 # !dev-tasks.bat
 !start-local.ps1
 
-
+.*
+.claude/
+.codegraph/
 
 # Test artifacts
 BE/Content.Api/uploads/
