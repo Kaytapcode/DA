@@ -26,14 +26,14 @@ Lumina decouples **global identity roles** (encoded in the JWT) from **per-cours
 |---|---|---|
 | **User** | Global | Default account. Creates public learning resources, joins organizations, requests course enrollment. |
 | **OrgAdmin** | One Organization | Manages courses, members, and per-course role assignment for the org they created/own. Has implicit Teacher rights in every course of that org. |
-| **SysAdmin** | Platform-wide | Organization CRUD, global user management, AI key/quota config, banner management, absolute content deletion, organization suspension. Cannot self-register or use SSO — provisioned only by another SysAdmin. |
+| **SysAdmin** | Platform-wide | Organization CRUD, global user management, AI key/quota config, banner management, absolute content deletion, organization suspension. Cannot self-register — provisioned only by another SysAdmin. |
 | **Teacher / Student** | One Course | *Not* organization-level roles. Stored per-row in `course_enrollments.role`, computed dynamically by `CourseAccessService` on every request. A user can be Teacher in Course A and Student in Course B simultaneously. |
 
 Organization-level membership is limited to `Owner | OrgAdmin | Member` — Teacher/Student only exists inside a course context.
 
 ## Core features
 
-- **Unified registration & SSO** — single `/register` form with an explicit role selector (User vs. OrgAdmin); Google/Microsoft OAuth2 for User and OrgAdmin, with a first-login role-selection intermediary page. SysAdmin has a dedicated, SSO-free login portal.
+- **Unified registration** — single `/register` form with an explicit role selector (User vs. OrgAdmin).
 - **Personal learning catalog** — Quiz, Document, Flashcard Deck, and YouTube Video creation, always public, with clone-to-own-copy support and author attribution on every public search result.
 - **AI-assisted quiz generation** (via OpenRouter) — generates quizzes from a user's own document, constrained to zero-hallucination, language-matched to the source document, explanation-mandatory per question, and saved as a `Draft` for human review before publishing. Per-organization quota tracked and reset by a scheduled job.
 - **Collections** — personal, public groupings of mixed resource types, with nested sub-collections via `parent_id`.
@@ -128,7 +128,7 @@ The database seeds deterministic test accounts on startup (`[role][N]` / `[role]
 
 | Account | Password | Role | Login |
 |---|---|---|---|
-| SysAdmin1 / SysAdmin2 | `SysAdmin@123` | SysAdmin | `/admin/login` (dedicated portal, no SSO) |
+| SysAdmin1 / SysAdmin2 | `SysAdmin@123` | SysAdmin | `/admin/login` (dedicated portal) |
 | OrgAdmin1 | `OrgAdmin@123` | OrgAdmin of TestOrg1 (`aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa`) | `/login` with Org ID |
 | OrgAdmin2 | `OrgAdmin@123` | OrgAdmin of TestOrg2 (`bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb`) | `/login` with Org ID |
 | User1 / User2 / User3 | `User@123` | User (Student) | `/login`, no Org ID |
