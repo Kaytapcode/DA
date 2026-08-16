@@ -35,11 +35,11 @@ Organization-level membership is limited to `Owner | OrgAdmin | Member` — Teac
 
 - **Unified registration & SSO** — single `/register` form with an explicit role selector (User vs. OrgAdmin); Google/Microsoft OAuth2 for User and OrgAdmin, with a first-login role-selection intermediary page. SysAdmin has a dedicated, SSO-free login portal.
 - **Personal learning catalog** — Quiz, Document, Flashcard Deck, and YouTube Video creation, always public, with clone-to-own-copy support and author attribution on every public search result.
-- **AI-assisted quiz generation** (`stepfun/step-3.5-flash` via OpenRouter) — generates quizzes from a user's own document, constrained to zero-hallucination, language-matched to the source document, explanation-mandatory per question, and saved as a `Draft` for human review before publishing. Per-organization quota tracked and reset by a scheduled job.
+- **AI-assisted quiz generation** (via OpenRouter) — generates quizzes from a user's own document, constrained to zero-hallucination, language-matched to the source document, explanation-mandatory per question, and saved as a `Draft` for human review before publishing. Per-organization quota tracked and reset by a scheduled job.
 - **Collections** — personal, public groupings of mixed resource types, with nested sub-collections via `parent_id`.
 - **Courses** — org-scoped, each auto-seeded with 3 default modules on creation; self-service enrollment requests (`Pending → Approved/Rejected`) that atomically add the approved user as an org `Member`; direct OrgAdmin-driven enrollment bypasses the approval step.
 - **Progress tracking** — `student_progress` rows are written automatically as a side effect of viewing content or submitting a quiz; the client never sets them directly.
-- **i18n** — Vietnamese / Japanese / English, runtime-switchable, persisted on the user profile.
+- **i18n** — Vietnamese / English, runtime-switchable, persisted on the user profile.
 - **SysAdmin governance** — global "Absolute Deletion" right on any resource, and per-organization Suspend/Reactivate that immediately locks all read/teach access to that org's courses.
 
 Full behavioral detail (validation rules, atomic-transaction requirements, endpoint contracts) lives in [`SystemDoc/System_specification`](SystemDoc/System_specification).
@@ -67,7 +67,7 @@ Each service owns its own EF Core migrations; there are no cross-service SQL joi
 
 ## Tech stack
 
-**Backend:** ASP.NET Core 9, EF Core, YARP, PostgreSQL, Hangfire (scheduled quota reset), JWT + refresh-token auth (SHA-256 hashed, rotated on refresh), OpenRouter (`stepfun/step-3.5-flash`), YouTube Data API v3.
+**Backend:** ASP.NET Core 9, EF Core, YARP, PostgreSQL, Hangfire (scheduled quota reset), JWT + refresh-token auth (SHA-256 hashed, rotated on refresh), OpenRouter, YouTube Data API v3.
 
 **Frontend:** React 18 + TypeScript (strict) + Vite, React Router, Tailwind CSS (design system ported from TailAdmin), Context-based auth/org/toast state.
 
@@ -141,17 +141,18 @@ Testing is treated as proof of behavior, not an afterthought: a feature is only 
 cd tests
 pip install -r requirements.txt
 python -m playwright install chromium
-python run_tests.py                 # verifies Gateway (5000) + FE (5173) are up, runs everything
+python run_tests.py                     # verifies Gateway (5000) + FE (5173) are up, runs everything
 
-pytest -m "wave1 and user"          # slice: Wave 1 User
-pytest -m "display and sysadmin"    # slice: FE display tests for SysAdmin
-pytest -m "e2e"                     # full browser workflows
+
+pytest api/ -v                          # Run API tests only
+
+
+pytest api/test_authentication.py -v    # Run specific test module
+
+
+pytest api/ --html=reports/api_report.html --self-contained-html # Run with HTML report
+pytest -m "e2e"                         # full browser workflows
 ```
 
-`run_tests.py` runs the API, UI, E2E, and Katalon suites in sequence and emits a combined HTML report plus a `summary.json` keyed by spec section. Last recorded full run (2026-05-23): **447/447** passing (90 API + 37 UI + 320 Katalon/E2E), including all 46 non-functional-requirement tests — usability, maintainability, availability, compatibility (see [`SystemDoc/NFR_Testcase_Results.md`](SystemDoc/NFR_Testcase_Results.md)). Coverage has grown since through further fix rounds tracked in the git history.
+`run_tests.py` runs the API, UI, E2E, and Katalon suites in sequence and emits a combined HTML report plus a `summary.json` keyed by spec section. Last recorded full run (2026-05-23): **253/253** passing (98 API + 14 UI + 95 Katalon/E2E), including all 46 non-functional-requirement tests — usability, maintainability, availability, compatibility (see [`SystemDoc/NFR_Testcase_Results.md`](SystemDoc/NFR_Testcase_Results.md)). Coverage has grown since through further fix rounds tracked in the git history.
 
-## Project status
-
-Implementation proceeds in strict waves — Wave 1 (User + SysAdmin) fully green before Wave 2 (OrgAdmin) begins. Several post-Wave-2 fix rounds (course enrollment lifecycle, per-course role visibility, content-creation flow) were done ahead of a pending `SystemDoc` update.
-
-CI/CD is not yet wired up — the test suites above currently run manually against a locally started stack.
