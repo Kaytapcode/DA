@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import { MainLayout } from '@layouts/MainLayout'
 import { UserNavbar } from '@components/layout/user/UserNavbar'
 import { UserSidebar } from '@components/layout/user/UserSidebar'
@@ -8,11 +7,9 @@ import { Card } from '@components/ui/Card'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { apiClient } from '@/utils/apiClient'
-import { tokenStore } from '@/utils/tokenStore'
 import { useUserLanguage } from './UserShell'
 import { useCourseContentLink } from '@/hooks/useCourseContentLink'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 interface LibraryDoc {
   id: string
@@ -233,19 +230,9 @@ export const QuizCreatePage: React.FC = () => {
 		setError(null)
 		setSelectedLibraryDocId(doc.id)
 		try {
-			const token = tokenStore.getAccessToken()
-			const orgId = localStorage.getItem('org_id')
-			const orgSlug = localStorage.getItem('org_slug')
-			const res = await axios.get(`${API_BASE}/documents/${doc.id}`, {
-				responseType: 'blob',
-				headers: {
-					...(token ? { Authorization: `Bearer ${token}` } : {}),
-					...(orgId ? { 'X-Org-Id': orgId } : {}),
-					...(orgSlug ? { 'X-Org-Slug': orgSlug } : {}),
-				},
-			})
-			const mime = String(res.headers['content-type'] || '').split(';')[0].trim() || 'application/pdf'
-			const file = new File([res.data as Blob], doc.fileName, { type: mime })
+			// apiClient already returns the Blob (response.data); the MIME comes from blob.type.
+			const blob = (await apiClient.get(`/documents/${doc.id}`, { responseType: 'blob' })) as unknown as Blob
+			const file = new File([blob], doc.fileName, { type: blob.type || 'application/pdf' })
 			setAiFile(file)
 			setAiDocTitle(doc.fileName.replace(/\.[^.]+$/, ''))
 		} catch {
@@ -742,6 +729,7 @@ export const QuizCreatePage: React.FC = () => {
 													type="file"
 													accept=".pdf,.txt,application/pdf,text/plain"
 													className="hidden"
+													data-testid="quiz-ai-file-input"
 													onChange={handleFileChange}
 												/>
 											</>
@@ -903,6 +891,7 @@ export const QuizCreatePage: React.FC = () => {
 														value={q.explanation}
 														onChange={(e) => updateEQ(qIdx, { explanation: e.target.value })}
 														rows={2}
+														data-testid={`quiz-ai-question-${qIdx}-explanation`}
 														placeholder={t('Giải thích dựa trên tài liệu...', 'Explanation based on the document...')}
 														className="w-full rounded-lg border border-[#d7dfeb] px-3 py-2 text-sm focus:border-[#1463ff] focus:outline-none"
 													/>

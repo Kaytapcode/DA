@@ -250,8 +250,8 @@ class TestTokenRefreshOrgContext:
         assert r2.status_code == 200
         data = r2.json()["data"]
         assert data.get("accessToken"), "Refresh should return new accessToken"
-        # Without X-Org-Id, new token should have no orgId
-        assert data.get("orgId") is None or data.get("orgId") == ""
+        # Re-resolved from membership (same as Login) -> org kept
+        assert data.get("orgId") == ORG1_ID
 
     def test_refresh_with_org_id_header_preserves_context(self):
         """Refresh WITH X-Org-Id header → new token retains org context (bug fix §1)."""

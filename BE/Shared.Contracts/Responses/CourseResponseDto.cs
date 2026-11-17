@@ -9,7 +9,8 @@ namespace Shared.Contracts.Responses
         string? Description,
         string? CourseCode,
         Guid CreatedBy,
-        DateTime CreatedAt
+        DateTime CreatedAt,
+        string Status = "DRAFT"
     );
 
     public record CourseListResponseDto(
@@ -18,7 +19,8 @@ namespace Shared.Contracts.Responses
         string? Description,
         string? CourseCode,
         DateTime CreatedAt,
-        int ModuleCount = 0
+        int ModuleCount = 0,
+        string Status = "DRAFT"
     );
 
     /// <summary>A course the current user is enrolled in, plus their per-course role

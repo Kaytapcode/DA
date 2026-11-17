@@ -5,11 +5,11 @@ using Shared.Contracts.Responses;
 
 namespace Identity.Api.Controllers
 {
-    // Internal service-to-service endpoint — no JWT required.
-    // Protected at the network level (not exposed through the public Gateway).
+    // Internal service-to-service endpoint — no JWT; never routed by the Gateway; guarded by X-Internal-Key.
     [Route("api/internal/users")]
     [ApiController]
     [AllowAnonymous]
+    [InternalKey]
     public class InternalUsersController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
@@ -31,6 +31,18 @@ namespace Identity.Api.Controllers
             var users = await _userRepository.GetByIdsAsync(ids, ct);
             var result = users.Select(u => new UserInfoDto(u.Id, u.Username, u.Email, u.Role));
             return Ok(new ApiResponse<IEnumerable<UserInfoDto>>(true, result, null));
+        }
+    }
+
+    // Rejects (401) when Internal:ApiKey is configured and X-Internal-Key differs (CONTRACT section 6).
+    [AttributeUsage(AttributeTargets.Class)]
+    public class InternalKeyAttribute : Attribute, Microsoft.AspNetCore.Mvc.Filters.IAuthorizationFilter
+    {
+        public void OnAuthorization(Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext ctx)
+        {
+            var key = ctx.HttpContext.RequestServices.GetRequiredService<IConfiguration>()["Internal:ApiKey"];
+            if (!string.IsNullOrEmpty(key) && ctx.HttpContext.Request.Headers["X-Internal-Key"] != key)
+                ctx.Result = new UnauthorizedResult();
         }
     }
 }

@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react'
-import axios from 'axios'
 import { Button } from '@components/ui/Button'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
-import { tokenStore } from '@/utils/tokenStore'
+import { apiClient } from '@/utils/apiClient'
 
 interface UploadedDoc {
   id: string
@@ -17,7 +16,6 @@ interface DocumentUploadModalProps {
   onUploaded: (doc?: UploadedDoc) => void
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
 
 const supportedMimeTypes = [
@@ -91,31 +89,22 @@ export const DocumentUploadModal: React.FC<DocumentUploadModalProps> = ({
     const formData = new FormData()
     formData.append('file', file)
 
-    const token = tokenStore.getAccessToken()
-    const orgId = localStorage.getItem('org_id')
-    const orgSlug = localStorage.getItem('org_slug')
-
     try {
-      const response = await axios.post(`${API_BASE_URL}/documents`, formData, {
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(orgId ? { 'X-Org-Id': orgId } : {}),
-          ...(orgSlug ? { 'X-Org-Slug': orgSlug } : {}),
-        },
-        onUploadProgress: (event) => {
+      const response = await apiClient.post<UploadedDoc>('/documents', formData, {
+        onUploadProgress: (event: { loaded: number; total?: number }) => {
           if (!event.total) return
           setProgress(Math.round((event.loaded / event.total) * 100))
         },
       })
 
-      if (response.data?.success === false) {
-        throw new Error(response.data?.message || 'Upload failed')
+      if (response.success === false) {
+        throw new Error(response.message || 'Upload failed')
       }
 
       setSuccessMessage('Upload completed successfully.')
-      onUploaded(response.data?.data as UploadedDoc | undefined)
+      onUploaded(response.data)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed'
+      const message = (err as { message?: string })?.message || 'Upload failed'
       setError(message)
     } finally {
       setIsUploading(false)

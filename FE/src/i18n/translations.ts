@@ -2,7 +2,7 @@
 // Usage: import { t } from '@/i18n/translations'
 //        t('key', language) or just t('key') for current lang
 
-export type LanguageCode = 'en' | 'vi'
+export type LanguageCode = 'en' | 'vi' | 'ja'
 
 export const languages = {
   en: 'English',
@@ -132,7 +132,7 @@ export const t = (key: string, language?: LanguageCode): string => {
     return key
   }
   
-  return record[lang] || record.en || key
+  return (record as Record<string, string>)[lang] || record.en || key
 }
 
 // Type-safe translation key

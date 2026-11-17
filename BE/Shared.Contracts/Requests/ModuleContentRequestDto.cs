@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations;
 namespace Shared.Contracts.Requests
 {
     public record CreateModuleRequestDto(
-        [Required][StringLength(200, MinimumLength = 1)] string Title,
+        [StringLength(255)] string? Title,
         [StringLength(2000)] string? Description
     );
 
     public record UpdateModuleRequestDto(
-        [Required][StringLength(200, MinimumLength = 1)] string Title,
+        [StringLength(255)] string? Title,
         [StringLength(2000)] string? Description
     );
 

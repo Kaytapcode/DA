@@ -33,6 +33,12 @@ try
     builder.Services.AddHttpContextAccessor();
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("ConnectionStrings:DefaultConnection is empty.");
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
+        throw new InvalidOperationException("Jwt:Key is empty.");
+    if (!builder.Environment.IsDevelopment() && string.IsNullOrEmpty(builder.Configuration["Internal:ApiKey"]))
+        throw new InvalidOperationException("Internal:ApiKey must be set outside Development.");
     builder.Services.AddDbContext<AuthDbContext>(options =>
         options.UseNpgsql(connectionString)
     );
@@ -77,8 +83,7 @@ try
     {
         options.AddPolicy("RequireSysAdmin", policy => policy.RequireRole("SysAdmin"));
         options.AddPolicy("RequireOrgAdmin", policy => policy.RequireRole("SysAdmin", "OrgAdmin"));
-        options.AddPolicy("RequireTeacher", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher"));
-        options.AddPolicy("RequireStudent", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher", "Student"));
+        options.AddPolicy("RequireStudent", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Student"));
         options.AddPolicy("AllowAnonymous", policy => policy.RequireAssertion(_ => true));
     });
 
@@ -106,11 +111,7 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
-            policy.WithOrigins(
-                "http://localhost:5173",  // Vite dev server
-                "http://localhost:3000",
-                "http://localhost:5000"   // Gateway
-            )
+            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -137,11 +138,13 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<Identity.Api.Data.AuthDbContext>();
-        await db.Database.MigrateAsync();
+        if (app.Configuration.GetValue("Database:AutoMigrate", true))
+            await db.Database.MigrateAsync();
         await Identity.Api.Data.DbInitializer.SeedAsync(db);
     }
 
     app.Run();
+    return 0;
 }
 catch (Exception ex)
 {
@@ -152,7 +155,6 @@ catch (Exception ex)
     Console.WriteLine(ex.StackTrace);
     Console.WriteLine("******************************************");
     Console.ResetColor();
-    Console.WriteLine("Press any key to exit...");
-    Console.ReadLine();
+    return 1;
 }
 

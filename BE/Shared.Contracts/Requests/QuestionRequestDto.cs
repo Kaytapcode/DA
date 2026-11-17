@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace Shared.Contracts.Requests
 {
@@ -39,6 +40,7 @@ namespace Shared.Contracts.Requests
         string Question,
         List<string> Options,
         int CorrectIndex,
+        [Required(AllowEmptyStrings = false, ErrorMessage = "Explanation is required for AI questions")]
         string Explanation
     );
 
@@ -55,6 +57,7 @@ namespace Shared.Contracts.Requests
     public record UpdateQuizRequestDto(
         string? Title,
         int? TimeLimit,
-        int? PassingScore
+        int? PassingScore,
+        string? Status = null // DRAFT | PUBLISHED
     );
 }

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { apiClient, refreshAccessToken as doRefresh } from '@/utils/apiClient';
 import { tokenStore, RT_STORAGE_KEY } from '@/utils/tokenStore';
+import { setLanguage, type LanguageCode } from '@/i18n/translations';
 
 export interface AuthUser {
   id: string;
@@ -20,6 +21,7 @@ export interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   orgId: string | null;
+  startSession: (data: LoginApiResponse, orgId?: string) => LoginResult;
   login: (username: string, password: string, orgId?: string) => Promise<LoginResult>;
   register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -33,13 +35,13 @@ const STORAGE_KEYS = {
   CURRENT_ORG: 'current_org',
 } as const;
 
-interface LoginApiResponse {
+export interface LoginApiResponse {
   accessToken: string;
   refreshToken: string;
   accessTokenExpiresInSeconds: number;
   refreshTokenExpiresAt?: string;
   message: string;
-  user: { id: string; username: string; email: string; role: string };
+  user: { id: string; username: string; email: string; role: string; language?: LanguageCode | null };
   orgId?: string;
 }
 
@@ -137,21 +139,9 @@ export const useAuth = (): AuthContextType => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const login = useCallback(async (username: string, password: string, orgIdParam?: string) => {
-    setIsLoading(true);
-    try {
-      const headers: Record<string, string> = {};
-      if (orgIdParam) headers['X-Org-Id'] = orgIdParam;
-
-      const response = await apiClient.post<LoginApiResponse>(
-        '/auth/login',
-        { username, password },
-        { headers }
-      );
-
-      if (!response.success || !response.data) throw new Error(response.message || 'Login failed');
-
-      const { accessToken: at, refreshToken: rt, accessTokenExpiresInSeconds, user: userData, orgId: returnedOrgId } = response.data;
+  // Stores a login-shaped response (password login, SSO complete-profile) as the active session.
+  const startSession = useCallback((data: LoginApiResponse, orgIdParam?: string): LoginResult => {
+      const { accessToken: at, refreshToken: rt, accessTokenExpiresInSeconds, user: userData, orgId: returnedOrgId } = data;
 
       const authUser: AuthUser = {
         id: userData.id,
@@ -169,13 +159,33 @@ export const useAuth = (): AuthContextType => {
       setOrgId(resolvedOrgId);
 
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(authUser));
+      // Spec 1: the saved vi/ja/en preference follows the account onto any device.
+      if (userData.language) setLanguage(userData.language);
       if (resolvedOrgId) localStorage.setItem(STORAGE_KEYS.ORG_ID, resolvedOrgId);
 
-      return { user: authUser, orgId: resolvedOrgId };
+    return { user: authUser, orgId: resolvedOrgId };
+  }, []);
+
+  const login = useCallback(async (username: string, password: string, orgIdParam?: string) => {
+    setIsLoading(true);
+    try {
+      const headers: Record<string, string> = {};
+      if (orgIdParam) headers['X-Org-Id'] = orgIdParam;
+
+      const response = await apiClient.post<LoginApiResponse>(
+        '/auth/login',
+        { username, password },
+        { headers }
+      );
+
+      if (!response.success || !response.data) throw new Error(response.message || 'Login failed');
+
+      return startSession(response.data, orgIdParam);
+
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [startSession]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);
@@ -212,6 +222,7 @@ export const useAuth = (): AuthContextType => {
     isLoading,
     isAuthenticated: !!accessToken && !!user,
     orgId,
+    startSession,
     login,
     register,
     logout,

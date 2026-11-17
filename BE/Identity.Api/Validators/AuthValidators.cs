@@ -40,7 +40,7 @@ namespace Identity.Api.Validators
 
     public class CreateUserRequestValidator : AbstractValidator<CreateUserRequestDto>
     {
-        private static readonly string[] AllowedRoles = { "Student", "Teacher", "OrgAdmin", "SysAdmin" };
+        private static readonly string[] AllowedRoles = { "Student", "OrgAdmin", "SysAdmin" };
 
         public CreateUserRequestValidator()
         {

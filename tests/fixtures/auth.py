@@ -3,10 +3,15 @@ Auth helpers for registering and logging in test users with different roles.
 Provides fixtures to get authenticated sessions for User, SysAdmin, OrgAdmin.
 """
 
+import os
 import pytest
 from datetime import datetime
 from typing import Dict, Any
 from .conftest import APIClient
+
+# Seeded SysAdmin (spec seed data); override via env. Single definition for all tests.
+SYSADMIN_USERNAME = os.getenv("TEST_SYSADMIN_USERNAME", "SysAdmin1")
+SYSADMIN_PASSWORD = os.getenv("TEST_SYSADMIN_PASSWORD", "SysAdmin@123")
 
 
 def create_test_user(api_client: APIClient, role: str = "user") -> Dict[str, Any]:
@@ -79,8 +84,8 @@ def sysadmin_session(api_client) -> Dict[str, Any]:
     """
     # TODO: Implement SysAdmin creation when internal endpoint is ready
     # For testing, use a pre-seeded test sysadmin account
-    email = "test_sysadmin@example.com"
-    password = "TestPassword123!"
+    email = SYSADMIN_USERNAME
+    password = SYSADMIN_PASSWORD
 
     login_result = login_test_user(api_client, email, password)
 

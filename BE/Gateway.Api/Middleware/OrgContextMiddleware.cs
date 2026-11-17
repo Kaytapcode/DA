@@ -3,8 +3,8 @@
 namespace Gateway.Api.Middleware
 {
     /// <summary>
-    /// Extracts org_id from JWT claims or X-Org-Id header and forwards it to downstream services.
-    /// Phase 2: reads from JWT claims. Phase 3 (T3.9) will resolve X-Org-Slug via DB lookup.
+    /// Sets X-Org-Id for downstream services from the JWT org_id claim (SysAdmin may pass its own header).
+    /// Any other client-supplied X-Org-Id is stripped.
     /// </summary>
     public class OrgContextMiddleware
     {
@@ -28,6 +28,12 @@ namespace Gateway.Api.Middleware
             var resolvedOrgId = (isSysAdmin && !string.IsNullOrEmpty(orgIdFromHeader))
                 ? orgIdFromHeader
                 : orgIdFromClaim;
+
+            // CONTRACT M1: never forward a client-supplied X-Org-Id; only the value resolved above.
+            // Exception: on /api/auth (login/refresh) the header is a login parameter that Identity
+            // verifies against membership before putting org_id in the token.
+            if (!context.Request.Path.StartsWithSegments("/api/auth"))
+                context.Request.Headers.Remove("X-Org-Id");
 
             if (!string.IsNullOrEmpty(resolvedOrgId))
             {

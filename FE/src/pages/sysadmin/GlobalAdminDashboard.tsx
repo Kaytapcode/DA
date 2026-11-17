@@ -1,20 +1,20 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navbar } from '../../components/layout/Navbar';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { Table } from '../../components/ui/Table';
+import { useOrganization } from '@/hooks/useOrganization';
 
 export const GlobalAdminDashboard: React.FC = () => {
+  const { organizations, isLoading, error, fetchOrganizations } = useOrganization();
+
+  useEffect(() => {
+    void fetchOrganizations(0, 50);
+  }, [fetchOrganizations]);
+
   const orgColumns = [
     { key: 'name', header: 'Organization Name' },
     { key: 'slug', header: 'URL Slug' },
-    { key: 'members', header: 'Total Members' },
-    { key: 'status', header: 'System Status' }
-  ];
-
-  const orgData = [
-    { id: 1, name: 'VNU University', slug: 'vnu', members: 1542, status: 'Active' },
-    { id: 2, name: 'FPT Software', slug: 'fpt', members: 890, status: 'Active' },
-    { id: 3, name: 'Demo Org', slug: 'demo', members: 12, status: 'Suspended' },
+    { key: 'memberCount', header: 'Total Members' },
   ];
 
   return (
@@ -25,22 +25,17 @@ export const GlobalAdminDashboard: React.FC = () => {
         <main className="p-8 flex-1">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800">System Administration</h1>
-            <button className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 transition font-medium shadow-sm">
-              Manage Global Banners
-            </button>
           </div>
 
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Organizations</h2>
-              <button className="text-sm font-medium bg-[#1890ff] text-white px-3 py-1 rounded hover:bg-blue-600">
-                + Add Organization
-              </button>
-            </div>
-            
-            <Table columns={orgColumns} data={orgData} />
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Organizations</h2>
+            {isLoading && <div className="h-24 animate-pulse rounded bg-gray-100" data-testid="org-loading" />}
+            {error && !isLoading && <p className="text-sm text-red-600">{error}</p>}
+            {!isLoading && !error && organizations.length === 0 && (
+              <p className="text-sm text-gray-500" data-testid="org-empty">No organizations yet.</p>
+            )}
+            {!isLoading && organizations.length > 0 && <Table columns={orgColumns} data={organizations} />}
           </div>
-
         </main>
       </div>
     </div>

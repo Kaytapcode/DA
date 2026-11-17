@@ -135,6 +135,14 @@ namespace Content.Api.Controllers
                 quiz.TimeLimit = request.TimeLimit.Value <= 0 ? null : request.TimeLimit.Value;
             if (request.PassingScore.HasValue)
                 quiz.PassingScore = request.PassingScore.Value;
+            // Q4/M12: owner publishes a draft (AI) quiz, or moves it back to draft.
+            if (!string.IsNullOrWhiteSpace(request.Status))
+            {
+                var status = request.Status.Trim().ToUpperInvariant();
+                if (status is not ("DRAFT" or "PUBLISHED"))
+                    return BadRequest(new ApiResponse(false, "Invalid status. Use DRAFT or PUBLISHED."));
+                quiz.Content.Status = status;
+            }
 
             await _db.SaveChangesAsync(ct);
 
@@ -286,6 +294,9 @@ namespace Content.Api.Controllers
 
             if (request.Questions == null || request.Questions.Count == 0)
                 return BadRequest(new ApiResponse(false, "At least one question is required."));
+            // M11 / spec §2.1: every AI question must carry a non-blank explanation.
+            if (request.Questions.Any(q => string.IsNullOrWhiteSpace(q.Explanation)))
+                return BadRequest(new ApiResponse(false, "Every AI-generated question must have an explanation."));
 
             var questions = request.Questions
                 .Select(q => (q.Question, q.Options, q.CorrectIndex, (string?)q.Explanation))

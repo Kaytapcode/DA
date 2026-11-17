@@ -23,9 +23,6 @@ namespace Shared.Contracts.Requests
     );
 
     public record UpdateBannerRequestDto(
-        [Required(ErrorMessage = "Banner ID is required")]
-        Guid Id,
-
         [Url(ErrorMessage = "Image URL must be a valid URL")]
         string? ImageUrl,
 

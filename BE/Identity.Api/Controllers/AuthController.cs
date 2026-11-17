@@ -41,34 +41,16 @@ namespace Identity.Api.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
-            // Fast-path UX checks (not the security boundary — DB unique constraint is)
-            if (await _userRepository.UserExistsByUsernameAsync(request.Username))
-                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
-            if (await _userRepository.UserExistsByEmailAsync(request.Email))
-                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
-
-            try
+            // Public registration is always Student. Elevated roles (OrgAdmin, SysAdmin) are only
+            // assignable by an existing SysAdmin via POST /api/users.
+            var error = await AddUserAsync(new UserModel
             {
-                // Public registration is always Student. Elevated roles (Teacher, OrgAdmin,
-                // SysAdmin) are only assignable by an existing SysAdmin via POST /api/users.
-                var newUser = new UserModel
-                {
-                    Username = request.Username,
-                    Email = request.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    Role = "Student"
-                };
-                await _userRepository.AddAsync(newUser);
-                return Ok(new ApiResponse(Success: true, Message: "Registration successful."));
-            }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
-            {
-                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
-            }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("email") == true)
-            {
-                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
-            }
+                Username = request.Username,
+                Email = request.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Role = "Student"
+            });
+            return error ?? Ok(new ApiResponse(Success: true, Message: "Registration successful."));
         }
 
         [HttpPost("login")]
@@ -81,37 +63,7 @@ namespace Identity.Api.Controllers
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 return Unauthorized(new ApiResponse(Success: false, Message: "Invalid login credentials."));
 
-            // Resolve org context.
-            // OrgAdmin: auto-lookup their org (they manage exactly one; no OrgID input needed).
-            // Others: accept an explicit X-Org-Id header (verified against membership).
-            Guid? orgId = null;
-            if (user.Role == "OrgAdmin")
-            {
-                orgId = await _orgClient.GetOrgIdForAdminAsync(user.Id);
-            }
-            else if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
-                && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
-            {
-                if (user.Role == "SysAdmin" || await _orgClient.IsUserMemberAsync(user.Id, parsedOrgId))
-                    orgId = parsedOrgId;
-            }
-
-            var access = _tokenService.CreateAccessToken(user, orgId);
-            var refresh = await _tokenService.IssueRefreshTokenAsync(user.Id);
-
-            return Ok(new ApiResponse<LoginResponseDto>(
-                Success: true,
-                Data: new LoginResponseDto(
-                    AccessToken: access.Token,
-                    RefreshToken: refresh.Token,
-                    AccessTokenExpiresInSeconds: access.ExpiresInSeconds,
-                    RefreshTokenExpiresAt: refresh.ExpiresAtUtc,
-                    Message: "Login successful.",
-                    User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role),
-                    OrgId: orgId?.ToString()
-                ),
-                Message: "Login successful."
-            ));
+            return await IssueSessionAsync(user, await ResolveOrgIdAsync(user), "Login successful.");
         }
 
         [HttpPost("refresh")]
@@ -121,15 +73,8 @@ namespace Identity.Api.Controllers
             if (result == null)
                 return Unauthorized(new ApiResponse(Success: false, Message: "Invalid or expired refresh token."));
 
-            // Preserve org context through refresh: if X-Org-Id header is present and the user
-            // is a member of that org, re-embed org_id in the new access token.
-            Guid? orgId = null;
-            if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
-                && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId))
-            {
-                if (result.User.Role == "SysAdmin" || await _orgClient.IsUserMemberAsync(result.User.Id, parsedOrgId))
-                    orgId = parsedOrgId;
-            }
+            // CONTRACT M1: re-resolve org context exactly as Login does.
+            var orgId = await ResolveOrgIdAsync(result.User);
 
             // Re-create access token with org context when needed
             var access = orgId.HasValue
@@ -144,7 +89,7 @@ namespace Identity.Api.Controllers
                     AccessTokenExpiresInSeconds: access.ExpiresInSeconds,
                     RefreshTokenExpiresAt: result.RefreshToken.ExpiresAtUtc,
                     Message: "Token refreshed.",
-                    User: new UserInfoDto(result.User.Id, result.User.Username, result.User.Email, result.User.Role),
+                    User: new UserInfoDto(result.User.Id, result.User.Username, result.User.Email, result.User.Role, result.User.Language),
                     OrgId: orgId?.ToString()
                 ),
                 Message: "Token refreshed."
@@ -264,42 +209,19 @@ namespace Identity.Api.Controllers
         [Microsoft.AspNetCore.Authorization.AllowAnonymous]
         public async Task<IActionResult> RegisterOrgAdmin([FromBody] OrgAdminRegisterRequestDto request, CancellationToken ct)
         {
-            if (await _userRepository.UserExistsByUsernameAsync(request.Username))
-                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
-            if (await _userRepository.UserExistsByEmailAsync(request.Email))
-                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
-
-            UserModel newUser;
-            try
+            var newUser = new UserModel
             {
-                newUser = new UserModel
-                {
-                    Username = request.Username,
-                    Email = request.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
-                    Role = "OrgAdmin"
-                };
-                await _userRepository.AddAsync(newUser);
-            }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
-            {
-                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
-            }
-            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("email") == true)
-            {
-                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
-            }
+                Username = request.Username,
+                Email = request.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+                Role = "OrgAdmin"
+            };
+            var error = await AddUserAsync(newUser);
+            if (error != null) return error;
 
-            // Create the org and link the new user as OrgAdmin in Organization.Api
-            var orgResult = await _orgClient.CreateOrgWithAdminAsync(
-                request.OrganizationName, request.OrganizationSlug, newUser.Id, ct);
-
+            var orgResult = await CreateOrgOrRollbackAsync(newUser, request.OrganizationName, request.OrganizationSlug, ct);
             if (orgResult == null)
-            {
-                // Org creation failed — roll back the user to avoid orphaned OrgAdmin accounts
-                await _userRepository.DeleteAsync(newUser.Id);
                 return StatusCode(502, new ApiResponse(Success: false, Message: "Organization could not be created. Please try again."));
-            }
 
             return Ok(new ApiResponse<OrgAdminRegisterResponseDto>(
                 Success: true,
@@ -388,6 +310,141 @@ namespace Identity.Api.Controllers
 
             await _db.SaveChangesAsync(ct);
             return Ok(new ApiResponse(Success: true, Message: "Password has been reset successfully."));
+        }
+
+        public record SsoCompleteProfileRequest(string SsoToken, string Role, string? OrgName, string? OrgSlug);
+
+        // Spec §1 — SSO first login, Role Selection page. The ssoToken comes from POST /api/auth/google
+        // (isNewUser=true). Creates the user (+ org for OrgAdmin) through the same paths as register / register/orgadmin.
+        [HttpPost("sso/complete-profile")]
+        [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+        public async Task<IActionResult> CompleteSsoProfile([FromBody] SsoCompleteProfileRequest request, CancellationToken ct)
+        {
+            var ticket = _tokenService.ValidateSsoTicket(request?.SsoToken ?? "");
+            if (ticket == null)
+                return Unauthorized(new ApiResponse(Success: false, Message: "SSO session expired. Please sign in with Google again."));
+
+            var isOrgAdmin = request!.Role == "OrgAdmin";
+            if (!isOrgAdmin && request.Role != "User")
+                return BadRequest(new ApiResponse(Success: false, Message: "Role must be User or OrgAdmin."));
+
+            var orgName = request.OrgName?.Trim() ?? "";
+            var orgSlug = request.OrgSlug?.Trim() ?? "";
+            if (isOrgAdmin && (orgName.Length is < 2 or > 200
+                               || orgSlug.Length is < 1 or > 50
+                               || !System.Text.RegularExpressions.Regex.IsMatch(orgSlug, "^[a-z0-9-]+$")))
+                return BadRequest(new ApiResponse(Success: false, Message: "Organization name (2-200 chars) and slug (lowercase letters, numbers, hyphens) are required."));
+
+            if (await _userRepository.GetByGoogleSubAsync(ticket.GoogleSub, ct) != null)
+                return BadRequest(new ApiResponse(Success: false, Message: "This Google account is already registered. Please sign in."));
+
+            var newUser = new UserModel
+            {
+                Username = await GenerateUniqueUsernameAsync(ticket.Email, ct),
+                Email = ticket.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // random; SSO-only
+                Role = isOrgAdmin ? "OrgAdmin" : "Student",
+                GoogleSub = ticket.GoogleSub,
+            };
+            var error = await AddUserAsync(newUser);
+            if (error != null) return error;
+
+            Guid? orgId = null;
+            if (isOrgAdmin)
+            {
+                var org = await CreateOrgOrRollbackAsync(newUser, orgName, orgSlug, ct);
+                if (org == null)
+                    return StatusCode(502, new ApiResponse(Success: false, Message: "Organization could not be created. Please try again."));
+                orgId = org.OrgId;
+            }
+
+            return await IssueSessionAsync(newUser, orgId, "Registration successful.");
+        }
+
+        // OrgAdmin: their one org (server-side lookup). Others: an explicit X-Org-Id header verified
+        // against membership (SysAdmin unrestricted). Shared by Login and Refresh.
+        private async Task<Guid?> ResolveOrgIdAsync(UserModel user)
+        {
+            if (user.Role == "OrgAdmin")
+                return await _orgClient.GetOrgIdForAdminAsync(user.Id);
+
+            if (Request.Headers.TryGetValue("X-Org-Id", out var orgIdHeader)
+                && Guid.TryParse(orgIdHeader.FirstOrDefault(), out var parsedOrgId)
+                && (user.Role == "SysAdmin" || await _orgClient.IsUserMemberAsync(user.Id, parsedOrgId)))
+                return parsedOrgId;
+
+            return null;
+        }
+
+        private async Task<IActionResult> IssueSessionAsync(UserModel user, Guid? orgId, string message)
+        {
+            var access = _tokenService.CreateAccessToken(user, orgId);
+            var refresh = await _tokenService.IssueRefreshTokenAsync(user.Id);
+
+            return Ok(new ApiResponse<LoginResponseDto>(
+                Success: true,
+                Data: new LoginResponseDto(
+                    AccessToken: access.Token,
+                    RefreshToken: refresh.Token,
+                    AccessTokenExpiresInSeconds: access.ExpiresInSeconds,
+                    RefreshTokenExpiresAt: refresh.ExpiresAtUtc,
+                    Message: message,
+                    User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
+                    OrgId: orgId?.ToString()
+                ),
+                Message: message
+            ));
+        }
+
+        // Returns an error result on duplicate username/email, null on success.
+        private async Task<IActionResult?> AddUserAsync(UserModel user)
+        {
+            // Fast-path UX checks (not the security boundary — DB unique constraint is)
+            if (await _userRepository.UserExistsByUsernameAsync(user.Username))
+                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
+            if (await _userRepository.UserExistsByEmailAsync(user.Email))
+                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
+
+            try
+            {
+                await _userRepository.AddAsync(user);
+                return null;
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("username") == true)
+            {
+                return BadRequest(new ApiResponse(Success: false, Message: "Username already exists."));
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("email") == true)
+            {
+                return BadRequest(new ApiResponse(Success: false, Message: "Email is already in use."));
+            }
+        }
+
+        // Creates the org with this user as OrgAdmin in Organization.Api; deletes the user if that fails
+        // (no orphaned OrgAdmin accounts).
+        private async Task<OrgSetupResult?> CreateOrgOrRollbackAsync(UserModel user, string orgName, string orgSlug, CancellationToken ct)
+        {
+            var org = await _orgClient.CreateOrgWithAdminAsync(orgName, orgSlug, user.Id, ct);
+            if (org == null)
+                await _userRepository.DeleteAsync(user.Id);
+            return org;
+        }
+
+        // email local-part as the base, with a short random suffix if needed, to avoid collisions.
+        private async Task<string> GenerateUniqueUsernameAsync(string email, CancellationToken ct)
+        {
+            var baseName = email.Split('@')[0];
+            baseName = new string(baseName.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
+            if (baseName.Length > 40) baseName = baseName[..40];
+            if (string.IsNullOrWhiteSpace(baseName)) baseName = "user";
+
+            if (await _userRepository.GetByUsernameAsync(baseName, ct) == null) return baseName;
+            for (int i = 0; i < 5; i++)
+            {
+                var candidate = $"{baseName}_{Guid.NewGuid().ToString("N")[..6]}";
+                if (await _userRepository.GetByUsernameAsync(candidate, ct) == null) return candidate;
+            }
+            return $"{baseName}_{Guid.NewGuid().ToString("N")[..10]}";
         }
     }
 }

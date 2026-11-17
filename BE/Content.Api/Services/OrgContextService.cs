@@ -30,6 +30,9 @@ namespace Content.Api.Services
         // per-resource viewers (quiz/deck/progress) so an enrolled user WITHOUT a globally-selected
         // org can still open in-course content — access is per-course, not org-equality.
         Task<bool> CanViewContentAsync(Guid contentId, CancellationToken ct = default);
+
+        // "Active" / "Suspended", or null when Organization.Api cannot be reached.
+        Task<string?> GetOrgStatusAsync(Guid orgId, CancellationToken ct = default, bool fresh = false);
     }
 
     public class CourseAccessService : ICourseAccessService
@@ -51,28 +54,30 @@ namespace Content.Api.Services
             _cache = cache;
         }
 
-        // True if the course's organization is Suspended (spec §6.6) — access is then frozen for
-        // everyone except SysAdmin. Queried from Organization.Api's internal endpoint, cached 15s so
-        // this hot path stays cheap while reflecting a suspend/reactivate within seconds.
-        private async Task<bool> IsOrgSuspendedAsync(Guid orgId, CancellationToken ct)
+        // Org status ("Active"/"Suspended", spec §6.6) from Organization.Api's internal endpoint,
+        // cached 15s so this hot path stays cheap while reflecting a suspend/reactivate within seconds.
+        // Returns null when Organization.Api is unreachable; callers decide (Q8: block teach, allow view).
+        // fresh: skip the cache. Used for teach (writes) so a suspension locks them at once (spec §6.2).
+        // shortcut: views still read the 15s cache, drop it if reads must also lock instantly.
+        public async Task<string?> GetOrgStatusAsync(Guid orgId, CancellationToken ct = default, bool fresh = false)
         {
             var key = $"org_status_{orgId}";
-            if (_cache.TryGetValue(key, out string? cached))
-                return cached == "Suspended";
+            if (!fresh && _cache.TryGetValue(key, out string? cached))
+                return cached;
             try
             {
-                var baseUrl = (_config["Organization:InternalBaseUrl"] ?? "http://localhost:5002").TrimEnd('/');
-                var client = _httpClientFactory.CreateClient();
+                var baseUrl = _config["Organization:InternalBaseUrl"]!.TrimEnd('/');
+                var client = _httpClientFactory.CreateClient("internal");
                 client.Timeout = TimeSpan.FromSeconds(5);
                 var resp = await client.GetFromJsonAsync<Shared.Contracts.Responses.ApiResponse<OrgStatusLite>>(
                     $"{baseUrl}/api/internal/orgs/{orgId}/status", ct);
-                var status = resp?.Data?.Status ?? "Active";
-                _cache.Set(key, status, TimeSpan.FromSeconds(15));
-                return status == "Suspended";
+                var status = resp?.Data?.Status;
+                if (status != null) _cache.Set(key, status, TimeSpan.FromSeconds(15));
+                return status;
             }
             catch
             {
-                return false; // fail-open: an Organization.Api hiccup must not lock the whole platform
+                return null;
             }
         }
 
@@ -92,8 +97,8 @@ namespace Content.Api.Services
             if (course == null) return false;
 
             // Spec §6.6: while the org is Suspended, access is frozen for everyone except SysAdmin
-            // (already returned true above).
-            if (await IsOrgSuspendedAsync(course.OrgId, ct)) return false;
+            // (already returned true above). Q8: status unknown -> block writes.
+            if (await GetOrgStatusAsync(course.OrgId, ct, fresh: true) != "Active") return false;
 
             // OrgAdmin of this org has full Teacher privileges per spec §1.
             if (role == "OrgAdmin" && _orgCtx.GetCurrentOrgId() == course.OrgId) return true;
@@ -120,7 +125,8 @@ namespace Content.Api.Services
             if (course == null) return false;
 
             // Spec §6.6: while the org is Suspended, access is frozen for everyone except SysAdmin.
-            if (await IsOrgSuspendedAsync(course.OrgId, ct)) return false;
+            // Q8: status unknown -> allow view.
+            if (await GetOrgStatusAsync(course.OrgId, ct) == "Suspended") return false;
 
             // OrgAdmin of the org sees everything.
             var role = _orgCtx.GetCurrentRole();
@@ -165,18 +171,15 @@ namespace Content.Api.Services
 
         public Guid? GetCurrentOrgId()
         {
-            // 1. Check HttpContext.Items (set by OrgContextMiddleware from header/slug)
-            if (Context?.Items.TryGetValue("org_id", out var itemVal) == true
-                && itemVal is string s && Guid.TryParse(s, out var id))
-                return id;
+            // M1: SysAdmin may target an org explicitly via X-Org-Id (forwarded by the gateway).
+            if (IsSysAdmin()
+                && Guid.TryParse(Context?.Request.Headers["X-Org-Id"].FirstOrDefault(), out var headerId))
+                return headerId;
 
-            // 2. Fall back to JWT claim
+            // Everyone else: ONLY the JWT `org_id` claim (the gateway sets X-Org-Id from that same
+            // claim). A client-supplied header is never trusted for a non-SysAdmin.
             var claim = Context?.User?.FindFirst("org_id")?.Value;
-            if (Guid.TryParse(claim, out var claimId)) return claimId;
-
-            // 3. Fall back to X-Org-Id request header (forwarded by YARP from FE localStorage)
-            var header = Context?.Request.Headers["X-Org-Id"].FirstOrDefault();
-            return Guid.TryParse(header, out var headerId) ? headerId : null;
+            return Guid.TryParse(claim, out var claimId) ? claimId : null;
         }
 
         public Guid? GetCurrentUserId()

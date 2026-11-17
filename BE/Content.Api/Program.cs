@@ -31,6 +31,21 @@ try
     builder.Services.AddHttpContextAccessor();
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("ConnectionStrings:DefaultConnection is empty.");
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
+        throw new InvalidOperationException("Jwt:Key is empty.");
+    if (!builder.Environment.IsDevelopment() && string.IsNullOrEmpty(builder.Configuration["Internal:ApiKey"]))
+        throw new InvalidOperationException("Internal:ApiKey must be set outside Development.");
+    foreach (var key in new[] { "Identity:InternalBaseUrl", "Organization:InternalBaseUrl", "Storage:LocalPath" })
+        if (string.IsNullOrWhiteSpace(builder.Configuration[key]))
+            throw new InvalidOperationException($"{key} is empty.");
+
+    // D6: 200 MB upload limit (Storage:MaxFileSizeBytes) at Kestrel + multipart.
+    var maxUploadBytes = builder.Configuration.GetValue<long>("Storage:MaxFileSizeBytes", 209715200);
+    builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = maxUploadBytes);
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MultipartBodyLengthLimit = maxUploadBytes);
+
     builder.Services.AddDbContext<ContentDbContext>(options =>
         options.UseNpgsql(connectionString)
     );
@@ -74,7 +89,6 @@ try
     {
         options.AddPolicy("RequireSysAdmin", policy => policy.RequireRole("SysAdmin"));
         options.AddPolicy("RequireOrgAdmin", policy => policy.RequireRole("SysAdmin", "OrgAdmin"));
-        options.AddPolicy("RequireTeacher", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher"));
         options.AddPolicy("RequireStudent", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher", "Student"));
     });
 
@@ -97,6 +111,13 @@ try
     // For service-to-service calls (e.g. auto-provisioning an approved student into the org,
     // and checking org suspension status for the course-access guard).
     builder.Services.AddHttpClient();
+    // Every call to another service's /api/internal/** goes through this client (CONTRACT §6).
+    builder.Services.AddHttpClient("internal", c =>
+    {
+        var internalKey = builder.Configuration["Internal:ApiKey"];
+        if (!string.IsNullOrEmpty(internalKey))
+            c.DefaultRequestHeaders.Add("X-Internal-Key", internalKey);
+    });
     builder.Services.AddMemoryCache();
 
     // AutoMapper registration
@@ -112,11 +133,7 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
-            policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:5000"
-            )
+            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -124,11 +141,11 @@ try
 
     var app = builder.Build();
 
-    // Apply any pending EF migrations on startup (idempotent — only unapplied migrations run).
-    // Keeps the course_enrollments.status column and future schema changes in sync without a
-    // manual `dotnet ef database update` step. Mirrors Identity.Api's startup behaviour.
-    using (var scope = app.Services.CreateScope())
+    // Apply pending EF migrations on startup (idempotent) unless Database:AutoMigrate=false
+    // (e.g. a deploy that runs migrations as a release step).
+    if (app.Configuration.GetValue("Database:AutoMigrate", true))
     {
+        using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ContentDbContext>();
         await db.Database.MigrateAsync();
     }
@@ -146,14 +163,14 @@ try
     app.MapControllers();
 
     app.Run();
+    return 0;
 }
-catch (Exception ex)
+catch (Exception ex) when (ex is not HostAbortedException) // let EF design-time tooling stop the host
 {
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine("APPLICATION STARTUP FAILED:");
     Console.WriteLine(ex.Message);
     Console.WriteLine(ex.StackTrace);
     Console.ResetColor();
-    Console.WriteLine("Press any key to exit...");
-    Console.ReadLine();
+    return 1;
 }

@@ -100,6 +100,7 @@ public class OrganizationsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "SysAdmin")]
     [ProducesResponseType(typeof(ApiResponse<OrganizationResponseDto>), 201)]
     public async Task<IActionResult> CreateOrganization([FromBody] CreateOrganizationRequestDto request)
     {
@@ -143,7 +144,7 @@ public class OrganizationsController : ControllerBase
         if (!Guid.TryParse(userId, out var userGuid))
             return BadRequest(new ApiResponse(false, "Invalid user ID"));
 
-        if (organization.OwnerId != userGuid && !User.IsInRole("SysAdmin"))
+        if (organization.OwnerId != userGuid && !User.IsInRole("SysAdmin") && !await _memberRepository.IsUserOrgAdminAsync(userGuid, id))
             return Forbid();
 
         if (!string.IsNullOrEmpty(request.Slug) && request.Slug != organization.Slug)
@@ -204,7 +205,7 @@ public class OrganizationsController : ControllerBase
         if (!Guid.TryParse(userId, out var userGuid))
             return BadRequest(new ApiResponse(false, "Invalid user ID"));
 
-        if (organization.OwnerId != userGuid && !User.IsInRole("SysAdmin"))
+        if (organization.OwnerId != userGuid && !User.IsInRole("SysAdmin") && !await _memberRepository.IsUserOrgAdminAsync(userGuid, id))
             return Forbid();
 
         await _organizationRepository.DeleteAsync(id);

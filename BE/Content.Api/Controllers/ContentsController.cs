@@ -36,8 +36,9 @@ namespace Content.Api.Controllers
         // Per-course read access (SysAdmin / OrgAdmin-of-org / approved enrollment), NOT org scope —
         // so an enrolled Teacher/Student without a selected org isn't falsely 404'd. Mutations
         // additionally gate on CanTeachAsync, so a Student passes this but cannot modify content.
-        private async Task<bool> VerifyAccessAsync(Guid courseId)
-            => await _access.CanViewAsync(courseId);
+        // Also requires the module to belong to the route course (blocks cross-course module access).
+        private async Task<bool> VerifyAccessAsync(Guid courseId, Guid moduleId)
+            => await _access.CanViewAsync(courseId) && await _moduleRepo.BelongsToCourseAsync(moduleId, courseId);
 
         private static ContentResponseDto ToContentDto(ContentModel content, int orderIndex) => new(
             content.Id,
@@ -56,7 +57,7 @@ namespace Content.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetContents(Guid courseId, Guid moduleId)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
 
             var contents = await _contentRepo.GetByModuleAsync(moduleId);
@@ -66,9 +67,9 @@ namespace Content.Api.Controllers
 
         // GET /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}
         [HttpGet("{contentId:guid}")]
-        public async Task<IActionResult> GetContent(Guid courseId, Guid contentId)
+        public async Task<IActionResult> GetContent(Guid courseId, Guid moduleId, Guid contentId)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
 
             var content = await _contentRepo.GetByIdAsync(contentId);
@@ -82,7 +83,7 @@ namespace Content.Api.Controllers
         [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> CreateContent(Guid courseId, Guid moduleId, [FromBody] CreateContentRequestDto request)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
@@ -106,9 +107,9 @@ namespace Content.Api.Controllers
         // PUT /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}
         [HttpPut("{contentId:guid}")]
         [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
-        public async Task<IActionResult> UpdateContent(Guid courseId, Guid contentId, [FromBody] UpdateContentRequestDto request)
+        public async Task<IActionResult> UpdateContent(Guid courseId, Guid moduleId, Guid contentId, [FromBody] UpdateContentRequestDto request)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
@@ -127,7 +128,7 @@ namespace Content.Api.Controllers
         [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> DeleteContent(Guid courseId, Guid moduleId, Guid contentId)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
@@ -139,9 +140,9 @@ namespace Content.Api.Controllers
         // T3.6: PATCH /api/courses/{courseId}/modules/{moduleId}/contents/{contentId}/status
         [HttpPatch("{contentId:guid}/status")]
         [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
-        public async Task<IActionResult> SetStatus(Guid courseId, Guid contentId, [FromBody] SetContentStatusRequestDto request)
+        public async Task<IActionResult> SetStatus(Guid courseId, Guid moduleId, Guid contentId, [FromBody] SetContentStatusRequestDto request)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
@@ -160,7 +161,7 @@ namespace Content.Api.Controllers
         [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> LinkExistingContent(Guid courseId, Guid moduleId, [FromBody] LinkContentRequestDto request)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
@@ -177,7 +178,7 @@ namespace Content.Api.Controllers
         [Authorize] // gate is CanTeachAsync (per-course Teacher / OrgAdmin / SysAdmin), not a JWT-role policy
         public async Task<IActionResult> ReorderContent(Guid courseId, Guid moduleId, Guid contentId, [FromBody] ReorderContentRequestDto request)
         {
-            if (!await VerifyAccessAsync(courseId))
+            if (!await VerifyAccessAsync(courseId, moduleId))
                 return NotFound(new ApiResponse(false, "Course not found."));
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();

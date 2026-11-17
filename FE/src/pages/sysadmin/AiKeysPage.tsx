@@ -143,6 +143,7 @@ export const AiKeysPage: React.FC = () => {
                 <select
                   className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
                   value={newKey.provider}
+                  data-testid="ai-key-provider"
                   onChange={(e) => setNewKey({ ...newKey, provider: e.target.value as NewKeyForm['provider'] })}
                 >
                   <option value="OpenRouter">OpenRouter</option>
@@ -158,6 +159,7 @@ export const AiKeysPage: React.FC = () => {
                   type="text"
                   className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
                   placeholder={isVi ? 'Nhập nhãn dạng...' : 'e.g. production-key'}
+                  data-testid="ai-key-label"
                   value={newKey.label}
                   onChange={(e) => setNewKey({ ...newKey, label: e.target.value })}
                 />
@@ -170,6 +172,7 @@ export const AiKeysPage: React.FC = () => {
                   type="password"
                   className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface font-mono"
                   placeholder="sk-..."
+                  data-testid="ai-key-input"
                   value={newKey.apiKey}
                   onChange={(e) => setNewKey({ ...newKey, apiKey: e.target.value })}
                 />
@@ -178,6 +181,7 @@ export const AiKeysPage: React.FC = () => {
                 <input
                   type="checkbox"
                   id="ai-key-active"
+                  data-testid="ai-key-active-checkbox"
                   checked={newKey.isActive}
                   onChange={(e) => setNewKey({ ...newKey, isActive: e.target.checked })}
                   className="h-4 w-4 rounded border-outline text-primary"
@@ -188,13 +192,14 @@ export const AiKeysPage: React.FC = () => {
               </div>
             </div>
             {saveError && (
-              <p className="mt-2 text-sm text-error">{saveError}</p>
+              <p className="mt-2 text-sm text-error" data-testid="ai-key-save-error">{saveError}</p>
             )}
             <div className="mt-4">
               <button
                 type="button"
                 onClick={() => void handleSaveKey()}
                 disabled={isSaving}
+                data-testid="ai-key-save"
                 className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
               >
                 {isSaving ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu khóa' : 'Save key')}
@@ -251,14 +256,14 @@ export const AiKeysPage: React.FC = () => {
             {!isLoading && keys.length > 0 && (
               <div className="space-y-2">
                 {keys.map((k) => (
-                  <div key={k.id} className="p-3 rounded-lg bg-surface-container-low flex flex-wrap items-center gap-3">
+                  <div key={k.id} data-testid={`ai-key-row-${k.id}`} className="p-3 rounded-lg bg-surface-container-low flex flex-wrap items-center gap-3">
                     <Badge variant={k.isActive ? 'success' : 'secondary'} size="sm">
                       {k.provider}
                     </Badge>
                     <span className="text-sm font-medium text-on-surface">
                       {k.label || (isVi ? '(không nhãn)' : '(unlabeled)')}
                     </span>
-                    <span className="text-xs text-on-surface-variant">
+                    <span className="text-xs text-on-surface-variant" data-testid="ai-key-last-four">
                       ••••{k.keyLastFour ?? '????'}
                     </span>
                     <span className="text-xs text-on-surface-variant ml-auto">
@@ -268,6 +273,7 @@ export const AiKeysPage: React.FC = () => {
                       size="sm"
                       variant="secondary"
                       onClick={() => void handleToggle(k)}
+                      data-testid={`ai-key-toggle-${k.id}`}
                       disabled={busyKeyId === k.id}
                     >
                       {k.isActive ? (isVi ? 'Tắt' : 'Deactivate') : (isVi ? 'Bật' : 'Activate')}
@@ -276,6 +282,7 @@ export const AiKeysPage: React.FC = () => {
                       size="sm"
                       variant="ghost"
                       onClick={() => void handleDelete(k)}
+                      data-testid={`ai-key-delete-${k.id}`}
                       disabled={busyKeyId === k.id}
                     >
                       <MaterialIcon icon="delete" size="xs" />

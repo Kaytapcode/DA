@@ -78,7 +78,7 @@ namespace Content.Api.Controllers
                     $"File type '{file.ContentType}' is not allowed. Allowed: {string.Join(", ", allowedTypes)}"));
 
             // Validate file size
-            var maxSize = _config.GetValue<long>("Storage:MaxFileSizeBytes", 52428800);
+            var maxSize = _config.GetValue<long>("Storage:MaxFileSizeBytes", 209715200);
             if (file.Length > maxSize)
                 return BadRequest(new ApiResponse(false,
                     $"File size exceeds the maximum allowed size of {maxSize / 1024 / 1024} MB."));

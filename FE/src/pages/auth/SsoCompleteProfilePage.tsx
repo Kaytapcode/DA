@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiClient } from '@/utils/apiClient';
+import { useOrgContext } from '@/contexts/OrgContext';
+import { useAuthContext } from '@/contexts/AuthContext';
+import type { LoginApiResponse } from '@/hooks/useAuth';
 
 // Spec §1: "SSO Registration (First-time Login): If the email from the SSO provider
 //           does not exist in the Lumina database, the system will redirect the user to a
@@ -16,6 +19,8 @@ interface OrgFields {
 
 export const SsoCompleteProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const { startSession } = useAuthContext();
+  const { setOrg } = useOrgContext();
   const [searchParams] = useSearchParams();
   const ssoToken = searchParams.get('sso_token') ?? '';
 
@@ -56,21 +61,21 @@ export const SsoCompleteProfilePage: React.FC = () => {
           ? { ssoToken, role: 'OrgAdmin', orgName: orgFields.orgName.trim(), orgSlug: orgFields.orgSlug.trim() }
           : { ssoToken, role: 'User' };
 
-      const res = await apiClient.post<{ accessToken: string; orgId?: string }>(
-        '/auth/sso/complete-profile',
-        body
-      );
+      const res = await apiClient.post<LoginApiResponse>('/auth/sso/complete-profile', body);
 
-      if (!res.success) {
+      if (!res.success || !res.data) {
         setSubmitError(res.message || 'Failed to complete profile. Please try again.');
         return;
       }
 
-      if (role === 'OrgAdmin' && res.data?.orgId) {
-        navigate(`/login?orgId=${res.data.orgId}`, { replace: true });
-      } else {
-        navigate('/user/home', { replace: true });
+      const { user, orgId } = startSession(res.data);
+      if (user.role === 'OrgAdmin' && orgId) {
+        try {
+          const o = await apiClient.get<{ id: string; name: string; slug: string }>(`/organizations/${orgId}`);
+          if (o.success && o.data) setOrg({ id: o.data.id, slug: o.data.slug, name: o.data.name });
+        } catch { /* non-fatal; OrgContext stays blank */ }
       }
+      navigate(user.role === 'OrgAdmin' ? '/admin/dashboard' : '/user/home', { replace: true });
     } catch (err) {
       setSubmitError(
         typeof err === 'string'

@@ -46,9 +46,9 @@ namespace Content.Api.Controllers
             if (distinct.Count == 0) return map;
             try
             {
-                var baseUrl = (_config["Identity:InternalBaseUrl"] ?? "http://localhost:5001").TrimEnd('/');
+                var baseUrl = _config["Identity:InternalBaseUrl"]!.TrimEnd('/');
                 var qs = string.Join("&", distinct.Select(id => $"ids={id}"));
-                var client = _httpClientFactory.CreateClient();
+                var client = _httpClientFactory.CreateClient("internal");
                 client.Timeout = TimeSpan.FromSeconds(8);
                 var resp = await client.GetFromJsonAsync<ApiResponse<IEnumerable<UserInfoLite>>>(
                     $"{baseUrl}/api/internal/users/batch?{qs}", ct);

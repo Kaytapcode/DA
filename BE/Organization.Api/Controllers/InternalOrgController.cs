@@ -11,6 +11,7 @@ namespace Organization.Api.Controllers
     [Route("api/internal/orgs")]
     [ApiController]
     [AllowAnonymous]
+    [InternalKey]
     public class InternalOrgController : ControllerBase
     {
         private readonly IMemberRepository _memberRepository;
@@ -42,7 +43,7 @@ namespace Organization.Api.Controllers
             if (member == null)
                 return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(false, null), null));
 
-            return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(true, member.Role), null));
+            return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(member.Status == "Approved", member.Role), null));
         }
 
         // GET /api/internal/orgs/{orgId}/status -> { status } (Active|Suspended). Used by Content.Api's
@@ -63,7 +64,15 @@ namespace Organization.Api.Controllers
         {
             var existing = await _memberRepository.GetByUserAndOrgAsync(userId, orgId, ct);
             if (existing != null)
+            {
+                // Pending/Rejected row -> promote to Approved (Q1).
+                if (existing.Status != "Approved")
+                {
+                    existing.Status = "Approved";
+                    await _memberRepository.UpdateAsync(existing, ct);
+                }
                 return Ok(new ApiResponse<MembershipCheckDto>(true, new MembershipCheckDto(true, existing.Role), "Already a member."));
+            }
 
             await _memberRepository.CreateAsync(new MemberModel
             {
@@ -89,6 +98,7 @@ namespace Organization.Api.Controllers
                 Id = Guid.NewGuid(),
                 Name = req.Name,
                 Slug = req.Slug,
+                OwnerId = req.AdminUserId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
             }, ct);
@@ -99,10 +109,23 @@ namespace Organization.Api.Controllers
                 OrgId = org.Id,
                 UserId = req.AdminUserId,
                 Role = "OrgAdmin",
+                Status = "Approved",
                 JoinDate = DateTime.UtcNow,
             }, ct);
 
             return Ok(new ApiResponse<OrgSetupResultDto>(true, new OrgSetupResultDto(org.Id, org.Name, org.Slug), null));
+        }
+    }
+
+    // Rejects (401) when Internal:ApiKey is configured and X-Internal-Key differs (CONTRACT section 6).
+    [AttributeUsage(AttributeTargets.Class)]
+    public class InternalKeyAttribute : Attribute, Microsoft.AspNetCore.Mvc.Filters.IAuthorizationFilter
+    {
+        public void OnAuthorization(Microsoft.AspNetCore.Mvc.Filters.AuthorizationFilterContext ctx)
+        {
+            var key = ctx.HttpContext.RequestServices.GetRequiredService<IConfiguration>()["Internal:ApiKey"];
+            if (!string.IsNullOrEmpty(key) && ctx.HttpContext.Request.Headers["X-Internal-Key"] != key)
+                ctx.Result = new UnauthorizedResult();
         }
     }
 

@@ -287,7 +287,7 @@ export const DeckEditorPage: React.FC = () => {
 									{!loading && cards.length > 0 && (
 										<div className="space-y-2">
 											{cards.map((c, idx) => (
-												<div key={c.id} className="grid grid-cols-[40px_1fr_1fr_auto] items-center gap-3 rounded-lg border border-[#dce3ed] p-3">
+												<div key={c.id} data-testid="deck-card-row" className="grid grid-cols-[40px_1fr_1fr_auto] items-center gap-3 rounded-lg border border-[#dce3ed] p-3">
 													<span className="text-xs font-bold text-[#9aa5b5]">#{idx + 1}</span>
 													<div>
 														<p className="text-xs text-[#9aa5b5]">{t('Trước', 'Front')}</p>
@@ -314,7 +314,7 @@ export const DeckEditorPage: React.FC = () => {
 							</Card>
 
 							<div className="flex justify-end">
-								<Button onClick={() => navigate('/user/library')}>
+								<Button onClick={() => navigate('/user/library')} data-testid="deck-done-btn">
 									{t('Hoàn tất', 'Done')}
 								</Button>
 							</div>

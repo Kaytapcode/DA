@@ -48,6 +48,9 @@ namespace Content.Api.Controllers
             if (source == null) return NotFound(new ApiResponse(false, "Content not found."));
             // Course-scoped content cannot be copied out of its course (it is not public).
             if (!source.IsPublic || source.IsCourseScoped) return Forbid();
+            // Q4: a DRAFT quiz is owner-only until published.
+            if (source.ContentType == "QUIZ" && source.Status == "DRAFT" && source.CreatedByUserId != userId)
+                return NotFound(new ApiResponse(false, "Content not found."));
             if (source.CreatedByUserId == userId)
                 return BadRequest(new ApiResponse(false, "You already own this resource."));
 

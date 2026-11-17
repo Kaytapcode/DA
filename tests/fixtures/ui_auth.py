@@ -77,5 +77,6 @@ def logged_in_page_non_owner(page: Page) -> Page:
 @pytest.fixture
 def sysadmin_logged_in_page(page: Page) -> Page:
     """Log in as a pre-seeded SysAdmin account (see tests/README.md)."""
-    _ui_login(page, "test_sysadmin", "TestPassword123!")
+    from .auth import SYSADMIN_USERNAME, SYSADMIN_PASSWORD
+    _ui_login(page, SYSADMIN_USERNAME, SYSADMIN_PASSWORD)
     return page

@@ -22,6 +22,6 @@ public class GetCourseByIdQueryHandler : IRequestHandler<GetCourseByIdQuery, Cou
         if (!query.IsSysAdmin && course.OrgId != query.OrgId) return null;
 
         return new CourseResponseDto(course.Id, course.OrgId, course.Title,
-            course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt);
+            course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt, course.Status);
     }
 }

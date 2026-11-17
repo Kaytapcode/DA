@@ -131,6 +131,9 @@ namespace Content.Api.Controllers
             if (content == null) return NotFound(new ApiResponse(false, "Content not found."));
             if (!content.IsPublic && content.CreatedByUserId != userId)
                 return Forbid();
+            // Q4: a DRAFT quiz is owner-only until published.
+            if (content.ContentType == "QUIZ" && content.Status == "DRAFT" && content.CreatedByUserId != userId)
+                return NotFound(new ApiResponse(false, "Content not found."));
 
             var exists = await _db.ModuleContents.AnyAsync(
                 mc => mc.ModuleId == id && mc.ContentId == request.ContentId, ct);

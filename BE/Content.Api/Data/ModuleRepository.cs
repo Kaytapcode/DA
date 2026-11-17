@@ -11,6 +11,7 @@ namespace Content.Api.Data
         Task<ModuleModel> UpdateAsync(ModuleModel module, CancellationToken ct = default);
         Task DeleteAsync(Guid id, Guid courseId, CancellationToken ct = default);
         Task ReorderAsync(Guid courseId, Guid moduleId, int newIndex, CancellationToken ct = default);
+        Task<bool> BelongsToCourseAsync(Guid moduleId, Guid courseId, CancellationToken ct = default);
     }
 
     public class ModuleRepository : IModuleRepository
@@ -18,6 +19,9 @@ namespace Content.Api.Data
         private readonly ContentDbContext _context;
 
         public ModuleRepository(ContentDbContext context) => _context = context;
+
+        public Task<bool> BelongsToCourseAsync(Guid moduleId, Guid courseId, CancellationToken ct = default)
+            => _context.CourseModules.AnyAsync(cm => cm.ModuleId == moduleId && cm.CourseId == courseId, ct);
 
         public async Task<List<ModuleModel>> GetByCourseAsync(Guid courseId, CancellationToken ct = default)
             => await _context.CourseModules

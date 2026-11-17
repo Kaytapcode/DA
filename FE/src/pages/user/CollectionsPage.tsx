@@ -15,9 +15,9 @@ import { apiClient } from '@/utils/apiClient'
 // whose rows expose a `contentId` (the polymorphic Content id the collection stores).
 const LIB_TYPES = [
   { key: 'PDF', endpoint: '/documents', labelEn: 'Documents', labelVi: 'Tài liệu' },
-  { key: 'VIDEO', endpoint: '/videos', labelEn: 'Videos', labelVi: 'Video' },
+  { key: 'VIDEO', endpoint: '/videos/personal', labelEn: 'Videos', labelVi: 'Video' },
   { key: 'QUIZ', endpoint: '/quizzes', labelEn: 'Quizzes', labelVi: 'Quiz' },
-  { key: 'FLASHCARD', endpoint: '/flashcard-decks', labelEn: 'Decks', labelVi: 'Bộ thẻ' },
+  { key: 'FLASHCARD', endpoint: '/decks', labelEn: 'Decks', labelVi: 'Bộ thẻ' },
 ] as const
 
 const itemHref = (item: CollectionItem, collection?: Collection | null): string | null => {
@@ -227,7 +227,7 @@ export const CollectionsPage: React.FC = () => {
                 {isVi ? 'Quay lại' : 'Back'}
               </button>
               <div>
-                <h2 className="text-4xl font-black tracking-[-0.02em] text-[#111b2d] font-headline">
+                <h2 className="text-4xl font-black tracking-[-0.02em] text-[#111b2d] font-headline" data-testid="collection-detail-title">
                   {selectedCollection.title}
                 </h2>
                 {selectedCollection.description && (
@@ -317,7 +317,7 @@ export const CollectionsPage: React.FC = () => {
                 )}
                 <div className="max-h-60 space-y-1 overflow-y-auto">
                   {libResources.filter((r) => !targetExistingIds.has(r.contentId)).map((r) => (
-                    <div key={r.contentId} className="flex items-center justify-between rounded-lg border border-outline-variant px-3 py-2">
+                    <div key={r.contentId} data-testid="collection-add-row" className="flex items-center justify-between rounded-lg border border-outline-variant px-3 py-2">
                       <span className="truncate text-sm text-on-surface">{r.title}</span>
                       <Button
                         size="sm"
@@ -390,7 +390,7 @@ export const CollectionsPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="p-4">
-                        <h4 className="mb-2 line-clamp-2 text-sm font-bold text-[#111b2d]">{item.title}</h4>
+                        <h4 className="mb-2 line-clamp-2 text-sm font-bold text-[#111b2d]" data-testid="collection-item-title">{item.title}</h4>
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-semibold text-[#1463ff]">
                             {href ? (isVi ? 'Mở' : 'Open') : '—'}
@@ -399,6 +399,7 @@ export const CollectionsPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={(e) => { e.preventDefault(); void handleRemoveItem(item.contentId) }}
+                              data-testid="collection-item-remove-btn"
                               disabled={busyContentId === item.contentId}
                               className="rounded-full p-1 text-[#8a98b0] transition hover:bg-red-50 hover:text-red-500 disabled:opacity-40"
                               title={isVi ? 'Xóa khỏi bộ sưu tập' : 'Remove from collection'}
@@ -411,9 +412,9 @@ export const CollectionsPage: React.FC = () => {
                     </Card>
                   )
                   return href ? (
-                    <Link key={item.contentId} to={href} className="block">{cardBody}</Link>
+                    <Link key={item.contentId} to={href} className="block" data-testid="collection-item">{cardBody}</Link>
                   ) : (
-                    <div key={item.contentId}>{cardBody}</div>
+                    <div key={item.contentId} data-testid="collection-item">{cardBody}</div>
                   )
                 })}
               </div>
@@ -449,7 +450,7 @@ export const CollectionsPage: React.FC = () => {
                       ) : (
                         <ul className="space-y-1">
                           {secItems.map((it) => (
-                            <li key={it.contentId} className="flex items-center gap-2 rounded-lg border border-[#e3e8f3] px-3 py-2 text-sm">
+                            <li key={it.contentId} data-testid="collection-section-item" className="flex items-center gap-2 rounded-lg border border-[#e3e8f3] px-3 py-2 text-sm">
                               <span className="rounded bg-[#eef2ff] px-1.5 py-0.5 text-[10px] font-bold uppercase text-[#1463ff]">{it.contentType}</span>
                               <span className="truncate text-[#111b2d]">{it.title}</span>
                             </li>
@@ -563,7 +564,7 @@ export const CollectionsPage: React.FC = () => {
           {!isLoading && collections.length > 0 && (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {collections.map((c) => (
-                <div key={c.id} className="relative">
+                <div key={c.id} className="relative" data-testid="collection-card">
                   {confirmDeleteId === c.id ? (
                     <div className="flex min-h-[190px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
                       <p className="mb-4 text-center text-sm font-semibold text-red-700">
@@ -573,6 +574,7 @@ export const CollectionsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => void handleDelete(c.id)}
+                          data-testid="collection-delete-confirm"
                           disabled={busyId === c.id}
                           className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
                         >
@@ -602,7 +604,7 @@ export const CollectionsPage: React.FC = () => {
                             <MaterialIcon icon="folder" className="text-[56px] text-white/30" />
                           </div>
                           <div className="space-y-1 p-4">
-                            <h4 className="line-clamp-1 font-bold text-[#111b2d]">{c.title}</h4>
+                            <h4 className="line-clamp-1 font-bold text-[#111b2d]" data-testid="collection-card-title">{c.title}</h4>
                             {c.description && (
                               <p className="line-clamp-1 text-xs text-[#60708a]">{c.description}</p>
                             )}
@@ -619,6 +621,7 @@ export const CollectionsPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setConfirmDeleteId(c.id)}
+                          data-testid="collection-delete-btn"
                           className="absolute right-2 top-2 z-10 rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
                           title={isVi ? 'Xóa' : 'Delete'}
                         >

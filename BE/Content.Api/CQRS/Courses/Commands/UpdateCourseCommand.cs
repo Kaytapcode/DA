@@ -30,6 +30,6 @@ public class UpdateCourseCommandHandler : IRequestHandler<UpdateCourseCommand, C
 
         var updated = await _repo.UpdateAsync(course, ct);
         return new CourseResponseDto(updated.Id, updated.OrgId, updated.Title,
-            updated.Description, updated.CourseCode, updated.CreatedBy, updated.CreatedAt);
+            updated.Description, updated.CourseCode, updated.CreatedBy, updated.CreatedAt, updated.Status);
     }
 }

@@ -6,6 +6,7 @@ Course tests (create/read/update/delete/enroll) are in test_orgadmin_wave2.py
 which uses the correct OrgAdmin auth pattern and API endpoints.
 """
 
+import uuid
 import pytest
 import requests
 from tests.fixtures.test_data import TestDataFactory
@@ -41,11 +42,11 @@ class TestOrganizationCreation:
     """Test organization creation — any authenticated user can create an org (Spec §1)."""
 
     @pytest.mark.api
-    def test_valid_organization_creation(self, authenticated_client):
+    def test_valid_organization_creation(self, sysadmin_client):
         """TC-ORG-001: Valid organization creation returns 201"""
         org_data = TestDataFactory.create_organization_data()
 
-        result = authenticated_client.create_organization(
+        result = sysadmin_client.create_organization(
             org_data["name"],
             org_data["description"]
         )
@@ -55,20 +56,20 @@ class TestOrganizationCreation:
         assert result["data"]["name"] == org_data["name"]
 
     @pytest.mark.api
-    def test_duplicate_slug_rejected(self, authenticated_client):
+    def test_duplicate_slug_rejected(self, sysadmin_client):
         """TC-ORG-002: Duplicate slug rejected with 400"""
         org_data = TestDataFactory.create_organization_data()
 
-        result1 = authenticated_client.create_organization(org_data["name"])
+        result1 = sysadmin_client.create_organization(org_data["name"])
         assert result1["status_code"] == 201
 
-        result2 = authenticated_client.create_organization(org_data["name"])
+        result2 = sysadmin_client.create_organization(org_data["name"])
         assert result2["status_code"] == 400, "Duplicate slug should be rejected"
 
     @pytest.mark.api
-    def test_missing_organization_name(self, authenticated_client):
+    def test_missing_organization_name(self, sysadmin_client):
         """TC-ORG-003: Missing organization name returns 400"""
-        result = authenticated_client.post("/api/organizations", json={
+        result = sysadmin_client.post("/api/organizations", json={
             "description": "Test Description",
             "slug": "test-slug-only",
         })
@@ -76,23 +77,32 @@ class TestOrganizationCreation:
         assert result.status_code == 400, "Missing name should return 400"
 
 
+    @pytest.mark.api
+    @pytest.mark.security
+    def test_normal_user_cannot_create_organization(self, authenticated_client):
+        """CONTRACT s6: POST /api/organizations is SysAdmin-only; a normal user gets 403."""
+        # Spec 1 SysAdmin � Organization CRUD
+        result = authenticated_client.create_organization(f"LuminaTest_{uuid.uuid4().hex[:10]}")
+        assert result["status_code"] == 403, f"Expected 403, got {result['status_code']}: {result['data']}"
+
+
 class TestOrganizationRead:
     """Test organization read operations."""
 
     @pytest.mark.api
-    def test_get_organization_details(self, authenticated_client, test_organization):
+    def test_get_organization_details(self, sysadmin_client, test_organization):
         """TC-ORG-005: GET /api/organizations/{id} returns 200 with org data."""
-        result = authenticated_client.get_organization(test_organization["id"])
+        result = sysadmin_client.get_organization(test_organization["id"])
 
         assert result["status_code"] == 200, f"Expected 200, got {result['status_code']}"
         assert result["data"]["id"] == test_organization["id"]
         assert result["data"]["name"] == test_organization["name"]
 
     @pytest.mark.api
-    def test_get_nonexistent_organization_fails(self, authenticated_client):
+    def test_get_nonexistent_organization_fails(self, sysadmin_client):
         """TC-ORG-006: GET /api/organizations/{fake-uuid} returns 404."""
         fake_uuid = "00000000-0000-0000-0000-000000000000"
-        result = authenticated_client.get_organization(fake_uuid)
+        result = sysadmin_client.get_organization(fake_uuid)
 
         assert result["status_code"] == 404, "Non-existent org should return 404"
 
@@ -110,7 +120,7 @@ class TestOrganizationMembers:
         token = _orgadmin_token()
         r = requests.post(
             f"{API_BASE}/api/orgs/{ORG1_ID}/members",
-            json={"orgId": ORG1_ID, "userId": USER1_ID, "role": "Member"},
+            json={"userId": USER1_ID, "role": "Member"},
             headers=_ah(token, ORG1_ID),
             timeout=10,
         )

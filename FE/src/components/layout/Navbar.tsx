@@ -64,7 +64,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         {showUserMenu && (
           <div className="flex items-center gap-10">
             {/* <a href={profilePath} className="text-sm font-medium hover:text-gray-200 transition">Profile</a> */}
-            <a href={logoutPath} onClick={handleLogout} className="text-sm font-medium bg-white text-[#1890ff] px-3 py-1 rounded hover:bg-gray-100 transition dark:bg-slate-100 dark:text-slate-900">Logout</a>
+            <a data-testid="nav-logout" href={logoutPath} onClick={handleLogout} className="text-sm font-medium bg-white text-[#1890ff] px-3 py-1 rounded hover:bg-gray-100 transition dark:bg-slate-100 dark:text-slate-900">Logout</a>
           </div>
         )}
       </div>

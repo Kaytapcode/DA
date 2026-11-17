@@ -4,9 +4,13 @@ import { Card } from '@components/ui/Card'
 import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { MainLayout } from '@layouts/MainLayout'
 import { useSysAdminAnalytics } from '@/hooks/useAnalytics'
+import { useOrganization } from '@/hooks/useOrganization'
+import { useEffect } from 'react'
 
 export const SysAdminDashboardPage: React.FC = () => {
   const { data, isLoading, error } = useSysAdminAnalytics()
+  const { organizations, isLoading: orgsLoading, fetchOrganizations } = useOrganization()
+  useEffect(() => { void fetchOrganizations(0, 500) }, [fetchOrganizations])
 
   const stat = (n: number | undefined | null) =>
     isLoading ? '…' : (n ?? 0).toLocaleString()
@@ -74,6 +78,22 @@ export const SysAdminDashboardPage: React.FC = () => {
               </Card>
             ))}
           </div>
+
+          <Card className="mt-8 p-6" data-testid="dashboard-orgs-card">
+            <h3 className="mb-4 font-bold text-on-surface">Organizations</h3>
+            {orgsLoading && <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />}
+            {!orgsLoading && organizations.length === 0 && (
+              <p className="text-sm text-on-surface-variant" data-testid="dashboard-orgs-empty">No organizations yet.</p>
+            )}
+            <div className="space-y-2">
+              {organizations.map((o) => (
+                <div key={o.id} className="flex items-center justify-between rounded-lg bg-surface-container-low p-3" data-testid="dashboard-org-row">
+                  <span className="font-medium text-on-surface" data-testid="dashboard-org-name">{o.name}</span>
+                  <span className="text-xs text-on-surface-variant">/{o.slug}</span>
+                </div>
+              ))}
+            </div>
+          </Card>
         </div>
       </div>
     </MainLayout>

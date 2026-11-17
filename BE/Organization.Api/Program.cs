@@ -32,6 +32,12 @@ try
     builder.Services.AddHttpContextAccessor();
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+        throw new InvalidOperationException("ConnectionStrings:DefaultConnection is empty.");
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
+        throw new InvalidOperationException("Jwt:Key is empty.");
+    if (!builder.Environment.IsDevelopment() && string.IsNullOrEmpty(builder.Configuration["Internal:ApiKey"]))
+        throw new InvalidOperationException("Internal:ApiKey must be set outside Development.");
     builder.Services.AddDbContext<OrganizationDbContext>(options =>
         options.UseNpgsql(connectionString)
     );
@@ -100,11 +106,7 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
-            policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:5000"
-            )
+            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -129,7 +131,8 @@ try
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<Organization.Api.Data.OrganizationDbContext>();
-        await db.Database.MigrateAsync();
+        if (builder.Configuration.GetValue("Database:AutoMigrate", true))
+            await db.Database.MigrateAsync();
         await Organization.Api.Data.DbInitializer.SeedAsync(db);
     }
 
@@ -142,6 +145,5 @@ catch (Exception ex)
     Console.WriteLine(ex.Message);
     Console.WriteLine(ex.StackTrace);
     Console.ResetColor();
-    Console.WriteLine("Press any key to exit...");
-    Console.ReadLine();
+    Environment.ExitCode = 1;
 }

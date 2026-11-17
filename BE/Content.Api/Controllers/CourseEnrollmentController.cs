@@ -20,42 +20,49 @@ namespace Content.Api.Controllers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IConfiguration _config;
         private readonly ILogger<CourseEnrollmentController> _logger;
+        private readonly ICourseAccessService _access;
 
         public CourseEnrollmentController(
             ContentDbContext db,
             IOrgContextService orgCtx,
+            ICourseAccessService access,
             IHttpClientFactory httpClientFactory,
             IConfiguration config,
             ILogger<CourseEnrollmentController> logger)
         {
             _db = db;
             _orgCtx = orgCtx;
+            _access = access;
             _httpClientFactory = httpClientFactory;
             _config = config;
             _logger = logger;
         }
 
-        // Auto-provision an approved student into the course's organization as a 'Member'
-        // (Demo flow 3 / spec §4.2). Cross-service call to Organization.Api's internal endpoint;
-        // idempotent there. Best-effort + logged — the enrollment approval itself already persisted.
-        private async Task EnsureOrgMembershipAsync(Guid orgId, Guid userId, CancellationToken ct)
+        // Auto-provision an approved student into the course's organization as an approved 'Member'
+        // (spec §4.2). Cross-service call to Organization.Api's internal endpoint (idempotent there).
+        // Q1: returns false on failure so the caller compensates (rolls the enrollment back).
+        private async Task<bool> EnsureOrgMembershipAsync(Guid orgId, Guid userId, CancellationToken ct)
         {
             try
             {
-                var baseUrl = _config["Organization:InternalBaseUrl"] ?? "http://localhost:5002";
-                var client = _httpClientFactory.CreateClient();
+                var baseUrl = _config["Organization:InternalBaseUrl"]!.TrimEnd('/');
+                var client = _httpClientFactory.CreateClient("internal");
                 client.Timeout = TimeSpan.FromSeconds(10);
                 var resp = await client.PostAsync(
-                    $"{baseUrl.TrimEnd('/')}/api/internal/orgs/{orgId}/members/{userId}", content: null, ct);
-                if (!resp.IsSuccessStatusCode)
-                    _logger.LogWarning("Auto-provision org membership returned {Status} for user {User} org {Org}",
-                        resp.StatusCode, userId, orgId);
+                    $"{baseUrl}/api/internal/orgs/{orgId}/members/{userId}", content: null, ct);
+                if (resp.IsSuccessStatusCode) return true;
+                _logger.LogWarning("Auto-provision org membership returned {Status} for user {User} org {Org}",
+                    resp.StatusCode, userId, orgId);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to auto-provision org membership for user {User} org {Org}", userId, orgId);
             }
+            return false;
         }
+
+        private ObjectResult ProvisioningFailed() => StatusCode(502, new ApiResponse(false,
+            "Could not add the user to the course's organization; the enrollment was not approved. Try again."));
 
         private async Task<CourseModel?> LoadCourseInScopeAsync(Guid courseId, CancellationToken ct)
         {
@@ -107,9 +114,9 @@ namespace Content.Api.Controllers
             if (distinct.Count == 0) return map;
             try
             {
-                var baseUrl = (_config["Identity:InternalBaseUrl"] ?? "http://localhost:5001").TrimEnd('/');
+                var baseUrl = _config["Identity:InternalBaseUrl"]!.TrimEnd('/');
                 var qs = string.Join("&", distinct.Select(id => $"ids={id}"));
-                var client = _httpClientFactory.CreateClient();
+                var client = _httpClientFactory.CreateClient("internal");
                 client.Timeout = TimeSpan.FromSeconds(8);
                 var resp = await client.GetFromJsonAsync<ApiResponse<IEnumerable<UserInfoLite>>>(
                     $"{baseUrl}/api/internal/users/batch?{qs}", ct);
@@ -132,11 +139,19 @@ namespace Content.Api.Controllers
         {
             // Existence-only (NOT org-scoped): any authenticated user — including one not yet in any
             // organization — may request to join a course from the global catalog (spec §6.3).
+            // M6/Q3: only PUBLISHED courses of non-suspended orgs accept requests.
             var course = await _db.Courses.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Id == courseId, ct);
-            if (course == null) return NotFound(new ApiResponse(false, "Course not found."));
+            if (course == null || course.Status != CourseStatus.Published)
+                return NotFound(new ApiResponse(false, "Course not found."));
 
             var userId = _orgCtx.GetCurrentUserId();
             if (!userId.HasValue) return Unauthorized(new ApiResponse(false, "Invalid user context."));
+
+            var orgStatus = await _access.GetOrgStatusAsync(course.OrgId, ct);
+            if (orgStatus == null)
+                return StatusCode(503, new ApiResponse(false, "Organization status is unavailable. Try again later."));
+            if (orgStatus != "Active")
+                return StatusCode(403, new ApiResponse(false, "This course's organization is suspended."));
 
             var existing = await _db.CourseEnrollments.FirstOrDefaultAsync(
                 e => e.CourseId == courseId && e.UserId == userId.Value, ct);
@@ -188,15 +203,21 @@ namespace Content.Api.Controllers
             if (enrollment == null)
                 return NotFound(new ApiResponse(false, "Enrollment request not found."));
 
+            var (prevStatus, prevRole, prevUpdated) = (enrollment.Status, enrollment.Role, enrollment.UpdatedAt);
             enrollment.Status = "Approved";
             if (request != null && !string.IsNullOrWhiteSpace(request.Role))
                 enrollment.Role = request.Role;
             enrollment.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(ct);
 
-            // Atomic-membership rule (Demo flow 3 / spec §4.2): approving a course enrollment
-            // auto-provisions the user as a Member of the course's organization if not already one.
-            await EnsureOrgMembershipAsync(course.OrgId, userId, ct);
+            // Spec §4.2 + Q1 (compensation): approving also provisions the user as an approved org
+            // Member. If that fails, the enrollment is reverted to its previous (Pending) state.
+            if (!await EnsureOrgMembershipAsync(course.OrgId, userId, ct))
+            {
+                (enrollment.Status, enrollment.Role, enrollment.UpdatedAt) = (prevStatus, prevRole, prevUpdated);
+                await _db.SaveChangesAsync(CancellationToken.None);
+                return ProvisioningFailed();
+            }
 
             return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
                 true,
@@ -258,8 +279,13 @@ namespace Content.Api.Controllers
             await _db.SaveChangesAsync(ct);
 
             // A directly-added member (incl. a Teacher) is also auto-provisioned into the course's
-            // organization, mirroring approval — so they show up under org membership consistently.
-            await EnsureOrgMembershipAsync(course.OrgId, request.UserId, ct);
+            // organization, mirroring approval. Q1 compensation: undo the enrollment on failure.
+            if (!await EnsureOrgMembershipAsync(course.OrgId, request.UserId, ct))
+            {
+                _db.CourseEnrollments.Remove(enrollment);
+                await _db.SaveChangesAsync(CancellationToken.None);
+                return ProvisioningFailed();
+            }
 
             return Ok(new ApiResponse<CourseEnrollmentResponseDto>(
                 true,

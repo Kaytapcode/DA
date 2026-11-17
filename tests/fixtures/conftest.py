@@ -4,6 +4,7 @@ Provides reusable fixtures, API client, test data, and environment setup
 """
 
 import os
+import uuid
 import pytest
 import json
 from typing import Optional, Dict, Any
@@ -170,21 +171,8 @@ class APIClient:
         return {"response": response, "status_code": response.status_code, "data": payload}
 
     def create_course(self, org_id, title: str, description: str = "") -> Dict[str, Any]:
-        """Create a new course. Spec: POST /api/courses with X-Org-Id header."""
-        # Must send X-Org-Id so the BE resolves org context
-        old_headers = dict(self.session.headers)
-        self.session.headers.update({"X-Org-Id": str(org_id)})
-        try:
-            response = self.post(
-                "/api/courses",
-                json={"orgId": str(org_id), "title": title, "description": description}
-            )
-        finally:
-            # Restore headers (remove X-Org-Id if it wasn't there before)
-            if "X-Org-Id" not in old_headers:
-                self.session.headers.pop("X-Org-Id", None)
-            else:
-                self.session.headers["X-Org-Id"] = old_headers["X-Org-Id"]
+        """Create a course. CONTRACT s6/s7: org comes from the JWT; body carries no orgId; new courses are DRAFT."""
+        response = self.post("/api/courses", json={"title": title, "description": description})
         raw = response.json() if response.text else {}
         if isinstance(raw, dict) and "data" in raw and isinstance(raw.get("data"), dict):
             payload = raw["data"]
@@ -254,19 +242,30 @@ def test_user(api_client):
 
 
 @pytest.fixture
-def test_organization(authenticated_client):
-    """Create a test organization"""
-    org_name = f"TestOrg_{datetime.now().timestamp()}"
-    result = authenticated_client.create_organization(org_name, "Test Organization")
+def sysadmin_client(api_client_factory):
+    """API client logged in as the seeded SysAdmin (POST /api/organizations is SysAdmin-only)."""
+    from .auth import SYSADMIN_USERNAME, SYSADMIN_PASSWORD
+    client = api_client_factory()
+    result = client.login_user(SYSADMIN_USERNAME, SYSADMIN_PASSWORD)
+    assert result["status_code"] == 200, f"SysAdmin login failed: {result['data']}"
+    yield client
+    client.logout()
+
+
+@pytest.fixture
+def test_organization(sysadmin_client):
+    """Create a test organization (SysAdmin-only)"""
+    org_name = f"LuminaTest_{uuid.uuid4().hex[:10]}"
+    result = sysadmin_client.create_organization(org_name, "Test Organization")
     assert result["status_code"] == 201, f"Org creation failed: {result['data']}"
     return result["data"]
 
 
 @pytest.fixture
-def test_course(authenticated_client, test_organization):
+def test_course(sysadmin_client, test_organization):
     """Create a test course"""
     course_name = f"TestCourse_{datetime.now().timestamp()}"
-    result = authenticated_client.create_course(
+    result = sysadmin_client.create_course(
         test_organization["id"],
         course_name,
         "Test Course Description"

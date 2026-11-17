@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { MainLayout } from '@layouts/MainLayout'
 import { SysAdminNavbar } from '@components/layout/sysadmin/SysAdminNavbar'
 import { SysAdminSidebar } from '@components/layout/sysadmin/SysAdminSidebar'
@@ -11,6 +11,7 @@ import { MaterialIcon } from '@components/ui/MaterialIcon'
 import { getCurrentLanguage } from '@/i18n/translations'
 import { useOrganization } from '@/hooks/useOrganization'
 import { useSysAdminAnalytics } from '@/hooks/useAnalytics'
+import { useCourse } from '@/hooks/useCourse'
 import { apiClient } from '@/utils/apiClient'
 import { GlobalContentList } from '@components/GlobalContentList'
 
@@ -81,6 +82,15 @@ export const GlobalContentCoursesPage: React.FC = () => {
   const { data, isLoading } = useSysAdminAnalytics()
 
   const stat = (n: number | undefined | null) => (n ?? 0).toLocaleString()
+
+  // All courses platform-wide, newest first (GET /courses returns every org's courses for SysAdmin).
+  const COURSE_PAGE_SIZE = 20
+  const { courses, totalCount, pageIndex, isLoading: coursesLoading, error: coursesError, fetchCourses, deleteCourse } = useCourse()
+  useEffect(() => { void fetchCourses(0, COURSE_PAGE_SIZE) }, [fetchCourses])
+  const removeCourse = (id: string, title: string) => {
+    if (!window.confirm(isVi ? `Xóa vĩnh viễn khóa học "${title}"?` : `Permanently delete course "${title}"?`)) return
+    void deleteCourse(id)
+  }
 
   // ── Absolute Deletion / content moderation (spec §6.5) ──────────────────
   const [modQuery, setModQuery] = useState('')
@@ -167,6 +177,43 @@ export const GlobalContentCoursesPage: React.FC = () => {
         </div>
       </Card>
 
+      <Card className="p-6 mt-6" data-testid="global-course-card">
+        <h3 className="mb-3 font-bold text-on-surface">{isVi ? 'Tất cả khóa học' : 'All Courses'}</h3>
+        {coursesError && <p className="mb-2 text-sm text-error" data-testid="global-course-error">{coursesError}</p>}
+        <div className="space-y-2">
+          {!coursesLoading && courses.length === 0 && (
+            <p className="text-sm text-on-surface-variant" data-testid="global-course-empty">{isVi ? 'Chưa có khóa học nào.' : 'No courses yet.'}</p>
+          )}
+          {courses.map((c) => (
+            <div key={c.id} data-testid="global-course-row" className="flex items-center justify-between rounded-lg border border-outline-variant p-3">
+              <p className="min-w-0 truncate text-sm font-semibold text-on-surface">{c.title}</p>
+              <Button
+                variant="primary"
+                size="sm"
+                data-testid="global-course-delete"
+                onClick={() => removeCourse(c.id, c.title)}
+                disabled={coursesLoading}
+                className="!bg-error hover:!bg-error/90"
+              >
+                <MaterialIcon icon="delete_forever" size="xs" className="mr-1" />
+                {isVi ? 'Xóa vĩnh viễn' : 'Absolute Delete'}
+              </Button>
+            </div>
+          ))}
+        </div>
+        {totalCount > COURSE_PAGE_SIZE && (
+          <div className="mt-3 flex items-center justify-end gap-2 text-sm">
+            <Button variant="secondary" size="sm" data-testid="global-course-prev" disabled={coursesLoading || pageIndex === 0} onClick={() => void fetchCourses(pageIndex - 1, COURSE_PAGE_SIZE)}>
+              {isVi ? 'Trước' : 'Previous'}
+            </Button>
+            <span>{pageIndex + 1} / {Math.ceil(totalCount / COURSE_PAGE_SIZE)}</span>
+            <Button variant="secondary" size="sm" data-testid="global-course-next" disabled={coursesLoading || (pageIndex + 1) * COURSE_PAGE_SIZE >= totalCount} onClick={() => void fetchCourses(pageIndex + 1, COURSE_PAGE_SIZE)}>
+              {isVi ? 'Sau' : 'Next'}
+            </Button>
+          </div>
+        )}
+      </Card>
+
       {/* Absolute Deletion — SysAdmin can permanently remove any content platform-wide (spec §6.5). */}
       <Card className="p-6 mt-6" data-testid="sysadmin-moderation-card">
         <h3 className="mb-1 font-bold text-on-surface">{isVi ? 'Kiểm duyệt & Xóa vĩnh viễn nội dung' : 'Content Moderation & Absolute Deletion'}</h3>
@@ -230,7 +277,7 @@ interface UserItem {
   createdAt: string;
 }
 
-type RoleOption = 'Student' | 'Teacher' | 'OrgAdmin' | 'SysAdmin'
+type RoleOption = 'Student' | 'OrgAdmin' | 'SysAdmin'
 
 interface CreateUserForm {
   username: string
@@ -335,7 +382,6 @@ const CreateUserModal: React.FC<{
               className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface"
             >
               <option value="Student">Student</option>
-              <option value="Teacher">Teacher</option>
               <option value="OrgAdmin">OrgAdmin</option>
               <option value="SysAdmin">SysAdmin</option>
             </select>
@@ -475,6 +521,10 @@ export const GlobalUserManagementPage: React.FC = () => {
                   </Badge>
                 </div>
                 <div className="flex gap-2">
+                  <Link to={`/sysadmin/user-details?userId=${user.id}`} data-testid="user-edit-link"
+                    className="rounded-lg border border-outline-variant px-3 py-1.5 text-xs font-medium text-on-surface hover:bg-surface-container-low">
+                    {isVi ? 'Chi tiết' : 'Edit'}
+                  </Link>
                   {user.id !== currentUserId ? (
                     <Button size="sm" variant="secondary" onClick={() => handleDelete(user)} data-testid="user-delete-btn">
                       {isVi ? 'Xóa' : 'Delete'}
@@ -563,6 +613,45 @@ export const OrganizationDirectoryPage: React.FC = () => {
 
   useEffect(() => { void fetchOrganizations() }, [fetchOrganizations])
 
+  // Organization CRUD (spec §1 SysAdmin). Errors shown are the backend's own messages.
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [formName, setFormName] = useState('')
+  const [formSlug, setFormSlug] = useState('')
+  const [formError, setFormError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const openCreate = () => { setEditingId(null); setFormName(''); setFormSlug(''); setFormError(null); setFormOpen(true) }
+  const openEdit = (o: { id: string; name: string; slug: string }) => {
+    setEditingId(o.id); setFormName(o.name); setFormSlug(o.slug); setFormError(null); setFormOpen(true)
+  }
+  const saveOrg = async () => {
+    setSaving(true); setFormError(null)
+    try {
+      const body = { name: formName.trim(), slug: formSlug.trim() }
+      const res = editingId ? await apiClient.put(`/organizations/${editingId}`, body) : await apiClient.post('/organizations', body)
+      if (res.success) { setFormOpen(false); await fetchOrganizations() }
+      else setFormError(res.message || 'Failed to save organization')
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Failed to save organization')
+    } finally {
+      setSaving(false)
+    }
+  }
+  const deleteOrg = async (o: { id: string; name: string }) => {
+    if (!window.confirm(isVi ? `Xóa tổ chức "${o.name}"?` : `Delete organization "${o.name}"?`)) return
+    setBusyOrg(o.id); setError(null)
+    try {
+      const res = await apiClient.delete(`/organizations/${o.id}`)
+      if (!res.success) setError(res.message || 'Failed to delete organization')
+      await fetchOrganizations()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete organization')
+    } finally {
+      setBusyOrg(null)
+    }
+  }
+
   const displayed = organizations.filter(o =>
     o.name.toLowerCase().includes(search.toLowerCase()) ||
     o.slug.toLowerCase().includes(search.toLowerCase())
@@ -586,7 +675,34 @@ export const OrganizationDirectoryPage: React.FC = () => {
         <Button onClick={() => void fetchOrganizations()} data-testid="org-refresh-btn">
           {isVi ? 'Tải lại' : 'Refresh'}
         </Button>
+        <Button onClick={openCreate} data-testid="org-create-btn">
+          <MaterialIcon icon="add" className="mr-1" />
+          {isVi ? 'Tạo tổ chức' : 'New Organization'}
+        </Button>
       </Card>
+
+      {formOpen && (
+        <Card className="p-6 space-y-3" data-testid="org-form">
+          <h3 className="font-bold text-on-surface">
+            {editingId ? (isVi ? 'Sửa tổ chức' : 'Edit Organization') : (isVi ? 'Tạo tổ chức' : 'New Organization')}
+          </h3>
+          {formError && <p className="text-sm text-error" data-testid="org-form-error">{formError}</p>}
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-on-surface-variant">{isVi ? 'Tên' : 'Name'}</label>
+            <Input value={formName} onChange={(e) => setFormName(e.target.value)} data-testid="org-form-name" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold text-on-surface-variant">Slug</label>
+            <Input value={formSlug} onChange={(e) => setFormSlug(e.target.value)} data-testid="org-form-slug" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setFormOpen(false)} data-testid="org-form-cancel">{isVi ? 'Hủy' : 'Cancel'}</Button>
+            <Button onClick={() => void saveOrg()} disabled={saving} data-testid="org-form-submit">
+              {saving ? '…' : (isVi ? 'Lưu' : 'Save')}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {error && (
         <Card className="p-4">
@@ -621,7 +737,13 @@ export const OrganizationDirectoryPage: React.FC = () => {
                   {org.memberCount} {isVi ? 'thành viên' : 'members'}
                 </p>
               )}
-              <div className="mt-4">
+              <div className="mt-4 mb-2 flex gap-2">
+                <Button size="sm" variant="secondary" className="flex-1 justify-center" data-testid={`org-edit-${org.id}`}
+                  onClick={() => openEdit(org)}>{isVi ? 'Sửa' : 'Edit'}</Button>
+                <Button size="sm" variant="secondary" className="flex-1 justify-center" data-testid={`org-delete-${org.id}`}
+                  disabled={busyOrg === org.id} onClick={() => void deleteOrg(org)}>{isVi ? 'Xóa' : 'Delete'}</Button>
+              </div>
+              <div>
                 {org.status === 'Suspended' ? (
                   <Button size="sm" variant="secondary" className="w-full justify-center"
                     data-testid={`org-reactivate-${org.id}`} disabled={busyOrg === org.id}
@@ -800,7 +922,7 @@ export const UserDetailsSystemadminPage: React.FC = () => {
       {user && !isLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="lg:col-span-2 p-6 space-y-3">
-            <h3 className="font-bold text-on-surface text-lg">{user.username}</h3>
+            <h3 className="font-bold text-on-surface text-lg" data-testid="user-detail-username">{user.username}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-lg bg-surface-container-low">
                 <span className="text-on-surface-variant">{isVi ? 'Email: ' : 'Email: '}</span>{user.email}
@@ -821,7 +943,7 @@ export const UserDetailsSystemadminPage: React.FC = () => {
           </Card>
           <Card className="p-6 space-y-3">
             <h3 className="font-bold text-on-surface">{isVi ? 'Hành động quản lý' : 'Management'}</h3>
-            {actionMsg && <p className="text-sm text-success">{actionMsg}</p>}
+            {actionMsg && <p className="text-sm text-success" data-testid="user-detail-msg">{actionMsg}</p>}
             <div>
               <label className="block text-xs font-semibold text-on-surface-variant mb-1">
                 {isVi ? 'Đổi vai trò' : 'Change Role'}
@@ -829,14 +951,14 @@ export const UserDetailsSystemadminPage: React.FC = () => {
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as RoleOption)}
+                data-testid="user-detail-role-select"
                 className="w-full rounded-md border border-outline bg-surface px-3 py-2 text-sm text-on-surface mb-2"
               >
                 <option value="Student">Student</option>
-                <option value="Teacher">Teacher</option>
                 <option value="OrgAdmin">OrgAdmin</option>
                 <option value="SysAdmin">SysAdmin</option>
               </select>
-              <Button className="w-full" onClick={handleRoleUpdate} disabled={saving || newRole === user.role}>
+              <Button className="w-full" data-testid="user-detail-role-save" onClick={handleRoleUpdate} disabled={saving || newRole === user.role}>
                 {saving ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu vai trò' : 'Save Role')}
               </Button>
             </div>

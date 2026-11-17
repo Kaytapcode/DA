@@ -24,7 +24,7 @@ namespace Content.Api.Models
 
         [Required]
         [Column("title")]
-        [StringLength(200)]
+        [StringLength(255)]
         public string Title { get; set; } = string.Empty;
 
         [Column("description")]

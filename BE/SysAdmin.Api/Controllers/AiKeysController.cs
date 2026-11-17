@@ -123,31 +123,5 @@ namespace SysAdmin.Api.Controllers
             await _db.SaveChangesAsync(ct);
             return Ok(new ApiResponse(true, "AI key removed."));
         }
-
-        // GET /api/sysadmin/ai-keys/active?provider=OpenRouter
-        // Internal endpoint AI.Api will call to fetch the plaintext active key for a provider.
-        // Network-restricted in deployment; protected by SysAdmin role for direct use.
-        [HttpGet("active")]
-        public async Task<IActionResult> GetActivePlaintext([FromQuery] string provider, CancellationToken ct)
-        {
-            if (string.IsNullOrWhiteSpace(provider))
-                return BadRequest(new ApiResponse(false, "Provider is required."));
-
-            var entity = await _db.AiKeys.AsNoTracking()
-                .FirstOrDefaultAsync(k => k.Provider == provider && k.IsActive, ct);
-            if (entity == null) return NotFound(new ApiResponse(false, "No active key for provider."));
-
-            string plaintext;
-            try
-            {
-                plaintext = _protector.Unprotect(entity.KeyCiphertext);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new ApiResponse(false, $"Failed to decrypt key: {ex.Message}"));
-            }
-
-            return Ok(new ApiResponse<object>(true, new { provider = entity.Provider, apiKey = plaintext, lastFour = entity.KeyLastFour }, null));
-        }
     }
 }

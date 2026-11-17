@@ -7,6 +7,7 @@ import { Input } from '@components/ui/Input'
 import { Badge } from '@components/ui/Badge'
 import { MainLayout } from '@layouts/MainLayout'
 import { useOrgContext } from '@/contexts/OrgContext'
+import { useAuthContext } from '@/contexts/AuthContext'
 import { apiClient } from '@/utils/apiClient'
 
 // Spec §1, OrgAdmin: "Manage Users within the Organization."
@@ -36,6 +37,7 @@ interface UserLookupItem {
 
 export const MemberManagementPage: React.FC = () => {
   const { org } = useOrgContext()
+  const { user: me } = useAuthContext()
   const orgId = org?.id ?? localStorage.getItem('org_id') ?? ''
   const [members, setMembers] = useState<MemberRow[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -75,6 +77,21 @@ export const MemberManagementPage: React.FC = () => {
 
   useEffect(() => { void refresh() }, [refresh])
 
+
+  // PUT /orgs/{id}/members/{userId}: org roles are Member | OrgAdmin only (route id, no body id).
+  const handleRoleChange = async (m: MemberRow, role: string) => {
+    setBusyUserId(m.userId)
+    setError(null)
+    try {
+      const res = await apiClient.put(`/orgs/${orgId}/members/${m.userId}`, { role })
+      if (!res.success) throw new Error(res.message || 'Failed to update role')
+      await refresh()
+    } catch (err) {
+      setError((err as { message?: string })?.message || 'Failed to update role')
+    } finally {
+      setBusyUserId(null)
+    }
+  }
 
   const handleRemove = async (m: MemberRow) => {
     if (!confirm(`Remove ${m.username} from the organization?`)) return
@@ -174,7 +191,7 @@ export const MemberManagementPage: React.FC = () => {
               <h2 className="text-3xl font-bold text-on-surface mb-2 font-headline">Members</h2>
               <p className="text-on-surface-variant">Manage organization members and roles</p>
             </div>
-            <Button onClick={() => { setShowAddMember(v => !v); setAddError(null); setAddSuccess(null) }}>
+            <Button data-testid="member-add-toggle" onClick={() => { setShowAddMember(v => !v); setAddError(null); setAddSuccess(null) }}>
               {showAddMember ? 'Cancel' : '+ Add Member'}
             </Button>
           </div>
@@ -209,6 +226,7 @@ export const MemberManagementPage: React.FC = () => {
               <h3 className="font-bold text-on-surface mb-4">Add Member from System Users</h3>
               <div className="flex gap-2 mb-3">
                 <Input
+                  data-testid="member-add-search"
                   type="text"
                   placeholder="Search by username or email..."
                   value={addSearch}
@@ -216,7 +234,7 @@ export const MemberManagementPage: React.FC = () => {
                   onKeyDown={(e) => e.key === 'Enter' && void searchUsers()}
                   className="flex-1"
                 />
-                <Button variant="secondary" onClick={() => void searchUsers()} disabled={isSearching || !addSearch.trim()}>
+                <Button data-testid="member-add-search-btn" variant="secondary" onClick={() => void searchUsers()} disabled={isSearching || !addSearch.trim()}>
                   {isSearching ? 'Searching...' : 'Search'}
                 </Button>
               </div>
@@ -226,6 +244,7 @@ export const MemberManagementPage: React.FC = () => {
                   {addResults.map((u) => (
                     <button
                       key={u.id}
+                      data-testid={`member-add-result-${u.id}`}
                       type="button"
                       onClick={() => { setSelectedUser(u); setAddResults([]) }}
                       className="flex w-full items-center gap-3 border-b border-outline-variant/40 px-4 py-2 text-left text-sm hover:bg-surface-container-low last:border-b-0"
@@ -251,7 +270,7 @@ export const MemberManagementPage: React.FC = () => {
                   >
                     {ADD_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select> */}
-                  <Button onClick={() => void handleAddMember()} disabled={isAdding}>
+                  <Button data-testid="member-add-confirm" onClick={() => void handleAddMember()} disabled={isAdding}>
                     {isAdding ? 'Adding...' : 'Add'}
                   </Button>
                   <Button variant="ghost" onClick={() => { setSelectedUser(null); setAddSearch('') }}>
@@ -319,7 +338,7 @@ export const MemberManagementPage: React.FC = () => {
                       </tr>
                     )}
                     {filtered.map((m) => (
-                      <tr key={m.userId} className="border-b border-outline-variant hover:bg-surface-container-low">
+                      <tr key={m.userId} data-testid={`member-row-${m.userId}`} className="border-b border-outline-variant hover:bg-surface-container-low">
                         <td className="px-6 py-4">{m.username || '—'}</td>
                         <td className="px-6 py-4 text-on-surface-variant">{m.email || '—'}</td>
                         <td className="px-6 py-4">
@@ -331,22 +350,30 @@ export const MemberManagementPage: React.FC = () => {
                           {m.joinDate ? new Date(m.joinDate).toLocaleDateString() : '—'}
                         </td>
                         <td className="px-6 py-4">
-                          {/* <select
-                            className="px-2 py-1 rounded border border-outline-variant bg-surface text-on-surface text-sm mr-2"
-                            value={m.role}
-                            disabled={busyUserId === m.userId}
-                            onChange={(e) => void handleRoleChange(m, e.target.value)}
-                          >
-                            {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-                          </select> */}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => void handleRemove(m)}
-                            disabled={busyUserId === m.userId}
-                          >
-                            Remove
-                          </Button>
+                          {m.userId !== me?.id && (
+                            <>
+                              {m.role !== 'Owner' && (
+                                <select
+                                  data-testid={`member-role-select-${m.userId}`}
+                                  className="px-2 py-1 rounded border border-outline-variant bg-surface text-on-surface text-sm mr-2"
+                                  value={m.role}
+                                  disabled={busyUserId === m.userId}
+                                  onChange={(e) => void handleRoleChange(m, e.target.value)}
+                                >
+                                  {ADD_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                data-testid={`member-remove-${m.userId}`}
+                                onClick={() => void handleRemove(m)}
+                                disabled={busyUserId === m.userId}
+                              >
+                                Remove
+                              </Button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))}

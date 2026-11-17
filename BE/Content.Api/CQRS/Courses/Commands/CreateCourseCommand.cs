@@ -49,6 +49,6 @@ public class CreateCourseCommandHandler : IRequestHandler<CreateCourseCommand, C
         }
 
         return new CourseResponseDto(created.Id, created.OrgId, created.Title,
-            created.Description, created.CourseCode, created.CreatedBy, created.CreatedAt);
+            created.Description, created.CourseCode, created.CreatedBy, created.CreatedAt, created.Status);
     }
 }

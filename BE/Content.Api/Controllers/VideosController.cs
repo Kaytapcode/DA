@@ -97,9 +97,32 @@ namespace Content.Api.Controllers
             return await _access.CanViewContentAsync(contentId);
         }
 
+        // Write guard (Q2/M13): SysAdmin, the content owner, or anyone who can teach a course that
+        // contains this content (per-course Teacher / OrgAdmin of that org).
+        private async Task<bool> VerifyContentWriteAsync(Guid contentId)
+        {
+            if (_orgContext.IsSysAdmin()) return true;
+            var userId = _orgContext.GetCurrentUserId();
+            if (userId == null) return false;
+
+            var content = await _db.Contents.AsNoTracking().FirstOrDefaultAsync(c => c.Id == contentId);
+            if (content == null) return false;
+            if (content.CreatedByUserId == userId) return true;
+
+            var courseIds = await _db.ModuleContents
+                .Where(mc => mc.ContentId == contentId && mc.Module != null)
+                .SelectMany(mc => mc.Module!.CourseModules)
+                .Select(cm => cm.CourseId)
+                .Distinct()
+                .ToListAsync();
+            foreach (var cid in courseIds)
+                if (await _access.CanTeachAsync(cid)) return true;
+            return false;
+        }
+
         // POST /api/videos - Create YouTube video
         [HttpPost]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // Q2: gate is owner / CanTeach (VerifyContentWriteAsync), not a JWT-role policy
         public async Task<IActionResult> CreateVideo([FromBody] CreateVideoRequestDto request, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(request.YouTubeUrl))
@@ -109,7 +132,7 @@ namespace Content.Api.Controllers
             if (string.IsNullOrEmpty(videoId))
                 return BadRequest(new ApiResponse(Success: false, Message: "Invalid YouTube URL format."));
 
-            if (!await VerifyContentAccessAsync(request.ContentId))
+            if (!await VerifyContentWriteAsync(request.ContentId))
                 return Forbid();
 
             var thumbnailUrl = $"https://i.ytimg.com/vi/{videoId}/maxresdefault.jpg";
@@ -311,14 +334,14 @@ namespace Content.Api.Controllers
 
         // PUT /api/videos/{videoId} - Update video
         [HttpPut("{videoId:guid}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize] // Q2: gate is owner / CanTeach (VerifyContentWriteAsync), not a JWT-role policy
         public async Task<IActionResult> UpdateVideo(Guid videoId, [FromBody] UpdateVideoRequestDto request, CancellationToken ct = default)
         {
             var video = await _videoRepository.GetByIdAsync(videoId, ct);
             if (video == null)
                 return NotFound(new ApiResponse(Success: false, Message: "Video not found."));
 
-            if (!await VerifyContentAccessAsync(video.ContentId))
+            if (!await VerifyContentWriteAsync(video.ContentId))
                 return Forbid();
 
             if (!string.IsNullOrWhiteSpace(request.YouTubeUrl))

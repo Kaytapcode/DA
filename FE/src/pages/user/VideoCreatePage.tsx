@@ -206,7 +206,7 @@ export const VideoCreatePage: React.FC = () => {
 								)}
 								{savedVideo && (
 									<div className="flex justify-end">
-										<Button onClick={() => navigate('/user/library')}>
+										<Button onClick={() => navigate('/user/library')} data-testid="video-back-library-btn">
 											{t('Về thư viện', 'Back to Library')}
 										</Button>
 									</div>

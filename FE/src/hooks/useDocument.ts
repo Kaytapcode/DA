@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import axios from 'axios'
 import { apiClient } from '@/utils/apiClient'
-import { tokenStore } from '@/utils/tokenStore'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 export interface DocumentItem {
   id: string
@@ -66,23 +63,11 @@ export const useDocument = (selectedDocumentId: string | null, courseId?: string
     try {
       const listEntry = documents.find((document) => document.id === documentId) ?? null
 
-      const token = tokenStore.getAccessToken()
-      const orgId = localStorage.getItem('org_id')
-      const orgSlug = localStorage.getItem('org_slug')
-
-      const response = await axios.get(`${API_BASE_URL}/documents/${documentId}`, {
-        responseType: 'blob',
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          ...(orgId ? { 'X-Org-Id': orgId } : {}),
-          ...(orgSlug ? { 'X-Org-Slug': orgSlug } : {}),
-        },
-      })
-
-      const contentType = String(response.headers['content-type'] || '').split(';')[0].trim()
+      // apiClient returns the Blob itself (response interceptor unwraps .data); MIME is blob.type.
+      const rawBlob = (await apiClient.get(`/documents/${documentId}`, { responseType: 'blob' })) as unknown as Blob
+      const contentType = rawBlob.type.split(';')[0].trim()
       // Re-wrap with explicit MIME so iframe/img render inline. Without an explicit
       // type some browsers treat the blob URL as application/octet-stream and force a download.
-      const rawBlob = response.data as Blob
       const typedBlob = contentType ? new Blob([rawBlob], { type: contentType }) : rawBlob
       clearBlobUrl()
       const blobUrl = URL.createObjectURL(typedBlob)

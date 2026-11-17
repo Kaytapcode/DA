@@ -60,9 +60,16 @@ namespace Content.Api.Controllers
             var userId = _orgCtx.GetCurrentUserId();
             if (!userId.HasValue) return Unauthorized(new ApiResponse(false, "Invalid user context."));
 
-            var q = _db.Courses.IgnoreQueryFilters().AsQueryable();
+            // M6/Q3: only PUBLISHED courses, and none from a Suspended org (unknown status = view, Q8).
+            var q = _db.Courses.IgnoreQueryFilters().Where(c => c.Status == CourseStatus.Published);
             if (!string.IsNullOrWhiteSpace(query))
                 q = q.Where(c => EF.Functions.ILike(c.Title, $"%{query.Trim()}%"));
+
+            var suspended = new List<Guid>();
+            foreach (var orgId in await q.Select(c => c.OrgId).Distinct().ToListAsync(ct))
+                if (await _access.GetOrgStatusAsync(orgId, ct) == "Suspended") suspended.Add(orgId);
+            if (suspended.Count > 0)
+                q = q.Where(c => !suspended.Contains(c.OrgId));
 
             var items = await q
                 .OrderByDescending(c => c.CreatedAt)
@@ -103,12 +110,12 @@ namespace Content.Api.Controllers
                 return NotFound(new ApiResponse(false, "Course not found"));
 
             var dto = new CourseResponseDto(course.Id, course.OrgId, course.Title,
-                course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt);
+                course.Description, course.CourseCode, course.CreatedBy, course.CreatedAt, course.Status);
             return Ok(new ApiResponse<CourseResponseDto>(true, dto, "Course retrieved successfully"));
         }
 
         [HttpPost]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize(Policy = "RequireOrgAdmin")] // Q2: course CRUD = OrgAdmin of the org (org scope in handler) or SysAdmin
         [ProducesResponseType(typeof(ApiResponse<CourseResponseDto>), 201)]
         public async Task<IActionResult> CreateCourse([FromBody] CreateCourseRequestDto request)
         {
@@ -119,6 +126,7 @@ namespace Content.Api.Controllers
 
             var userId = _orgCtx.GetCurrentUserId();
             if (!userId.HasValue) return BadRequest(new ApiResponse(false, "Invalid user context."));
+            if (await SuspendedOrgResultAsync() is { } blocked) return blocked;
 
             var created = await _mediator.Send(new CreateCourseCommand(
                 orgId.Value, userId.Value, request.Title, request.Description, request.CourseCode));
@@ -128,11 +136,12 @@ namespace Content.Api.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize(Policy = "RequireOrgAdmin")] // Q2: course CRUD = OrgAdmin of the org (org scope in handler) or SysAdmin
         [ProducesResponseType(typeof(ApiResponse<CourseResponseDto>), 200)]
         public async Task<IActionResult> UpdateCourse(Guid id, [FromBody] UpdateCourseRequestDto request)
         {
             if (!ModelState.IsValid) return BadRequest(new ApiResponse(false, "Invalid request data"));
+            if (await SuspendedOrgResultAsync() is { } blocked) return blocked;
 
             var updated = await _mediator.Send(new UpdateCourseCommand(
                 id, _orgCtx.GetCurrentOrgId(), _orgCtx.IsSysAdmin(),
@@ -143,12 +152,13 @@ namespace Content.Api.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize(Policy = "RequireOrgAdmin")] // Q2: course CRUD = OrgAdmin of the org (org scope in handler) or SysAdmin
         public async Task<IActionResult> DeleteCourse(Guid id)
         {
             var orgId = _orgCtx.GetCurrentOrgId();
             if (!_orgCtx.IsSysAdmin() && !orgId.HasValue)
                 return BadRequest(new ApiResponse(false, "No org context."));
+            if (await SuspendedOrgResultAsync() is { } blocked) return blocked;
 
             var deleted = await _mediator.Send(new DeleteCourseCommand(id, orgId, _orgCtx.IsSysAdmin()));
             if (!deleted) return NotFound(new ApiResponse(false, "Course not found"));
@@ -157,17 +167,31 @@ namespace Content.Api.Controllers
 
         // T3.6: toggle DRAFT/PUBLISHED/ARCHIVED
         [HttpPatch("{id}/status")]
-        [Authorize(Policy = "RequireTeacher")]
+        [Authorize(Policy = "RequireOrgAdmin")] // Q2: course CRUD = OrgAdmin of the org (org scope in handler) or SysAdmin
         public async Task<IActionResult> SetStatus(Guid id, [FromBody] SetContentStatusRequestDto request)
         {
-            if (request.Status is not ("DRAFT" or "PUBLISHED" or "ARCHIVED"))
+            if (!CourseStatus.All.Contains(request.Status))
                 return BadRequest(new ApiResponse(false, "Invalid status. Use DRAFT, PUBLISHED, or ARCHIVED."));
+            if (await SuspendedOrgResultAsync() is { } blocked) return blocked;
 
             var updated = await _mediator.Send(new SetCourseStatusCommand(
                 id, request.Status, _orgCtx.GetCurrentOrgId(), _orgCtx.IsSysAdmin()));
 
             if (!updated) return NotFound(new ApiResponse(false, "Course not found"));
             return Ok(new ApiResponse(true, $"Course status set to {request.Status}."));
+        }
+
+        // Spec §6.2 (approved contract change 2026-11-17): a Suspended org's courses are frozen for everyone
+        // but SysAdmin. Course writes are org-scoped in the handlers, so the caller's org is the course's org.
+        // Q8: status unknown -> block writes (503).
+        private async Task<IActionResult?> SuspendedOrgResultAsync()
+        {
+            var orgId = _orgCtx.GetCurrentOrgId();
+            if (_orgCtx.IsSysAdmin() || !orgId.HasValue) return null;
+            var status = await _access.GetOrgStatusAsync(orgId.Value, fresh: true);
+            if (status == null)
+                return StatusCode(503, new ApiResponse(false, "Organization status is unavailable. Try again later."));
+            return status == "Active" ? null : StatusCode(403, new ApiResponse(false, "Your organization is suspended."));
         }
 
         // T3.8: search with LIKE/ILIKE

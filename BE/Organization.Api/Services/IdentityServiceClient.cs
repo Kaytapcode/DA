@@ -17,8 +17,9 @@ namespace Organization.Api.Services
         {
             _http = http;
             _cache = cache;
-            _baseUrl = config["Identity:InternalBaseUrl"]?.TrimEnd('/')
-                ?? "http://localhost:5001";
+            _baseUrl = (config["Identity:InternalBaseUrl"] ?? "").TrimEnd('/');
+            var key = config["Internal:ApiKey"];
+            if (!string.IsNullOrEmpty(key)) _http.DefaultRequestHeaders.TryAddWithoutValidation("X-Internal-Key", key);
         }
 
         public async Task<Dictionary<Guid, (string Username, string Email)>> GetUsersAsync(

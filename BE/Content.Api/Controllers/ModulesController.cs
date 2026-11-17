@@ -65,11 +65,16 @@ namespace Content.Api.Controllers
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
 
+            // Q5 / spec §3.2: a blank title falls back to "Topic N" (N = existing module count + 1).
+            var title = string.IsNullOrWhiteSpace(request.Title)
+                ? $"Topic {(await _moduleRepo.GetByCourseAsync(courseId)).Count() + 1}"
+                : request.Title.Trim();
+
             var module = new ModuleModel
             {
                 OrgId = course.OrgId,
                 CreatedBy = _orgCtx.GetCurrentUserId(),
-                Title = request.Title,
+                Title = title,
                 Description = request.Description
             };
 
@@ -89,10 +94,12 @@ namespace Content.Api.Controllers
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
 
+            if (!await _moduleRepo.BelongsToCourseAsync(moduleId, courseId))
+                return NotFound(new ApiResponse(false, "Module not found."));
             var module = await _moduleRepo.GetByIdAsync(moduleId);
             if (module == null) return NotFound(new ApiResponse(false, "Module not found."));
 
-            module.Title = request.Title;
+            if (!string.IsNullOrWhiteSpace(request.Title)) module.Title = request.Title.Trim(); // blank keeps the current title
             module.Description = request.Description;
             var updated = await _moduleRepo.UpdateAsync(module);
             return Ok(new ApiResponse<ModuleResponseDto>(true,
@@ -110,6 +117,8 @@ namespace Content.Api.Controllers
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
 
+            if (!await _moduleRepo.BelongsToCourseAsync(moduleId, courseId))
+                return NotFound(new ApiResponse(false, "Module not found."));
             await _moduleRepo.DeleteAsync(moduleId, courseId);
             return Ok(new ApiResponse(true, "Module deleted."));
         }
@@ -124,6 +133,8 @@ namespace Content.Api.Controllers
             if (!await _access.CanTeachAsync(courseId))
                 return Forbid();
 
+            if (!await _moduleRepo.BelongsToCourseAsync(moduleId, courseId))
+                return NotFound(new ApiResponse(false, "Module not found."));
             await _moduleRepo.ReorderAsync(courseId, moduleId, request.NewIndex);
             return Ok(new ApiResponse(true, "Module reordered."));
         }

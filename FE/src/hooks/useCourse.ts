@@ -7,6 +7,7 @@ export interface Course {
   title: string;
   description?: string;
   courseCode?: string;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   createdBy: string;
   createdAt: string;
 }
@@ -16,12 +17,12 @@ export interface CourseList {
   title: string;
   description?: string;
   courseCode?: string;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   createdAt: string;
   moduleCount?: number;
 }
 
 export interface CreateCoursePayload {
-  orgId: string;
   title: string;
   description?: string;
   courseCode?: string;

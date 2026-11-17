@@ -5,7 +5,7 @@ namespace Shared.Contracts.Requests
 {
     public record CreateOrganizationRequestDto(
         [Required(ErrorMessage = "Organization name is required")]
-        [StringLength(100, MinimumLength = 1, ErrorMessage = "Organization name must be between 1 and 100 characters")]
+        [StringLength(200, MinimumLength = 2, ErrorMessage = "Organization name must be between 2 and 200 characters")]
         string Name,
 
         [StringLength(500, ErrorMessage = "Address cannot exceed 500 characters")]
@@ -18,11 +18,8 @@ namespace Shared.Contracts.Requests
     );
 
     public record UpdateOrganizationRequestDto(
-        [Required(ErrorMessage = "Organization ID is required")]
-        Guid Id,
-
         [Required(ErrorMessage = "Organization name is required")]
-        [StringLength(100, MinimumLength = 1, ErrorMessage = "Organization name must be between 1 and 100 characters")]
+        [StringLength(200, MinimumLength = 2, ErrorMessage = "Organization name must be between 2 and 200 characters")]
         string Name,
 
         [StringLength(500, ErrorMessage = "Address cannot exceed 500 characters")]

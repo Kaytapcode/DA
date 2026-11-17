@@ -24,13 +24,13 @@ public class GetCoursesQueryHandler : IRequestHandler<GetCoursesQuery, Paginated
         if (query.IsSysAdmin)
         {
             var all = await _repo.GetAllAsync(query.PageIndex, query.PageSize, ct);
-            items = all.ConvertAll(c => new CourseListResponseDto(c.Id, c.Title, c.Description, c.CourseCode, c.CreatedAt, c.CourseModules?.Count ?? 0));
+            items = all.ConvertAll(c => new CourseListResponseDto(c.Id, c.Title, c.Description, c.CourseCode, c.CreatedAt, c.CourseModules?.Count ?? 0, c.Status));
             total = await _repo.GetTotalCountAsync(ct);
         }
         else
         {
             var (courses, count) = await _repo.GetByOrgIdAsync(query.OrgId!.Value, query.PageIndex, query.PageSize, ct);
-            items = courses.ConvertAll(c => new CourseListResponseDto(c.Id, c.Title, c.Description, c.CourseCode, c.CreatedAt, c.CourseModules?.Count ?? 0));
+            items = courses.ConvertAll(c => new CourseListResponseDto(c.Id, c.Title, c.Description, c.CourseCode, c.CreatedAt, c.CourseModules?.Count ?? 0, c.Status));
             total = count;
         }
 

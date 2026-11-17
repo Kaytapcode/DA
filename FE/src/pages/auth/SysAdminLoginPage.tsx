@@ -12,7 +12,7 @@ interface FormErrors {
 
 export const SysAdminLoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading } = useAuthContext();
+  const { login, logout, isLoading } = useAuthContext();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -38,6 +38,7 @@ export const SysAdminLoginPage: React.FC = () => {
     try {
       const { user: authUser } = await login(username.trim(), password);
       if (authUser?.role !== 'SysAdmin') {
+        await logout() // never leave a non-SysAdmin session authenticated
         setSubmitError('Access restricted to System Administrators only.');
         return;
       }

@@ -4,7 +4,7 @@ namespace Shared.Contracts.Requests
 {
     public record OrgAdminRegisterRequestDto(
         [Required]
-        [StringLength(50, MinimumLength = 3)]
+        [StringLength(100, MinimumLength = 3)]
         string Username,
 
         [Required]
@@ -16,7 +16,7 @@ namespace Shared.Contracts.Requests
         string Password,
 
         [Required]
-        [StringLength(100, MinimumLength = 1)]
+        [StringLength(200, MinimumLength = 2)]
         string OrganizationName,
 
         [Required]

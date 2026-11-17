@@ -19,8 +19,9 @@ namespace Identity.Api.Services
         public OrganizationServiceClient(HttpClient http, IConfiguration config)
         {
             _http = http;
-            _baseUrl = config["Organization:InternalBaseUrl"]?.TrimEnd('/')
-                ?? "http://localhost:5002";
+            _baseUrl = (config["Organization:InternalBaseUrl"] ?? "").TrimEnd('/');
+            var key = config["Internal:ApiKey"];
+            if (!string.IsNullOrEmpty(key)) _http.DefaultRequestHeaders.TryAddWithoutValidation("X-Internal-Key", key);
         }
 
         public async Task<bool> IsUserMemberAsync(Guid userId, Guid orgId, CancellationToken ct = default)

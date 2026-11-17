@@ -77,3 +77,8 @@ BE/Content.Api/uploads/
 tests/**/__pycache__/
 tests/reports/
 tests/_screens/
+
+# Allow the committed template (.env* above ignores it)
+!.env.example
+!.gitattributes
+!.dockerignore

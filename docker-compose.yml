@@ -1,0 +1,122 @@
+# One-command stack: docker compose up -d --build   (gateway on :5000; add --profile https for Caddy TLS)
+x-api: &api
+  restart: unless-stopped
+  depends_on:
+    postgres: { condition: service_healthy }
+
+x-env: &env
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_URLS: http://+:8080
+  DOTNET_gcServer: "0"
+  Jwt__Key: ${JWT_KEY:?set JWT_KEY in .env}
+  Internal__ApiKey: ${INTERNAL_API_KEY:?set INTERNAL_API_KEY in .env}
+  Database__AutoMigrate: "true"
+  Cors__AllowedOrigins__0: ${CORS_ORIGIN:-http://localhost:5173}
+  Identity__InternalBaseUrl: http://identity:8080
+  Organization__InternalBaseUrl: http://organization:8080
+  Content__InternalBaseUrl: http://content:8080
+  SysAdmin__InternalBaseUrl: http://sysadmin:8080
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    mem_limit: 512m
+
+  identity:
+    <<: *api
+    build: { context: ./BE, dockerfile: Identity.Api/Dockerfile }
+    environment:
+      <<: *env
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=lumina_identity;Username=postgres;Password=${POSTGRES_PASSWORD}
+    mem_limit: 384m
+
+  organization:
+    <<: *api
+    build: { context: ./BE, dockerfile: Organization.Api/Dockerfile }
+    environment:
+      <<: *env
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=lumina_organization;Username=postgres;Password=${POSTGRES_PASSWORD}
+    mem_limit: 384m
+
+  content:
+    <<: *api
+    build: { context: ./BE, dockerfile: Content.Api/Dockerfile }
+    environment:
+      <<: *env
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=lumina_content;Username=postgres;Password=${POSTGRES_PASSWORD}
+      Storage__LocalPath: /data/uploads
+    volumes:
+      - uploads:/data/uploads
+    mem_limit: 512m
+
+  ai:
+    <<: *api
+    build: { context: ./BE, dockerfile: AI.Api/Dockerfile }
+    environment:
+      <<: *env
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=lumina_ai;Username=postgres;Password=${POSTGRES_PASSWORD}
+      # .env may use OPENROUTER_API_KEY (documented) or the ASP.NET-style OpenRouter__* names
+      OpenRouter__ApiKey: ${OPENROUTER_API_KEY:-${OpenRouter__ApiKey:-}}
+      OpenRouter__Model: ${OpenRouter__Model:-stepfun/step-3.5-flash}
+      OpenRouter__FallbackModel: ${OpenRouter__FallbackModel:-meta-llama/llama-3.1-8b-instruct}
+    mem_limit: 384m
+
+  sysadmin:
+    <<: *api
+    build: { context: ./BE, dockerfile: SysAdmin.Api/Dockerfile }
+    environment:
+      <<: *env
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=lumina_sysadmin;Username=postgres;Password=${POSTGRES_PASSWORD}
+      DataProtection__KeysPath: /data/keys
+    volumes:
+      - dpkeys:/data/keys
+    mem_limit: 256m
+
+  gateway:
+    build: { context: ./BE, dockerfile: Gateway.Api/Dockerfile }
+    restart: unless-stopped
+    depends_on: [identity, organization, content, ai, sysadmin]
+    ports:
+      - "5000:5000"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_gcServer: "0"
+      Jwt__Key: ${JWT_KEY:?set JWT_KEY in .env}
+      Cors__AllowedOrigins__0: ${CORS_ORIGIN:-http://localhost:5173}
+      ReverseProxy__Clusters__identityCluster__Destinations__destination__Address: http://identity:8080
+      ReverseProxy__Clusters__orgCluster__Destinations__destination__Address: http://organization:8080
+      ReverseProxy__Clusters__contentCluster__Destinations__destination__Address: http://content:8080
+      ReverseProxy__Clusters__aiCluster__Destinations__destination__Address: http://ai:8080
+      ReverseProxy__Clusters__sysAdminCluster__Destinations__destination__Address: http://sysadmin:8080
+    mem_limit: 256m
+
+  caddy:
+    image: caddy:2
+    profiles: [https]
+    restart: unless-stopped
+    depends_on: [gateway]
+    ports: ["80:80", "443:443"]
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    mem_limit: 64m
+
+volumes:
+  pgdata:
+  uploads:
+  dpkeys:
+  caddy_data:

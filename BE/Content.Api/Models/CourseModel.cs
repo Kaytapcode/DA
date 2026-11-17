@@ -21,7 +21,7 @@ namespace Content.Api.Models
 
         [Required]
         [Column("title")]
-        [StringLength(200)]
+        [StringLength(255)]
         public string Title { get; set; } = string.Empty;
 
         [Column("description")]
@@ -34,7 +34,7 @@ namespace Content.Api.Models
 
         [Column("status")]
         [StringLength(50)]
-        public string Status { get; set; } = "ACTIVE"; // 'ACTIVE', 'ARCHIVED', 'DRAFT'
+        public string Status { get; set; } = "DRAFT"; // 'DRAFT', 'PUBLISHED', 'ARCHIVED' (Q3)
 
         [Column("created_at")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

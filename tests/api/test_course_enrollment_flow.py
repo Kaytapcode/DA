@@ -50,7 +50,17 @@ def fresh_course(oa):
     )
     assert r.status_code in (200, 201), r.text
     data = r.json()
-    return (data.get("data") or data)
+    course = (data.get("data") or data)
+    # CONTRACT s7: new courses are DRAFT; request/catalog only work for PUBLISHED.
+    assert course.get("status") == "DRAFT", f"New course must be DRAFT: {course}"
+    r = requests.patch(
+        f"{API_BASE}/api/courses/{course['id']}/status",
+        json={"status": "PUBLISHED"},
+        headers=_headers(oa["token"], oa["org_id"]),
+        timeout=TIMEOUT,
+    )
+    assert r.status_code == 200, f"Publish failed: {r.text}"
+    return course
 
 
 def _make_student(oa):

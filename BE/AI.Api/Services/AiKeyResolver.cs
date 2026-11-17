@@ -70,11 +70,11 @@ namespace AI.Api.Services
                 var client = _httpClientFactory.CreateClient();
                 client.Timeout = TimeSpan.FromSeconds(5);
 
-                var token = _httpContextAccessor.HttpContext?.Request.Headers["Authorization"].ToString();
-                if (!string.IsNullOrEmpty(token))
-                    client.DefaultRequestHeaders.Add("Authorization", token);
+                var internalKey = _configuration["Internal:ApiKey"];
+                if (!string.IsNullOrEmpty(internalKey))
+                    client.DefaultRequestHeaders.Add("X-Internal-Key", internalKey);
 
-                var url = $"{baseUrl.TrimEnd('/')}/api/sysadmin/ai-keys/active?provider={Uri.EscapeDataString(provider)}";
+                var url = $"{baseUrl.TrimEnd('/')}/api/internal/ai-keys/active?provider={Uri.EscapeDataString(provider)}";
                 var response = await client.GetAsync(url, ct);
                 if (!response.IsSuccessStatusCode) return null;
 

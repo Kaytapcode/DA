@@ -18,8 +18,7 @@ import requests
 import pytest
 
 API_BASE = "http://localhost:5000"
-SYSADMIN_USER = "test_sysadmin"
-SYSADMIN_PASS = "TestPassword123!"
+from fixtures.auth import SYSADMIN_USERNAME as SYSADMIN_USER, SYSADMIN_PASSWORD as SYSADMIN_PASS
 TIMEOUT = 10
 
 
@@ -99,7 +98,7 @@ def create_orgadmin_session() -> dict:
     # Step 4: Add OrgAdmin user to org
     r = requests.post(
         f"{API_BASE}/api/orgs/{org_id}/members",
-        json={"orgId": org_id, "userId": user_id, "role": "OrgAdmin"},
+        json={"userId": user_id, "role": "OrgAdmin"},
         headers=sa_headers,
         timeout=TIMEOUT,
     )

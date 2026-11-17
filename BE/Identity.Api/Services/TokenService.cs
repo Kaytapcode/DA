@@ -14,8 +14,13 @@ namespace Identity.Api.Services
 
     public record RotationResult(AccessTokenResult AccessToken, RefreshTokenResult RefreshToken, UserModel User, Guid? OrgId);
 
+    // Verified Google identity carried between /api/auth/google and /api/auth/sso/complete-profile.
+    public record SsoTicket(string GoogleSub, string Email, string? FullName);
+
     public interface ITokenService
     {
+        string CreateSsoTicket(SsoTicket ticket);
+        SsoTicket? ValidateSsoTicket(string token);
         AccessTokenResult CreateAccessToken(UserModel user, Guid? orgId = null);
         Task<RefreshTokenResult> IssueRefreshTokenAsync(Guid userId, CancellationToken ct = default);
         Task<RotationResult?> RotateAsync(string plaintextRefreshToken, CancellationToken ct = default);
@@ -70,6 +75,53 @@ namespace Identity.Api.Services
             var handler = new JwtSecurityTokenHandler();
             var token = handler.WriteToken(handler.CreateToken(tokenDescriptor));
             return new AccessTokenResult(token, expires, _accessTokenMinutes * 60);
+        }
+
+        // Own audience so the ticket can never pass as an access token anywhere.
+        private const string SsoAudience = "Lumina.SsoTicket";
+
+        public string CreateSsoTicket(SsoTicket ticket)
+        {
+            var claims = new List<Claim> { new("google_sub", ticket.GoogleSub), new("email", ticket.Email) };
+            if (!string.IsNullOrWhiteSpace(ticket.FullName)) claims.Add(new Claim("name", ticket.FullName));
+
+            var handler = new JwtSecurityTokenHandler();
+            return handler.WriteToken(handler.CreateToken(new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(10),
+                Issuer = _config["Jwt:Issuer"],
+                Audience = SsoAudience,
+                SigningCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256)
+            }));
+        }
+
+        public SsoTicket? ValidateSsoTicket(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token)) return null;
+            try
+            {
+                var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+                var principal = handler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = _config["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = SsoAudience,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = _signingKey,
+                    ClockSkew = TimeSpan.FromSeconds(30)
+                }, out _);
+                var sub = principal.FindFirst("google_sub")?.Value;
+                var email = principal.FindFirst("email")?.Value;
+                if (string.IsNullOrEmpty(sub) || string.IsNullOrEmpty(email)) return null;
+                return new SsoTicket(sub, email, principal.FindFirst("name")?.Value);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         public async Task<RefreshTokenResult> IssueRefreshTokenAsync(Guid userId, CancellationToken ct = default)

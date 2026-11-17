@@ -47,7 +47,9 @@ namespace Content.Api.Controllers
 
             // Personal-public: IsPublic = true AND not attached to any ModuleContent (i.e. not course-bound).
             var q = _db.Contents.IgnoreQueryFilters()
-                .Where(c => c.IsPublic && !c.ModuleContents.Any());
+                .Where(c => c.IsPublic && !c.ModuleContents.Any())
+                // Q4: DRAFT quizzes are visible to their owner only.
+                .Where(c => c.CreatedByUserId == userId || !(c.ContentType == "QUIZ" && c.Status == "DRAFT"));
 
             if (!string.IsNullOrWhiteSpace(type))
             {

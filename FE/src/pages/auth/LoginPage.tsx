@@ -114,58 +114,6 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Google SSO requires a configured OAuth client id (FE) AND the BE /auth/google verifier.
-    // When the client id isn't configured, show an honest message instead of a misleading
-    // "chưa load xong" that loops forever.
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-    if (!clientId) {
-      setSubmitError('Đăng nhập Google chưa được cấu hình. Vui lòng đăng nhập bằng tài khoản & mật khẩu.');
-      return;
-    }
-    if (!window.google) {
-      setSubmitError('Google Sign-In chưa load xong, thử lại sau giây lát.');
-      return;
-    }
-    window.google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      callback: async (response: { credential: string }) => {
-        try {
-          const res = await apiClient.post<{
-            accessToken: string;
-            refreshToken: string;
-            accessTokenExpiresInSeconds: number;
-            user: { id: string; username: string; email: string; role: string };
-            orgId?: string;
-            isNewUser: boolean;
-          }>('/auth/google', { idToken: response.credential });
-
-          if (!res.success || !res.data) throw new Error(res.message || 'Google login failed');
-
-          const { refreshToken, user, isNewUser } = res.data;
-
-          // Lưu token (dùng tokenStore từ useAuth nếu exposed, hoặc gọi login flow)
-          // Cách đơn giản nhất: gọi endpoint rồi reload để bootstrap auth
-          localStorage.setItem('lms_rt', refreshToken);
-          // Sau khi set RT, doRefresh() trong useAuth bootstrap sẽ tự lấy AT mới
-
-          if (isNewUser) {
-            navigate('/sso/complete-profile');
-          } else {
-            const dest =
-              user.role === 'SysAdmin' ? '/sysadmin/dashboard' :
-              user.role === 'OrgAdmin' ? '/admin/dashboard' :
-              '/user/home';
-            navigate(dest, { replace: true });
-          }
-        } catch (err) {
-          setSubmitError((err as any)?.message || 'Google login thất bại.');
-        }
-      },
-    });
-    window.google.accounts.id.prompt();
-  };
-
   return (
     <div className="min-h-screen bg-white">
       {/* Main Container */}

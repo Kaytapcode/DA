@@ -68,13 +68,29 @@ export const CourseManagementPage: React.FC = () => {
   const isVi = useLang()
   const { org } = useOrgContext()
   const orgId = org?.id ?? localStorage.getItem('org_id') ?? ''
-  const { courses, isLoading, error, fetchCourses, createCourse, deleteCourse } = useCourse()
+  const { courses, isLoading, error, fetchCourses, createCourse, updateCourse, deleteCourse } = useCourse()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [newCode, setNewCode] = useState('')
   const [newDescription, setNewDescription] = useState('')
   const [busyCourseId, setBusyCourseId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [statusError, setStatusError] = useState<string | null>(null)
+
+  const handleTogglePublish = async (id: string, status?: string) => {
+    setBusyCourseId(id)
+    setStatusError(null)
+    try {
+      const res = await apiClient.patch(`/courses/${id}/status`, { status: status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED' })
+      if (res.success) await fetchCourses(0, 50)
+      else setStatusError(res.message || 'Failed to update course status')
+    } catch (e) {
+      setStatusError(e instanceof Error ? e.message : 'Failed to update course status')
+    }
+    setBusyCourseId(null)
+  }
 
   useEffect(() => {
     void fetchCourses(0, 50)
@@ -84,7 +100,6 @@ export const CourseManagementPage: React.FC = () => {
     if (!orgId || !newTitle.trim()) return
     setSubmitting(true)
     const created = await createCourse({
-      orgId,
       title: newTitle.trim(),
       description: newDescription.trim() || undefined,
       courseCode: newCode.trim() || undefined,
@@ -162,13 +177,15 @@ export const CourseManagementPage: React.FC = () => {
             <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
           </div>
         )}
-        {error && !isLoading && <p className="text-sm text-error mb-3">{error}</p>}
+        {error && !isLoading && <p className="text-sm text-error mb-3" data-testid="course-error">{error}</p>}
+        {statusError && <p className="text-sm text-error mb-3" data-testid="course-status-error">{statusError}</p>}
         {!isLoading && (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-outline-variant">
                   <th className="text-left py-3">{isVi ? 'Khóa học' : 'Course'}</th>
+                  <th className="text-left py-3">{isVi ? 'Trạng thái' : 'Status'}</th>
                   <th className="text-left py-3">{isVi ? 'Mã' : 'Code'}</th>
                   <th className="text-left py-3">{isVi ? 'Mô-đun' : 'Modules'}</th>
                   <th className="text-left py-3">{isVi ? 'Ngày tạo' : 'Created'}</th>
@@ -178,7 +195,7 @@ export const CourseManagementPage: React.FC = () => {
               <tbody>
                 {courses.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-4 text-center text-sm text-on-surface-variant">
+                    <td colSpan={6} className="py-4 text-center text-sm text-on-surface-variant">
                       {isVi ? 'Chưa có khóa học nào.' : 'No courses yet.'}
                     </td>
                   </tr>
@@ -186,9 +203,37 @@ export const CourseManagementPage: React.FC = () => {
                 {courses.map((c) => (
                   <tr key={c.id} className="border-b border-outline-variant/40" data-testid={`course-row-${c.id}`}>
                     <td className="py-3 font-medium">
-                      <Link to={`/admin/editor/curriculum?courseId=${c.id}`} className="hover:text-primary" data-testid={`course-title-${c.id}`}>
-                        {c.title}
-                      </Link>
+                      {editingId === c.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            data-testid={`course-edit-input-${c.id}`}
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            className="rounded border border-outline-variant bg-surface px-2 py-1 text-sm"
+                          />
+                          <Button
+                            size="sm"
+                            data-testid={`course-edit-save-${c.id}`}
+                            disabled={!editTitle.trim()}
+                            onClick={() => void updateCourse({ id: c.id, title: editTitle.trim(), courseCode: c.courseCode ?? undefined }).then((ok) => { if (ok) setEditingId(null) })}
+                          >
+                            {isVi ? 'Lưu' : 'Save'}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>{isVi ? 'Hủy' : 'Cancel'}</Button>
+                        </div>
+                      ) : (
+                        <Link to={`/admin/editor/curriculum?courseId=${c.id}`} className="hover:text-primary" data-testid={`course-title-${c.id}`}>
+                          {c.title}
+                        </Link>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      <Badge
+                        data-testid={`course-status-badge-${c.id}`}
+                        variant={c.status === 'PUBLISHED' ? 'success' : c.status === 'ARCHIVED' ? 'secondary' : 'warning'}
+                      >
+                        {c.status ?? 'DRAFT'}
+                      </Badge>
                     </td>
                     <td className="py-3 text-on-surface-variant">{c.courseCode ?? '—'}</td>
                     <td className="py-3 text-on-surface-variant">{c.moduleCount ?? 0}</td>
@@ -209,6 +254,23 @@ export const CourseManagementPage: React.FC = () => {
                         >
                           {isVi ? 'Thành viên' : 'Members'}
                         </Link>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          data-testid={`course-edit-btn-${c.id}`}
+                          onClick={() => { setEditingId(c.id); setEditTitle(c.title) }}
+                        >
+                          {isVi ? 'Sửa' : 'Edit'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          data-testid={`course-publish-btn-${c.id}`}
+                          onClick={() => void handleTogglePublish(c.id, c.status)}
+                          disabled={busyCourseId === c.id}
+                        >
+                          {c.status === 'PUBLISHED' ? (isVi ? 'Hủy xuất bản' : 'Unpublish') : (isVi ? 'Xuất bản' : 'Publish')}
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -332,7 +394,7 @@ const ModuleSection: React.FC<ModuleSectionProps> = ({
   }
 
   return (
-    <div className="rounded-lg border border-outline-variant overflow-hidden">
+    <div className="rounded-lg border border-outline-variant overflow-hidden" data-testid="curriculum-module-card">
       <div className="p-4 bg-surface-container-low flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={handleToggle} data-testid="module-expand-btn" className="p-1 rounded hover:bg-surface-container">
@@ -675,8 +737,6 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   const isVi = useLang()
   const [searchParams] = useSearchParams()
   const courseId = searchParams.get('courseId')
-  const { org } = useOrgContext()
-  const orgId = org?.id ?? localStorage.getItem('org_id') ?? ''
 
   const { enrollments, isLoading, error, create, updateRole, remove, approve, reject } = useCourseEnrollment(courseId)
   const [newUserId, setNewUserId] = useState('')
@@ -690,20 +750,23 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
   const [isLoadingMembers, setIsLoadingMembers] = useState(false)
   const [selectedMember, setSelectedMember] = useState<OrgMemberBasic | null>(null)
 
+  // Spec 4.2: direct-add searches the system-wide user list (BE auto-adds them to the org).
   useEffect(() => {
-    if (!orgId) return
+    const q = memberSearch.trim()
+    if (q.length < 2 || selectedMember) { setOrgMembers([]); return }
     setIsLoadingMembers(true)
-    apiClient.get<OrgMemberBasic[]>(`/orgs/${orgId}/members`)
-      .then((res) => { if (res.success && res.data) setOrgMembers(res.data) })
-      .catch(() => {})
-      .finally(() => setIsLoadingMembers(false))
-  }, [orgId])
+    const h = setTimeout(() => {
+      apiClient.get<Array<{ id: string; username: string; email: string; role: string }>>(
+        `/users/lookup?q=${encodeURIComponent(q)}&limit=10`
+      )
+        .then((res) => setOrgMembers(res.success && res.data ? res.data.map((u) => ({ userId: u.id, username: u.username, email: u.email, role: u.role })) : []))
+        .catch(() => setOrgMembers([]))
+        .finally(() => setIsLoadingMembers(false))
+    }, 250)
+    return () => clearTimeout(h)
+  }, [memberSearch, selectedMember])
 
-  const filteredMembers = orgMembers.filter((m) => {
-    const t = memberSearch.trim().toLowerCase()
-    if (!t) return true
-    return m.username.toLowerCase().includes(t) || m.email.toLowerCase().includes(t)
-  })
+  const filteredMembers = orgMembers
 
   const handleAdd = async () => {
     const userId = selectedMember?.userId ?? newUserId.trim()
@@ -782,13 +845,13 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
           {isLoadingMembers && (
             <div className="flex items-center gap-2 text-sm text-on-surface-variant mb-3">
               <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-primary" />
-              {isVi ? 'Đang tải danh sách thành viên...' : 'Loading org members...'}
+              {isVi ? 'Đang tìm người dùng...' : 'Searching users...'}
             </div>
           )}
-          {!isLoadingMembers && orgMembers.length > 0 && (
-            <div className="mb-3 space-y-2">
+          <div className="mb-3 space-y-2">
               <Input
-                placeholder={isVi ? 'Tìm thành viên...' : 'Search org members...'}
+                data-testid="enrollment-search-input"
+                placeholder={isVi ? 'Tìm thành viên...' : 'Search users by name or email...'}
                 value={memberSearch}
                 onChange={(e) => { setMemberSearch(e.target.value); setSelectedMember(null) }}
               />
@@ -802,6 +865,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                     filteredMembers.map((m) => (
                       <button
                         key={m.userId}
+                        data-testid={`enrollment-result-${m.userId}`}
                         type="button"
                         onClick={() => { setSelectedMember(m); setMemberSearch(m.username); setNewUserId(m.userId) }}
                         className="flex w-full items-center gap-3 border-b border-outline-variant/30 px-4 py-2 text-left text-sm hover:bg-surface-container-low last:border-b-0"
@@ -815,12 +879,6 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                 </div>
               )}
             </div>
-          )}
-          {!isLoadingMembers && orgMembers.length === 0 && (
-            <p className="mb-3 text-sm text-on-surface-variant">
-              {isVi ? 'Chưa có thành viên nào trong tổ chức.' : 'No org members yet. Add members on the Members page first.'}
-            </p>
-          )}
           <div className="flex flex-wrap gap-3 items-center">
             {selectedMember && (
               <div className="flex items-center gap-2 rounded-lg bg-surface-container-low px-3 py-2 text-sm">
@@ -928,6 +986,7 @@ export const CourseEditorMemberRolesTabPage: React.FC = () => {
                     {new Date(e.enrolledAt).toLocaleDateString()}
                   </span>
                   <select
+                    data-testid={`enrollment-role-change-${e.userId}`}
                      className="min-w-[140px] px-2 py-1 pr-8 rounded border border-outline-variant bg-surface text-on-surface text-sm mr-2"
                     value={e.role}
                     disabled={busyUserId === e.userId}

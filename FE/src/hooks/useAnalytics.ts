@@ -51,7 +51,7 @@ export interface OrgCombined {
 // Fan-out helper so the FE can render the SysAdmin dashboard with one hook.
 export const useSysAdminAnalytics = () => {
   const [data, setData] = useState<SysAdminCombined>({ content: null, orgs: null })
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -82,7 +82,7 @@ export const useSysAdminAnalytics = () => {
 
 export const useOrgAnalytics = (orgId: string | null) => {
   const [data, setData] = useState<OrgCombined>({ content: null, members: null })
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(!!orgId)
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {

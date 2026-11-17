@@ -30,9 +30,16 @@ try
 
     builder.Host.UseSerilog(Log.Logger);
 
+    // 200 MB uploads (spec 2.1 / CONTRACT M29)
+    builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 209715200);
+    builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o => o.MultipartBodyLengthLimit = 209715200);
+
     builder.Services.AddHttpContextAccessor();
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("ConnectionStrings:DefaultConnection is empty.");
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"])) throw new InvalidOperationException("Jwt:Key is empty.");
+    if (!builder.Environment.IsDevelopment() && string.IsNullOrEmpty(builder.Configuration["Internal:ApiKey"])) throw new InvalidOperationException("Internal:ApiKey is required outside Development.");
     builder.Services.AddDbContext<AiDbContext>(options =>
         options.UseNpgsql(connectionString)
     );
@@ -80,6 +87,7 @@ try
         options.AddPolicy("RequireStudent", policy => policy.RequireRole("SysAdmin", "OrgAdmin", "Teacher", "Student"));
     });
 
+    // NOTE (CONTRACT D9): Hangfire runs in-process; the host must be always-on (no scale-to-zero). Each replica runs a server (Postgres storage).
     // Hangfire (T3.12) - background job for daily quota sweep
     builder.Services.AddHangfire(config => config
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -107,17 +115,19 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
-            policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:5000"
-            )
+            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
     });
 
     var app = builder.Build();
+
+    if (builder.Configuration.GetValue("Database:AutoMigrate", true))
+    {
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<AiDbContext>().Database.MigrateAsync();
+    }
 
     // Use Serilog request logging
     app.UseSerilogRequestLogging();
@@ -144,6 +154,7 @@ try
         Cron.Daily);
 
     app.Run();
+    return 0;
 }
 catch (Exception ex)
 {
@@ -152,6 +163,6 @@ catch (Exception ex)
     Console.WriteLine(ex.Message);
     Console.WriteLine(ex.StackTrace);
     Console.ResetColor();
-    Console.WriteLine("Press any key to exit...");
-    Console.ReadLine();
+    Log.Fatal(ex, "Startup failed");
+    return 1;
 }

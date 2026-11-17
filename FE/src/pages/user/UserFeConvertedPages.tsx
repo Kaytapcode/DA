@@ -508,7 +508,6 @@ export const InteractiveFlashcardsPage: React.FC = () => {
     )
     setRemovedCardIds([])
     setEditError(null)
-    setEditSuccess(null)
   }, [editMode, allCards])
 
   const updateCard = (idx: number, patch: Partial<CardEditItem>) =>
@@ -601,11 +600,11 @@ export const InteractiveFlashcardsPage: React.FC = () => {
       {deckInfo && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-on-surface">{deckInfo.title}</h2>
+            <h2 className="text-2xl font-bold text-on-surface" data-testid="deck-title">{deckInfo.title}</h2>
             {deckInfo.theme && <p className="text-xs text-on-surface-variant">{deckInfo.theme}</p>}
           </div>
           {isOwner && (
-            <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((v) => !v)}>
+            <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => { setEditSuccess(null); setEditMode((v) => !v) }} data-testid="deck-edit-toggle">
               <MaterialIcon icon={editMode ? 'visibility' : 'edit'} size="xs" className="mr-1" />
               {editMode ? (isVi ? 'Quay lại học' : 'Back to Study') : (isVi ? 'Chỉnh sửa' : 'Edit Deck')}
             </Button>
@@ -624,6 +623,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
                 type="text"
                 value={titleDraft}
                 onChange={(e) => setTitleDraft(e.target.value)}
+                data-testid="deck-edit-title-input"
                 placeholder={isVi ? 'Ví dụ: Từ vựng Tiếng Anh - Du lịch' : 'e.g., English Vocab - Travel'}
                 className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
               />
@@ -632,12 +632,12 @@ export const InteractiveFlashcardsPage: React.FC = () => {
 
           {editError && (
             <Card className="border border-red-200 bg-red-50">
-              <p className="text-sm text-red-700">{editError}</p>
+              <p className="text-sm text-red-700" data-testid="deck-edit-error">{editError}</p>
             </Card>
           )}
           {editSuccess && (
             <Card className="border border-green-200 bg-green-50">
-              <p className="text-sm text-green-700">{editSuccess}</p>
+              <p className="text-sm text-green-700" data-testid="deck-edit-success">{editSuccess}</p>
             </Card>
           )}
 
@@ -701,7 +701,7 @@ export const InteractiveFlashcardsPage: React.FC = () => {
               <MaterialIcon icon="add" size="xs" />
               <span className="ml-1">{isVi ? 'Thêm thẻ' : 'Add Card'}</span>
             </Button>
-            <Button onClick={() => void saveDeck()} disabled={editBusy}>
+            <Button onClick={() => void saveDeck()} disabled={editBusy} data-testid="deck-edit-save-btn">
               {editBusy ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu bộ thẻ' : 'Save Deck')}
             </Button>
           </div>
@@ -988,6 +988,7 @@ export const LearningHistoryPage: React.FC = () => {
                     return (
                     <React.Fragment key={`${row.contentType}-${row.activityAt}-${idx}`}>
                       <tr
+                        data-testid="history-row"
                         className={`border-b border-outline-variant/40 ${isQuiz ? 'cursor-pointer hover:bg-surface-container-low' : ''}`}
                         onClick={isQuiz ? () => void toggleReview(row.attemptId!) : undefined}
                       >
@@ -1423,7 +1424,7 @@ export const SpecificCoursePage: React.FC = () => {
                 <Card className="w-full max-w-[280px] border border-[#edf1f8] p-6 shadow-[0_18px_40px_rgba(73,89,162,0.08)]">
                   <div className="text-xs font-black uppercase tracking-[0.2em] text-[#8a95af]">Course Summary</div>
                   <div className="mt-3 space-y-2 text-sm text-on-surface-variant">
-                    <p><span className="font-semibold text-on-surface">Status:</span> {course.status ?? 'ACTIVE'}</p>
+                    <p><span className="font-semibold text-on-surface">Status:</span> {course.status ?? 'DRAFT'}</p>
                     <p><span className="font-semibold text-on-surface">Code:</span> {course.courseCode ?? '—'}</p>
                     <p><span className="font-semibold text-on-surface">Modules:</span> {modules.length}</p>
                     <p><span className="font-semibold text-on-surface">Items:</span> {completedContents} / {totalContents}</p>
@@ -1478,7 +1479,7 @@ export const SpecificCoursePage: React.FC = () => {
               <p className="text-sm text-on-surface-variant">No modules have been added to this course yet.</p>
             )}
             {!modulesLoading && modules.length > 0 && modules.map((m: ModuleItem) => (
-              <Card key={m.id} className="border border-[#edf1f8] p-4 shadow-[0_10px_28px_rgba(65,79,145,0.06)]">
+              <Card key={m.id} data-testid="course-module-card" className="border border-[#edf1f8] p-4 shadow-[0_10px_28px_rgba(65,79,145,0.06)]">
                 <div className="mb-3">
                   <h5 className="text-lg font-bold text-on-surface">{m.title}</h5>
                   {m.description && <p className="mt-1 text-sm text-on-surface-variant">{m.description}</p>}
@@ -1552,9 +1553,9 @@ export const SpecificCoursePage: React.FC = () => {
                       </div>
                     )
                     return href ? (
-                      <Link key={c.id} to={href} className="block hover:opacity-80" onClick={() => recordCourseView(m.id, c.id)}>{row}</Link>
+                      <Link key={c.id} to={href} data-testid="course-content-item" className="block hover:opacity-80" onClick={() => recordCourseView(m.id, c.id)}>{row}</Link>
                     ) : (
-                      <div key={c.id}>{row}</div>
+                      <div key={c.id} data-testid="course-content-item">{row}</div>
                     )
                   })}
                 </div>
@@ -1658,6 +1659,17 @@ export const UserQuizInterfacePage: React.FC = () => {
   const idsMatchQ = (a?: string | null, b?: string | null) =>
     !!a && !!b && a.toLowerCase() === b.toLowerCase()
   const isOwner = idsMatchQ(quizInfo?.createdByUserId, currentUserId)
+  const [publishing, setPublishing] = useState(false)
+  // Spec 2.1 / Q4: a DRAFT quiz is owner-only until the owner publishes it.
+  const publishQuiz = async () => {
+    if (!quizId) return
+    setPublishing(true)
+    try {
+      const res = await apiClient.patch<QuizSummaryInfo>(`/quizzes/${quizId}`, { status: 'PUBLISHED' })
+      if (res.success) setQuizInfo((q) => (q ? { ...q, ...(res.data ?? {}), status: 'PUBLISHED' } : q))
+    } catch { /* leave the Draft badge; the owner can retry */ }
+    setPublishing(false)
+  }
 
   // Default landing is the TAKE-QUIZ view for everyone — including the owner. Clicking a quiz to
   // play it must show the play UI, never the editor (the owner toggles into edit via the explicit
@@ -1722,7 +1734,6 @@ export const UserQuizInterfacePage: React.FC = () => {
     })))
     setRemovedIds([])
     setEditError(null)
-    setEditSuccess(null)
   }, [editMode, allQuestions])
 
   // ---- Editable-list mutation helpers (mirror QuizCreatePage manual-mode shape). ----
@@ -1877,14 +1888,24 @@ export const UserQuizInterfacePage: React.FC = () => {
       {quizInfo && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-on-surface">{quizInfo.title}</h2>
+            <h2 className="text-2xl font-bold text-on-surface" data-testid="quiz-title">
+              {quizInfo.title}
+              {quizInfo.status === 'DRAFT' && (
+                <Badge variant="warning" size="sm" className="ml-2 align-middle" data-testid="quiz-draft-badge">{isVi ? 'Bản nháp' : 'Draft'}</Badge>
+              )}
+            </h2>
             <p className="text-xs text-on-surface-variant">
               {allQuestions.length} {isVi ? 'câu hỏi' : 'questions'}
               {quizInfo.timeLimit ? ` • ${quizInfo.timeLimit} ${isVi ? 'phút' : 'min'}` : ''}
             </p>
           </div>
+          {isOwner && quizInfo.status === 'DRAFT' && (
+            <Button size="sm" onClick={() => void publishQuiz()} disabled={publishing} data-testid="quiz-publish-btn">
+              {isVi ? 'Xuất bản' : 'Publish'}
+            </Button>
+          )}
           {isOwner && (
-            <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => setEditMode((v) => !v)} data-testid="quiz-edit-toggle">
+            <Button size="sm" variant={editMode ? 'primary' : 'secondary'} onClick={() => { setEditSuccess(null); setEditMode((v) => !v) }} data-testid="quiz-edit-toggle">
               <MaterialIcon icon={editMode ? 'visibility' : 'edit'} size="xs" className="mr-1" />
               {editMode ? (isVi ? 'Quay lại làm quiz' : 'Back to Take Quiz') : (isVi ? 'Chỉnh sửa quiz' : 'Edit Quiz')}
             </Button>
@@ -1905,6 +1926,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                   type="text"
                   value={titleDraft}
                   onChange={(e) => setTitleDraft(e.target.value)}
+                  data-testid="quiz-edit-title-input"
                   placeholder={isVi ? 'Ví dụ: Hệ Mặt Trời' : 'e.g., Solar System Basics'}
                   className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                 />
@@ -1927,12 +1949,12 @@ export const UserQuizInterfacePage: React.FC = () => {
 
           {editError && (
             <Card className="border border-red-200 bg-red-50">
-              <p className="text-sm text-red-700">{editError}</p>
+              <p className="text-sm text-red-700" data-testid="quiz-edit-error">{editError}</p>
             </Card>
           )}
           {editSuccess && (
             <Card className="border border-green-200 bg-green-50">
-              <p className="text-sm text-green-700">{editSuccess}</p>
+              <p className="text-sm text-green-700" data-testid="quiz-edit-success">{editSuccess}</p>
             </Card>
           )}
 
@@ -1959,6 +1981,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                 <textarea
                   value={q.questionText}
                   onChange={(e) => updateQ(qIdx, { questionText: e.target.value })}
+                  data-testid={`quiz-edit-question-${qIdx}-text`}
                   placeholder={isVi ? 'Nội dung câu hỏi...' : 'Question text...'}
                   rows={2}
                   className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -2012,6 +2035,7 @@ export const UserQuizInterfacePage: React.FC = () => {
                     type="text"
                     value={q.explanation}
                     onChange={(e) => updateQ(qIdx, { explanation: e.target.value })}
+                    data-testid={`quiz-edit-question-${qIdx}-explanation`}
                     placeholder={isVi ? 'Giải thích vì sao đáp án đúng...' : 'Why this answer is correct...'}
                     className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   />
@@ -2025,7 +2049,7 @@ export const UserQuizInterfacePage: React.FC = () => {
               <MaterialIcon icon="add" size="xs" />
               <span className="ml-1">{isVi ? 'Thêm câu hỏi' : 'Add Question'}</span>
             </Button>
-            <Button onClick={() => void saveQuiz()} disabled={editBusy}>
+            <Button onClick={() => void saveQuiz()} disabled={editBusy} data-testid="quiz-edit-save-btn">
               {editBusy ? (isVi ? 'Đang lưu...' : 'Saving...') : (isVi ? 'Lưu quiz' : 'Save Quiz')}
             </Button>
           </div>
@@ -2146,24 +2170,8 @@ export const VideoLessonPage: React.FC = () => {
   const contentId = searchParams.get('contentId')
   const [videos, setVideos] = useState<Array<{ id: string; title?: string; description?: string; embeddableUrl: string }>>([])
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(videoIdFromUrl)
-  const [youtubeUrl, setYoutubeUrl] = useState('')
-  const [videoTitle, setVideoTitle] = useState('')
-  const [videoDescription, setVideoDescription] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-  const role = React.useMemo(() => {
-    try {
-      const raw = localStorage.getItem('auth_user')
-      if (!raw) return null
-      const parsed = JSON.parse(raw) as { role?: string }
-      return parsed.role || null
-    } catch {
-      return null
-    }
-  }, [])
-  const canManageVideo = role === 'Teacher' || role === 'OrgAdmin' || role === 'SysAdmin'
 
   const selectedVideo = React.useMemo(
     () => videos.find((video) => video.id === selectedVideoId) ?? null,
@@ -2236,38 +2244,6 @@ export const VideoLessonPage: React.FC = () => {
     })
   }, [selectedVideo, contentId, fromHistory])
 
-  const handleCreateVideo = async () => {
-    if (!contentId || !youtubeUrl.trim()) return
-
-    setIsSubmitting(true)
-    setError(null)
-    try {
-      const response = await apiClient.post<{ id: string; title?: string; description?: string; embeddableUrl: string }>('/videos', {
-        contentId,
-        youtubeUrl: youtubeUrl.trim(),
-        title: videoTitle.trim() || null,
-        description: videoDescription.trim() || null,
-      })
-      if (!response.success || !response.data) throw new Error(response.message || 'Unable to create video')
-
-      setYoutubeUrl('')
-      setVideoTitle('')
-      setVideoDescription('')
-      await fetchVideos()
-      setSelectedVideoId(response.data.id)
-      setSearchParams((current) => {
-        const next = new URLSearchParams(current)
-        next.set('videoId', response.data!.id)
-        return next
-      })
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unable to create video'
-      setError(message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
   return (
     <UserShell
       titleEn="Video Lesson"
@@ -2282,6 +2258,7 @@ export const VideoLessonPage: React.FC = () => {
           {!isLoading && selectedVideo?.embeddableUrl && (
             <>
               <iframe
+                data-testid="video-player"
                 title={selectedVideo.title || 'Video player'}
                 src={selectedVideo.embeddableUrl}
                 className="mb-4 h-[380px] w-full rounded-xl border border-outline-variant bg-slate-900"
@@ -2338,43 +2315,6 @@ export const VideoLessonPage: React.FC = () => {
             )}
           </div>
 
-          {canManageVideo && contentId && (
-            <div className="mt-6 space-y-3 border-t border-outline-variant pt-4">
-              <h5 className="text-sm font-semibold text-on-surface">{isVi ? 'Thêm video YouTube' : 'Add YouTube video'}</h5>
-              <input
-                value={youtubeUrl}
-                onChange={(event) => setYoutubeUrl(event.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
-              />
-              <input
-                value={videoTitle}
-                onChange={(event) => setVideoTitle(event.target.value)}
-                placeholder={isVi ? 'Tiêu đề (tùy chọn)' : 'Title (optional)'}
-                className="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
-              />
-              <textarea
-                value={videoDescription}
-                onChange={(event) => setVideoDescription(event.target.value)}
-                placeholder={isVi ? 'Mô tả (tùy chọn)' : 'Description (optional)'}
-                className="min-h-[80px] w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm"
-              />
-              <Button onClick={() => void handleCreateVideo()} disabled={isSubmitting || !youtubeUrl.trim()}>
-                {isSubmitting ? (isVi ? 'Đang tạo...' : 'Creating...') : (isVi ? 'Tạo video' : 'Create Video')}
-              </Button>
-            </div>
-          )}
-
-          {canManageVideo && !contentId && (
-            <p className="mt-4 text-xs text-on-surface-variant">
-              {isVi ? 'Cần ?contentId=... để tạo video mới.' : 'Provide ?contentId=... in URL to create a new video.'}
-            </p>
-          )}
-          {!canManageVideo && (
-            <p className="mt-4 text-xs text-on-surface-variant">
-              {isVi ? 'Chỉ Teacher/OrgAdmin/SysAdmin mới có thể tạo video.' : 'Only Teacher/OrgAdmin/SysAdmin can create videos.'}
-            </p>
-          )}
         </Card>
       </div>
     </UserShell>

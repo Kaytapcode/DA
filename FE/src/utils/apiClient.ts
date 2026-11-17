@@ -1,7 +1,8 @@
 import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
 import { tokenStore } from './tokenStore';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Relative `/api` fallback keeps the build host-agnostic; set VITE_API_URL per environment.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -79,6 +80,16 @@ export async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
+// Callers do `err instanceof Error ? err.message : fallback`; rejecting plain objects hid every backend message.
+// The payload fields (success, errors, ...) stay readable on the Error.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toError(payload: any): Error {
+  if (payload instanceof Error && !(payload as any).response) return payload;
+  const body = payload?.response?.data ?? payload;
+  const message = typeof body === "string" ? body : body?.message || payload?.message || "Request failed.";
+  return Object.assign(new Error(message), typeof body === "object" ? body : {}, { message });
+}
+
 class ApiClient {
   private axiosInstance: AxiosInstance;
 
@@ -126,7 +137,7 @@ class ApiClient {
           } catch {
             // Transient refresh failure (network/gateway/5xx) — do NOT log the user out.
             // Keep the session and just reject this request so the caller can retry.
-            return Promise.reject(error.response?.data || error);
+            return Promise.reject(toError(error.response?.data || error));
           }
           if (newToken) {
             original.headers = original.headers ?? {};
@@ -148,18 +159,18 @@ class ApiClient {
         const data: any = error.response?.data;
         if (data && typeof data === 'object') {
           if (typeof data.message === 'string' && data.message) {
-            return Promise.reject(data);
+            return Promise.reject(toError(data));
           }
           if (data.errors && typeof data.errors === 'object') {
             const flat = Object.values(data.errors).flat().filter(Boolean) as string[];
             const msg = flat.join(' ') || data.title || 'Request failed.';
-            return Promise.reject({ success: false, message: msg, errors: data.errors });
+            return Promise.reject(toError({ success: false, message: msg, errors: data.errors }));
           }
           if (typeof data.title === 'string' && data.title) {
-            return Promise.reject({ success: false, message: data.title });
+            return Promise.reject(toError({ success: false, message: data.title }));
           }
         }
-        return Promise.reject(data || { success: false, message: error.message || 'Network error.' });
+        return Promise.reject(toError(data || { success: false, message: error.message || 'Network error.' }));
       }
     );
   }

@@ -21,6 +21,12 @@ try
 
     builder.Host.UseSerilog(Log.Logger);
 
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"]))
+        throw new InvalidOperationException("Jwt:Key is empty.");
+
+    // CONTRACT D6: uploads up to 200 MB pass through the proxy.
+    builder.WebHost.ConfigureKestrel(o => o.Limits.MaxRequestBodySize = 209715200);
+
     // JWT Authentication - validates tokens before proxying
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(options =>
@@ -52,15 +58,16 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
-            policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000"
-            )
+            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
     });
 
+    // Cluster addresses are config-bound; override per deploy with env, e.g.
+    // ReverseProxy__Clusters__identityCluster__Destinations__destination__Address=http://identity:8080
+    // (identityCluster, orgCluster, contentCluster, aiCluster, sysAdminCluster).
+    // No route matches /api/internal/** — internal endpoints are never proxied.
     builder.Services.AddReverseProxy()
         .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
@@ -106,6 +113,7 @@ try
 
 
     app.Run();
+    return 0;
 }
 catch (Exception ex)
 {
@@ -117,6 +125,5 @@ catch (Exception ex)
     Console.WriteLine($"Stack: {ex.StackTrace}");
     Console.WriteLine("******************************************");
     Console.ResetColor();
-    Console.WriteLine("Press any key to exit...");
-    Console.ReadLine();
+    return 1;
 }

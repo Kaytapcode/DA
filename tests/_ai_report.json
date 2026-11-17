@@ -1,0 +1,113 @@
+{
+  "scenarios": [
+    {
+      "label": "baseline_short_normal_easy",
+      "doc_chars": 783,
+      "count": "normal",
+      "difficulty": "easy",
+      "attempts": [
+        {
+          "doc_chars": 783,
+          "count": "normal",
+          "difficulty": "easy",
+          "status": 200,
+          "success": true,
+          "questions": 12,
+          "elapsed_s": 14.8,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        },
+        {
+          "doc_chars": 783,
+          "count": "normal",
+          "difficulty": "easy",
+          "status": 200,
+          "success": true,
+          "questions": 12,
+          "elapsed_s": 19.1,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        },
+        {
+          "doc_chars": 783,
+          "count": "normal",
+          "difficulty": "easy",
+          "status": 200,
+          "success": true,
+          "questions": 11,
+          "elapsed_s": 14.3,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        }
+      ]
+    },
+    {
+      "label": "medium_normal_normal",
+      "doc_chars": 9407,
+      "count": "normal",
+      "difficulty": "normal",
+      "attempts": [
+        {
+          "doc_chars": 9407,
+          "count": "normal",
+          "difficulty": "normal",
+          "status": 200,
+          "success": true,
+          "questions": 12,
+          "elapsed_s": 20.3,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        },
+        {
+          "doc_chars": 9407,
+          "count": "normal",
+          "difficulty": "normal",
+          "status": 200,
+          "success": true,
+          "questions": 12,
+          "elapsed_s": 21.2,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        }
+      ]
+    },
+    {
+      "label": "long_normal_normal",
+      "doc_chars": 47039,
+      "count": "normal",
+      "difficulty": "normal",
+      "attempts": [
+        {
+          "doc_chars": 47039,
+          "count": "normal",
+          "difficulty": "normal",
+          "status": 200,
+          "success": true,
+          "questions": 12,
+          "elapsed_s": 19.1,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        }
+      ]
+    },
+    {
+      "label": "highcount_hard",
+      "doc_chars": 9407,
+      "count": "more",
+      "difficulty": "hard",
+      "attempts": [
+        {
+          "doc_chars": 9407,
+          "count": "more",
+          "difficulty": "hard",
+          "status": 200,
+          "success": true,
+          "questions": 24,
+          "elapsed_s": 52.5,
+          "message": "Quiz generated successfully",
+          "all_have_explanation": true
+        }
+      ]
+    }
+  ]
+}

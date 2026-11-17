@@ -10,8 +10,8 @@ namespace Identity.Api.Controllers
 {
     // Spec §1 — "SSO is available for User and OrgAdmin" (Google OAuth2 / OpenID Connect).
     // The FE obtains a Google ID token (credential) via Google Identity Services and POSTs it here;
-    // we verify it server-side against our Google Client ID, find/create the user, and issue Lumina
-    // JWTs. SysAdmin cannot use SSO (no Google-created account is ever a SysAdmin).
+    // we verify it server-side against our Google Client ID. Existing users get Lumina JWTs; new users get
+    // a short-lived ssoToken for POST /api/auth/sso/complete-profile (AuthController). SysAdmin is rejected.
     [ApiController]
     [Route("api/auth/google")]
     [AllowAnonymous]
@@ -63,27 +63,32 @@ namespace Identity.Api.Controllers
 
             if (string.IsNullOrWhiteSpace(payload.Email))
                 return Unauthorized(new ApiResponse(false, "Google account has no email."));
+            if (!payload.EmailVerified)
+                return StatusCode(403, new ApiResponse(false, "Google email is not verified."));
 
             // Match a returning SSO user by Google subject, else by email (link the Google account
             // to an existing password account).
             var user = await _users.GetByGoogleSubAsync(payload.Subject, ct)
                        ?? await _users.GetByEmailAsync(payload.Email, ct);
-            bool isNewUser = user == null;
 
-            if (isNewUser)
+            // Spec §1 first SSO login: no user row yet — hand back a signed ticket for the role-selection page.
+            if (user == null)
             {
-                user = new UserModel
+                var ssoToken = _tokenService.CreateSsoTicket(new SsoTicket(payload.Subject, payload.Email, payload.Name));
+                return Ok(new ApiResponse<object>(true, new
                 {
-                    Id = Guid.NewGuid(),
-                    Username = await GenerateUniqueUsernameAsync(payload.Email, ct),
-                    Email = payload.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString()), // random; SSO-only
-                    Role = "Student",
-                    GoogleSub = payload.Subject,
-                };
-                await _users.AddAsync(user, ct);
+                    isNewUser = true,
+                    ssoToken,
+                    email = payload.Email,
+                    fullName = payload.Name,
+                }, "Complete your profile to finish signing up."));
             }
-            else if (string.IsNullOrEmpty(user!.GoogleSub))
+
+            // Spec §1: SysAdmin cannot use SSO.
+            if (user.Role == "SysAdmin")
+                return StatusCode(403, new ApiResponse(false, "SysAdmin accounts cannot sign in with SSO."));
+
+            if (string.IsNullOrEmpty(user.GoogleSub))
             {
                 user.GoogleSub = payload.Subject;
                 await _users.UpdateAsync(user, ct);
@@ -95,32 +100,15 @@ namespace Identity.Api.Controllers
             var access = _tokenService.CreateAccessToken(user, orgId);
             var refresh = await _tokenService.IssueRefreshTokenAsync(user.Id, ct);
 
-            return Ok(new ApiResponse<object>(true, new
-            {
-                accessToken = access.Token,
-                refreshToken = refresh.Token,
-                accessTokenExpiresInSeconds = access.ExpiresInSeconds,
-                user = new { id = user.Id, username = user.Username, email = user.Email, role = user.Role },
-                orgId = orgId?.ToString(),
-                isNewUser,
-            }, "Google login successful."));
-        }
-
-        // email local-part as the base, with a short random suffix if needed, to avoid collisions.
-        private async Task<string> GenerateUniqueUsernameAsync(string email, CancellationToken ct)
-        {
-            var baseName = email.Split('@')[0];
-            baseName = new string(baseName.Select(c => char.IsLetterOrDigit(c) ? c : '_').ToArray());
-            if (baseName.Length > 40) baseName = baseName[..40];
-            if (string.IsNullOrWhiteSpace(baseName)) baseName = "user";
-
-            if (await _users.GetByUsernameAsync(baseName, ct) == null) return baseName;
-            for (int i = 0; i < 5; i++)
-            {
-                var candidate = $"{baseName}_{Guid.NewGuid().ToString("N")[..6]}";
-                if (await _users.GetByUsernameAsync(candidate, ct) == null) return candidate;
-            }
-            return $"{baseName}_{Guid.NewGuid().ToString("N")[..10]}";
+            return Ok(new ApiResponse<LoginResponseDto>(true, new LoginResponseDto(
+                AccessToken: access.Token,
+                RefreshToken: refresh.Token,
+                AccessTokenExpiresInSeconds: access.ExpiresInSeconds,
+                RefreshTokenExpiresAt: refresh.ExpiresAtUtc,
+                Message: "Google login successful.",
+                User: new UserInfoDto(user.Id, user.Username, user.Email, user.Role, user.Language),
+                OrgId: orgId?.ToString()
+            ), "Google login successful."));
         }
     }
 }

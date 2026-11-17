@@ -13,4 +13,13 @@ namespace Content.Api.Services
         public static readonly string[] CanPublishContent = [SysAdmin, OrgAdmin, Teacher];
         public static readonly string[] AnyAuthenticated = [SysAdmin, OrgAdmin, Teacher, Student];
     }
+
+    // Q3: the one course status vocabulary. PUBLISHED = Public (catalog-visible).
+    public static class CourseStatus
+    {
+        public const string Draft = "DRAFT";
+        public const string Published = "PUBLISHED";
+        public const string Archived = "ARCHIVED";
+        public static readonly string[] All = [Draft, Published, Archived];
+    }
 }

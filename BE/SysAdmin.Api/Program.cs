@@ -28,9 +28,14 @@ try
     builder.Services.AddHttpContextAccessor();
 
     // Encrypt AI provider keys at rest (spec §1: SysAdmin "Configure AI API Keys").
-    builder.Services.AddDataProtection().SetApplicationName("Lumina.SysAdmin");
+    var dp = builder.Services.AddDataProtection().SetApplicationName("Lumina.SysAdmin");
+    var keysPath = builder.Configuration["DataProtection:KeysPath"];
+    if (!string.IsNullOrWhiteSpace(keysPath)) dp.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
 
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("ConnectionStrings:DefaultConnection is empty.");
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Jwt:Key"])) throw new InvalidOperationException("Jwt:Key is empty.");
+    if (!builder.Environment.IsDevelopment() && string.IsNullOrEmpty(builder.Configuration["Internal:ApiKey"])) throw new InvalidOperationException("Internal:ApiKey is required outside Development.");
     builder.Services.AddDbContext<SysAdminDbContext>(options =>
         options.UseNpgsql(connectionString)
     );
@@ -93,17 +98,19 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
-            policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:5000"
-            )
+            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [])
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
     });
 
     var app = builder.Build();
+
+    if (builder.Configuration.GetValue("Database:AutoMigrate", true))
+    {
+        using var scope = app.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<SysAdminDbContext>().Database.MigrateAsync();
+    }
 
     // Use Serilog request logging
     app.UseSerilogRequestLogging();
@@ -118,6 +125,7 @@ try
     app.MapControllers();
 
     app.Run();
+    return 0;
 }
 catch (Exception ex)
 {
@@ -126,6 +134,6 @@ catch (Exception ex)
     Console.WriteLine(ex.Message);
     Console.WriteLine(ex.StackTrace);
     Console.ResetColor();
-    Console.WriteLine("Press any key to exit...");
-    Console.ReadLine();
+    Log.Fatal(ex, "Startup failed");
+    return 1;
 }

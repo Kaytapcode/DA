@@ -37,6 +37,8 @@ namespace AI.Api.Controllers
         /// Returns questions for the client to review/edit before saving.
         /// </summary>
         [HttpPost("generate")]
+        [RequestSizeLimit(209715200)]
+        [RequestFormLimits(MultipartBodyLengthLimit = 209715200)]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> GenerateQuiz(
             IFormFile file,
@@ -47,8 +49,8 @@ namespace AI.Api.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest(new ApiResponse(false, "A PDF or text file is required."));
 
-            if (file.Length > 10 * 1024 * 1024)
-                return BadRequest(new ApiResponse(false, "File size must not exceed 10 MB."));
+            if (file.Length > 200L * 1024 * 1024)
+                return BadRequest(new ApiResponse(false, "File size must not exceed 200 MB."));
 
             string documentContent;
             try

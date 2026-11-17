@@ -435,7 +435,7 @@ export const UserContentLibraryPage: React.FC = () => {
 												</span>
 											</div>
 											<div className="space-y-2 p-5">
-												<h4 className="line-clamp-2 min-h-[44px] text-base font-bold text-[#111b2d]">{item.title}</h4>
+												<h4 className="line-clamp-2 min-h-[44px] text-base font-bold text-[#111b2d]" data-testid="library-item-title">{item.title}</h4>
 												<p className="text-xs text-[#6d7f98]">{item.subtitle}</p>
 												<div className="text-right text-xs font-semibold text-[#1463ff]">{item.statusLabel}</div>
 											</div>
@@ -443,7 +443,7 @@ export const UserContentLibraryPage: React.FC = () => {
 									)
 
 									return (
-										<div key={item.id} className="relative">
+										<div key={item.id} className="relative" data-testid="library-item" data-item-type={item.type}>
 											{confirmDeleteId === item.id ? (
 												<div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6">
 													<p className="mb-4 text-center text-sm font-semibold text-red-700">
@@ -453,6 +453,7 @@ export const UserContentLibraryPage: React.FC = () => {
 														<button
 															type="button"
 															onClick={() => void handleDeleteItem(item)}
+data-testid="library-item-delete-confirm"
 															disabled={isDeleting}
 															className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700 disabled:opacity-50"
 														>
@@ -507,6 +508,7 @@ export const UserContentLibraryPage: React.FC = () => {
 																	key={c.id}
 																	type="button"
 																	onClick={() => void handleAddToCollection(item, c.id)}
+																		data-testid="library-picker-collection"
 																	disabled={addingToCollectionId === c.id}
 																	className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition hover:bg-[#f0f4f9] disabled:opacity-50"
 																>
@@ -532,6 +534,7 @@ export const UserContentLibraryPage: React.FC = () => {
 															<button
 																type="button"
 																onClick={(e) => void handleOpenPicker(item, e)}
+																data-testid="library-item-add-collection-btn"
 																className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-[#1463ff] hover:text-white"
 																title={isVi ? 'Thêm vào bộ sưu tập' : 'Add to collection'}
 															>
@@ -541,6 +544,7 @@ export const UserContentLibraryPage: React.FC = () => {
 														<button
 															type="button"
 															onClick={(e) => { e.preventDefault(); setAddPickerItemId(null); setConfirmDeleteId(item.id) }}
+data-testid="library-item-delete-btn"
 															className="rounded-full bg-black/40 p-1.5 text-white/70 transition-colors hover:bg-red-600 hover:text-white"
 															title={isVi ? 'Xóa' : 'Delete'}
 														>

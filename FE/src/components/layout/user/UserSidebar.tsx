@@ -90,7 +90,7 @@ export const UserSidebar: React.FC = () => {
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold text-[#243043]">{user?.username ?? 'Guest'}</div>
+            <div data-testid="user-sidebar-username" className="truncate text-sm font-bold text-[#243043]">{user?.username ?? 'Guest'}</div>
             <div className="truncate text-xs font-medium text-[#7a879e]">{user?.role ?? 'Student'}</div>
           </div>
         )}

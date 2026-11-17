@@ -71,7 +71,7 @@ namespace Content.Api.Controllers
                 OrgId: orgId,
                 CourseCount: await _db.Courses.IgnoreQueryFilters().CountAsync(c => c.OrgId == orgId, ct),
                 ActiveCourseCount: await _db.Courses.IgnoreQueryFilters()
-                    .CountAsync(c => c.OrgId == orgId && c.Status == "ACTIVE", ct),
+                    .CountAsync(c => c.OrgId == orgId && c.Status == CourseStatus.Published, ct),
                 ModuleCount: await _db.Modules.IgnoreQueryFilters().CountAsync(m => m.OrgId == orgId, ct),
                 CompletedAttempts: await _db.QuizAttempts.IgnoreQueryFilters()
                     .Where(a => _db.Quizzes.IgnoreQueryFilters()
